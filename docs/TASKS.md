@@ -174,3 +174,22 @@ verified-by: 补 frontmatter 与文档导航（QT-08 十二仓自治三件套）
 - **④ 约束与非目标**：不动后端契约（形状由 core 定，本单只是接住已给的字段）；不在前端算 `5908 - 339` 之类客户端重建（core AGENTS.md §9 禁止两处真相）；不改其他格式化函数。
 - **⑤ 验收**：`npm test` + `npm run typecheck` + `npm run lint`（0 error）绿；新增/更新的 `MarketMetrics`/`DataQualityPanel` 单测钉住「0 不再显示成占位」与「空态只在 null 时出现」；浏览器实测 `/data-sync` 与 `/` 两页 DOM 回读，屏幕上的文字与 `curl` 拿到的字段集合一致；`e2e/tests/visual-regression.spec.ts` 的 `dashboard.png` 若因文案变化需 `--update-snapshots`，须在结案里写明是有意变化。**破坏验证**：把面板改回读 `count` 单一字段 ⇒ 新断言红；把 `fmtVolume` 的 null 判据改回 `!v` ⇒ 0 那条用例红。
 - **⑥ 边界**：只做"文案与能力对齐 + 0 与缺失分得开"；~~`/market/index` 的参数不生效（core DATA-11）~~ **该句已于 2026-10-16 被 core DATA-11 落地证伪**：`(a1)` 参数化后 `?symbol`/`?date` 真下传（网关那层原本连 query 都不带，也一并补上），ui 侧取值改为按选中项命中 + 选中项/日期一变就重取（本仓 `f473fa9`，已在 ui main），日期框同时改成不可清空 —— 清空会让 `market.ts` 的 `if (date)` 把参数省掉，屏上仍是最新一期而框里没有日期，正是本节立的「文案与能力相反」那一族。指数 bar 数据面（core DATA-12）仍不在本单。
+
+---
+
+## UI-02 · 三值 status 消费与 `invalid_reasons` 展示口径（refactor-plan-review C1 传播）⬜ 待做
+
+> 2026-10-20 自 refactor 计划审查修复传播登记。三值映射规则冻结在 core `tellurion:docs/TASKS.md` QT-10 ③-④ / QT-15 ⑤ 与 `tellurion:docs/SPEC.md`（**以彼处为准，本单只落本仓展示/消费侧**）。
+
+- **① 目标**：前端按冻结三值（`completed` / `invalid` / `failed`）展示 run 状态，并把 C1 修复后新增的 `invalid_reasons` code（`data_gap_skipped` 数据缺口跳天 / `session_terminated` session 终止）如实展示为「结果不可用但可解释」，不再与 `failed` 混为一谈、也不再把 `invalid` 装成成功。
+- **② 上下文**（开工前逐一读）：
+  - 冻结契约：`tellurion:docs/SPEC.md` 三值 status 与 `invalid_reasons` 字段（core `pkg/backtest/contracts` ResultSpec 冻结，`buildResponseFromState` 单一透传点）；C1 映射新增 code `data_gap_skipped` / `session_terminated`，`failed` 必带 `error`。
+  - 本仓既有口径（勿倒退）：core AGENTS.md 的裁决「Backtest UI 不得用 `result.id` 存在当成功判据；`invalid` 必须显式警示 + `invalid_reasons` 列表，`failed` 必须显式呈现」；既有三值接线见 ui 仓 A-07（7 条单测钉住）。
+  - 相关联动：`tellurion-agent:docs/TASKS.md` REV-01-A（agent 侧消费口径同源，不重复发明语义）。
+- **③ 要求**：
+  1. 状态展示只认三值：**`completed` 才是成功**；`invalid` 显示显式警示并逐条列出 `invalid_reasons`（code 可读化：`data_gap_skipped`→「数据缺口跳天，结果不可用」、`session_terminated`→「session 终止，结果不完整」，未知 code 原样展示不吞）；`failed` 显示 `error` 原文。
+  2. 与 OBS-01 同族的「invalid 运行指标缺席」处理沿用现状口径：指标键缺席时走显式空态，不伪造 0（与 UI-01 的「0 与缺失分得开」口径一致）。
+  3. 不新增第四值、不在前端自行改判 status（单一真相源在 core 透传点）。
+- **④ 约束与非目标**：不改后端契约与映射（core QT-10/QT-15）；不放宽既有三值单测断言（A-07 那 7 条只许加强不许削弱）；不做 i18n；指标展示逻辑重构另立。
+- **⑤ 验收**：`npm test` + `npm run typecheck` + `npm run lint` 绿；新增单测钉住 `data_gap_skipped` / `session_terminated` 两个 code 的展示文案与「unknown code 原样展示」；`completed`/`invalid`/`failed` 三分支各有可区分断言。**破坏验证**：把 `invalid` 误渲染成成功（或吞掉 `invalid_reasons` 列表）→ 对应用例红 → 还原绿。e2e 若涉及状态文案断言同步更新并在结案写明。
+- **⑥ 边界**：只做三值 status 与 `invalid_reasons` 的展示/消费口径；`result.id` 判成功、指标缺席空态等旧账在 A-07/OPS 相关单；agent 侧消费在 REV-01-A；wire 契约落定在 core QT-50。
