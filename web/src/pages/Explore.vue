@@ -1,0 +1,308 @@
+<script setup lang="ts">
+import { computed, onUnmounted, ref } from 'vue'
+import {
+  NAlert,
+  NButton,
+  NCard,
+  NDivider,
+  NEmpty,
+  NH1,
+  NInput,
+  NInputNumber,
+  NList,
+  NListItem,
+  NScrollbar,
+  NSpace,
+  NStatistic,
+  NTag,
+  NText,
+} from 'naive-ui'
+import {
+  assessedProbability,
+  getExploreStatus,
+  startExplore,
+  stopExplore,
+  type AttemptView,
+  type ExploreStatus,
+} from '@/api/explore'
+import VerdictPanel from '@/components/validation/VerdictPanel.vue'
+
+// P2-9 裁决的展示口径。
+//
+// 概率不是「通过率」：综合概率取已评估维度的**最小值**，所以一眼看去最该
+// 关注的永远是 Weakest 那一维，而不是那个最好看的数字。
+type SeverityType = 'error' | 'warning' | 'default' | 'success'
+
+function probType(p: number): SeverityType {
+  if (p < 0.2) return 'error'
+  if (p < 0.5) return 'warning'
+  return 'success'
+}
+
+/**
+ * 结果流上的 "P x.xx" 与裁决面板的"综合概率"必须是**同一个函数**算出来的同一个数。
+ * 此前这里直接读 verdict.probability（后端聚合字段），而面板按已评估维度取最小值 ——
+ * 两处口径不同，一旦后端那个字段与六个维度不一致，用户会在同一行看到两个概率。
+ */
+function attemptProbability(a: AttemptView): number | null {
+  return assessedProbability(a.verdict)
+}
+
+// P1-3 观察页：正在试什么 / 结果流 / 当前最优。
+//
+// 三栏不是排版偏好，是「人在环」的最低配置：看不见正在试什么就没法判断
+// 方向对不对，看不见结果流就不知道试了多少次才撞出来，看不见当前最优
+// 就没法决定该继续还是该叫停。
+
+const description = ref('做一个动量策略')
+const maxTries = ref(20)
+const runID = ref('')
+const status = ref<ExploreStatus | null>(null)
+const busy = ref(false)
+const error = ref('')
+
+let timer: number | undefined
+
+const attempts = computed<AttemptView[]>(() => status.value?.attempts ?? [])
+const latest = computed<AttemptView | null>(() =>
+  attempts.value.length ? attempts.value[attempts.value.length - 1] : null,
+)
+const succeeded = computed(() => attempts.value.filter((a) => a.ok))
+const failedCount = computed(() => attempts.value.length - succeeded.value.length)
+const running = computed(() => status.value?.running ?? false)
+const best = computed<AttemptView | null>(() => {
+  const seq = status.value?.best_seq
+  if (seq == null) return null
+  return attempts.value.find((a) => a.seq === seq) ?? null
+})
+
+// 裁决详情看哪一次：默认跟最新，点结果流里任一行可切过去。
+const selectedSeq = ref<number | null>(null)
+const selected = computed<AttemptView | null>(() => {
+  if (selectedSeq.value !== null) {
+    const hit = attempts.value.find((a) => a.seq === selectedSeq.value)
+    if (hit) return hit
+  }
+  return latest.value
+})
+const verdict = computed(() => selected.value?.verdict ?? null)
+
+function stopTimer() {
+  if (timer !== undefined) {
+    clearInterval(timer)
+    timer = undefined
+  }
+}
+
+// poll 返回新的状态而不只是写进 status —— 靠副作用推断的话，TS 会认为
+// status.value 还是 null，读它的字段就成了 never。
+function poll(): Promise<ExploreStatus> {
+  return getExploreStatus(runID.value).then((s) => {
+    status.value = s
+    if (!s.running) stopTimer()
+    return s
+  })
+}
+
+/**
+ * 刷新节奏。一次尝试要跑「意图解析 → 表达式 → 回测 → 六维校验」，实测 90 秒
+ * 以上；1 秒一跳看不到任何新东西，却把 analysis-service 每人 100 次/分钟的
+ * 预算吃掉 60 次（同一 IP 还要和页面上其余请求共享）。实测就是这样撞出 429。
+ */
+const POLL_MS = 2500
+
+/** 连续失败到第几次才认定真断线（约 15 秒），此前三次以内按瞬时抖动处理 */
+const MAX_POLL_FAILS = 6
+
+let pollFails = 0
+
+/**
+ * 观察循环的失败处理。**一次瞬时失败绝不许停掉轮询**：这个页面存在的唯一理由
+ * 是"看得见他在干什么"，循环一停，窗口就永久瞎在最后一次成功的那一帧上，
+ * 而用户看不出自己看的是旧的。真断线（连续失败）才停，并且把"已停止"说清楚。
+ */
+function startPolling() {
+  stopTimer()
+  pollFails = 0
+  timer = window.setInterval(() => {
+    poll().then(
+      () => {
+        pollFails = 0
+        error.value = ''
+      },
+      (e: unknown) => {
+        const msg = e instanceof Error ? e.message : String(e)
+        if (++pollFails < MAX_POLL_FAILS) {
+          error.value = `状态刷新失败，正在重试（第 ${pollFails} 次）：${msg}`
+          return
+        }
+        error.value = `状态刷新已停止（连续 ${pollFails} 次失败）：${msg} —— 屏幕上的是最后一次成功拿到的进展，可能已经过期。`
+        stopTimer()
+      },
+    )
+  }, POLL_MS)
+}
+
+async function run() {
+  error.value = ''
+  busy.value = true
+  status.value = null
+  selectedSeq.value = null
+  try {
+    const res = await startExplore({ description: description.value, max_tries: maxTries.value })
+    runID.value = res.run_id
+    const s = await poll()
+    if (s.running) startPolling()
+  } catch (e: unknown) {
+    error.value = e instanceof Error ? e.message : String(e)
+  } finally {
+    busy.value = false
+  }
+}
+
+async function stop() {
+  if (!runID.value) return
+  try {
+    await stopExplore(runID.value)
+    await poll()
+  } catch (e: unknown) {
+    error.value = e instanceof Error ? e.message : String(e)
+  }
+}
+
+function fmtParams(p: Record<string, unknown>): string {
+  return Object.entries(p)
+    .map(([k, v]) => `${k}=${v}`)
+    .join('  ')
+}
+
+onUnmounted(stopTimer)
+</script>
+
+<template>
+  <div class="explore-page">
+    <NH1>探索观察</NH1>
+
+    <NCard size="small" class="controls">
+      <NSpace align="center" :wrap="true">
+        <NInput v-model:value="description" placeholder="想试的方向，例如：做一个动量策略" style="width: 320px" />
+        <NText depth="3">最多试</NText>
+        <NInputNumber v-model:value="maxTries" :min="1" :max="500" style="width: 120px" />
+        <NText depth="3">次</NText>
+        <NButton type="primary" :loading="busy" :disabled="running" @click="run">开始探索</NButton>
+        <NButton :disabled="!running" @click="stop">叫停</NButton>
+        <NTag v-if="running" type="info">进行中 · 已试 {{ attempts.length }}</NTag>
+        <NTag v-else-if="status && status.stopped === 'cancelled'" type="warning">已叫停</NTag>
+        <NTag v-else-if="status" type="success">已完成</NTag>
+      </NSpace>
+    </NCard>
+
+    <NAlert v-if="error" type="error" :title="error" style="margin-bottom: 16px" />
+
+    <div class="grid">
+      <!-- 左：正在试什么 -->
+      <NCard title="正在试什么" size="small">
+        <NEmpty v-if="!latest" description="还没有开始" />
+        <template v-else>
+          <NText strong>第 {{ latest.seq + 1 }} 次</NText>
+          <NDivider style="margin: 8px 0" />
+          <NText depth="2">{{ latest.hypothesis }}</NText>
+          <NDivider style="margin: 8px 0" />
+          <NText depth="3" style="font-size: 12px">{{ fmtParams(latest.params) }}</NText>
+        </template>
+      </NCard>
+
+      <!-- 中：结果流 -->
+      <NCard title="结果流" size="small">
+        <NEmpty v-if="!attempts.length" description="结果会按尝试顺序出现" />
+        <NScrollbar v-else style="max-height: 460px">
+          <NList size="small" :bordered="false" clickable hoverable>
+            <NListItem v-for="a in attempts" :key="a.seq" @click="selectedSeq = a.seq">
+              <NSpace align="center" :wrap="false" justify="space-between">
+                <NSpace align="center" :size="8">
+                  <NText depth="3" style="width: 44px">#{{ a.seq }}</NText>
+                  <NTag :type="a.ok ? 'success' : 'error'" size="small">
+                    {{ a.ok ? a.sharpe.toFixed(2) : '失败' }}
+                  </NTag>
+                  <!-- 裁决概率：Sharpe 是「跑出来多少」，概率是「这个数有多少可信」 -->
+                  <NTag
+                    v-if="attemptProbability(a) !== null"
+                    :type="probType(attemptProbability(a) ?? 0)"
+                    size="small"
+                    :bordered="false"
+                  >
+                    P {{ attemptProbability(a)?.toFixed(2) }}
+                  </NTag>
+                  <NText depth="2" style="font-size: 12px">{{ a.hypothesis }}</NText>
+                </NSpace>
+                <NText depth="3" style="font-size: 12px">{{ fmtParams(a.params) }}</NText>
+              </NSpace>
+            </NListItem>
+          </NList>
+        </NScrollbar>
+      </NCard>
+
+      <!-- 右：当前最优 -->
+      <NCard title="当前最优" size="small">
+        <NEmpty v-if="!best" description="还没有成功的一次" />
+        <template v-else>
+          <NStatistic label="Sharpe" :value="best.sharpe" :precision="3" />
+          <NDivider style="margin: 12px 0" />
+          <NText depth="3" style="font-size: 12px">第 {{ best.seq }} 次 · {{ fmtParams(best.params) }}</NText>
+          <NDivider style="margin: 12px 0" />
+          <NSpace :vertical="true" :size="4">
+            <NText depth="3" style="font-size: 12px">总共试了 {{ attempts.length }} 次</NText>
+            <NText depth="3" style="font-size: 12px">失败 {{ failedCount }} 次</NText>
+          </NSpace>
+          <NDivider style="margin: 12px 0" />
+          <NText depth="3" style="font-size: 12px">
+            试 {{ attempts.length }} 次里撞出这个数 —— 次数越多，同样的结果越可疑。
+          </NText>
+          <template v-if="best.verdict">
+            <NDivider style="margin: 12px 0" />
+            <NStatistic label="裁决概率" :value="best.verdict.probability" :precision="3" />
+          </template>
+        </template>
+      </NCard>
+    </div>
+
+    <!-- 下：验证器裁决（A-05 横切组件，六维 + 未评估 + 最弱一环 + 因果下注 + 质疑分级） -->
+    <NCard title="验证器裁决" size="small" class="verdict-card">
+      <template #header-extra>
+        <NText depth="3" style="font-size: 12px">
+          第 {{ selected?.seq ?? 0 }} 次 · 点结果流里任一行可切换
+        </NText>
+      </template>
+      <VerdictPanel :verdict="verdict" />
+    </NCard>
+  </div>
+</template>
+
+<style scoped>
+.explore-page {
+  padding: 24px;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+.controls {
+  margin-bottom: 16px;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: 280px 1fr 280px;
+  gap: 16px;
+  align-items: start;
+}
+
+.verdict-card {
+  margin-top: 16px;
+}
+
+@media (max-width: 1100px) {
+  .grid {
+    grid-template-columns: 1fr;
+  }
+}
+</style>
