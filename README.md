@@ -5,7 +5,7 @@ Quant Lab 的**前端**（Vue 3 + Vite + Naive UI）。从 monorepo `tellurion` 
 ## 定位与边界
 
 本仓只含**呈现层**。后端（回测引擎、策略运行时、数据供给、AI 实验员）在
-[`tellurion`](https://tellurion)，AI 层在
+[`tellurion`](https://github.com/ruoxizhnya/tellurion)，AI 层在
 [`tellurion-agent`](https://github.com/ruoxizhnya/tellurion-agent)，
 跨领域文档在 [`tellurion-docs`](https://github.com/ruoxizhnya/tellurion-docs)。
 
@@ -58,3 +58,11 @@ npx playwright test
 前端设计系统的入口是 [`docs/design/index.md`](docs/design/index.md)。注意原
 monorepo 里 `docs/design/` 根下的语义就是「前端设计系统」，内核蓝图
 （`docs/design/kernel/`）与功能规格（`docs/design/equitydeep/`）**不属于本仓**。
+
+## 文档入口
+
+- 文档导航：`docs/README.md`
+- 本仓入口（构建/边界/禁止）：`AGENTS.md`
+- 本仓台账（唯一）：`docs/TASKS.md`
+- 边界与依赖方向：`docs/ARCHITECTURE.md`
+- 前端设计系统：`docs/design/index.md`

@@ -6,8 +6,8 @@
 > **适用范围**: Quant Lab 前端 (Vue 3 + Naive UI)
 >
 > ⚠️ **目录语义边界 (2026-09-15, ODR-047 DR-8；2026-10-08 微调)**: 本目录（`docs/design/`）根下**专指前端设计系统**。其他设计规格**不得**直接平铺在根下 —— 放入独立子目录：
-> - [`design/equitydeep/`](equitydeep/) — EquityDeep 纵向深研规格（工作面 1，上位定义见 [PRODUCT.md](../PRODUCT.md)）
-> - [`design/kernel/`](kernel/) — **后端架构设计**（模块化内核目标架构等，2026-10-08 起）
+> - `tellurion:docs/design/equitydeep/` — EquityDeep 纵向深研规格（工作面 1，上位定义见 `tellurion:docs/PRODUCT.md`）；**未随前端拆仓迁入，属 core 仓文档**
+> - `tellurion:docs/design/kernel/` — **后端架构设计**（模块化内核目标架构等，2026-10-08 起）；**属 core 仓文档**
 
 ---
 
@@ -32,7 +32,7 @@
 
 **后端架构设计（子目录）**
 
-7. [模块化内核目标架构](kernel/target-architecture-modular-kernel.md) — 回测/实盘同构 + 双模式策略接口 + 四层表达力（2026-10-08，Draft 已拍板 D1–D5）
+7. 模块化内核目标架构（`tellurion:docs/design/kernel/target-architecture-modular-kernel.md`） — 回测/实盘同构 + 双模式策略接口 + 四层表达力（2026-10-08，Draft 已拍板 D1–D5）
 
 ---
 

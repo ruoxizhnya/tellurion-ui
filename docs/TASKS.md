@@ -1,3 +1,9 @@
+---
+status: active
+last-verified: 2026-10-20
+verified-by: 补 frontmatter 与文档导航（QT-08 十二仓自治三件套）
+---
+
 # tellurion-ui · 任务台账
 
 > 任务定义规范沿用 core 仓 `tellurion/AGENTS.md` §8.5（六字段：①目标 ②上下文 ③要求 ④约束与非目标 ⑤验收 ⑥边界）。

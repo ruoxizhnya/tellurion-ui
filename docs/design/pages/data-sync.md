@@ -538,15 +538,15 @@ export const useSyncStore = defineStore('sync', () => {
 
 | 文件 | 说明 |
 |------|------|
-| [pages/DataSync.vue](../../web/src/pages/DataSync.vue) | 页面组件 (待创建) |
-| [components/sync/SyncOverviewCards.vue](../../web/src/components/sync/SyncOverviewCards.vue) | 概览卡片 (待创建) |
-| [components/sync/SyncControlPanel.vue](../../web/src/components/sync/SyncControlPanel.vue) | 同步控制面板 (待创建) |
-| [components/sync/SyncJobQueue.vue](../../web/src/components/sync/SyncJobQueue.vue) | 任务队列 (待创建) |
-| [components/sync/SyncLogViewer.vue](../../web/src/components/sync/SyncLogViewer.vue) | 日志查看器 (待创建) |
-| [components/sync/DataQualityDashboard.vue](../../web/src/components/sync/DataQualityDashboard.vue) | 质量仪表盘 (待创建) |
-| [stores/sync.ts](../../web/src/stores/sync.ts) | Pinia Store (待创建) |
-| [api/sync.ts](../../web/src/api/sync.ts) | API 客户端 (待创建) |
-| [types/sync.ts](../../web/src/types/sync.ts) | TypeScript 类型 (待创建) |
+| [pages/DataSync.vue](../../../web/src/pages/DataSync.vue) | 页面组件 (待创建) |
+| `components/sync/SyncOverviewCards.vue` | 概览卡片 (待创建) |
+| `components/sync/SyncControlPanel.vue` | 同步控制面板 (待创建) |
+| `components/sync/SyncJobQueue.vue` | 任务队列 (待创建) |
+| `components/sync/SyncLogViewer.vue` | 日志查看器 (待创建) |
+| `components/sync/DataQualityDashboard.vue` | 质量仪表盘 (待创建) |
+| [stores/sync.ts](../../../web/src/stores/sync.ts) | Pinia Store (待创建) |
+| [api/sync.ts](../../../web/src/api/sync.ts) | API 客户端 (待创建) |
+| [types/sync.ts](../../../web/src/types/sync.ts) | TypeScript 类型 (待创建) |
 
 ---
 
