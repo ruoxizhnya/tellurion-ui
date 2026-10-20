@@ -1,4 +1,4 @@
-# 换行符统一为 LF —— 与 core 仓 AUD-27 同一处置（quant-trading/.gitattributes）。
+# 换行符统一为 LF —— 与 core 仓 AUD-27 同一处置（tellurion/.gitattributes）。
 #
 # 事实基础（2026-10-14 实测，`git ls-files --eol`）：
 #   - index 侧**本来就全是 LF**：151 个 `i/lf`、12 个 `i/-text`（playwright 视觉
