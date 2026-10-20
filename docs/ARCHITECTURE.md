@@ -1,37 +1,70 @@
-# 本仓边界与依赖方向 — tellurion-ui
+---
+status: active
+last-verified: 2026-10-20
+verified-by: 功能边界固化（三份契约：db / api / dataflow）
+---
 
-## 定位
+# 架构 — tellurion-ui
 
-**前端**（Vue 3 + Vite + Naive UI）+ playwright 端到端套件。
+## 1. 定位
 
-## 依赖方向
+前端（Vue 3 + Vite + Naive UI）+ playwright 端到端套件。
+
+边界极简：**只做呈现**。所有数据经 `/api`，所有契约来自 core 的 `openapi.yaml`，设计基准是 `docs/design/`（v2.0）。
+
+## 2. 分层
 
 ```
-tellurion-ui (web/)  ──(HTTP /api)──►  analysis-service (core) ──►  data / ai-service
-        │
-        └── e2e/  ──(浏览器驱动)──►  上面这条链路
+浏览器
+  pages/（路由页面） → components/（组件） → stores/（状态） → api/（请求）
+        ↓  /api/*
+nginx（deploy/nginx-spa.conf）—— 静态资源 + 反代
+        ↓
+analysis-service（:8085）→ data（:8081）/ ai（:8086）/ core 引擎
 ```
 
-- 本仓**没有** Go 依赖，也不参与 Go 的 module 图。
-- 契约方向是单向的：core 的 `openapi.yaml` → 本仓的类型与调用；**本仓不回写契约**。
+## 3. 组件职责
 
-## 目录职责
+| 目录 | 职责 | 不做 |
+|---|---|---|
+| `web/src/pages/` | 页面与路由 | 不放业务计算 |
+| `web/src/components/` | 组件（按域分目录） | 不发请求（走 stores/api） |
+| `web/src/stores/` | 状态与缓存 | 不做鉴权判断（用 auth） |
+| `web/src/api/` | 端点封装 | 不做 UI 逻辑 |
+| `e2e/` | 端到端用例 | 不做单元测试（vitest 在 web/） |
+| `deploy/` | nginx 配置 | 不含业务 |
 
-| 路径 | 内容 |
-|---|---|
-| `web/` | 前端源码（Vue 3 + Vite） |
-| `e2e/` | playwright 用例与 helpers（含库级数据隔离） |
-| `docs/design/` | 前端设计系统（index / principles / visual / components / interaction / pages） |
-| `deploy/nginx-spa.conf` | `/api` 反代到 analysis-service |
-| `Dockerfile` | 前端镜像 → nginx 托管 |
+## 4. 三份契约（功能的边界就在这三份文件里）
 
-## 关键约束
+| 维度 | 文件 | 回答什么问题 |
+|---|---|---|
+| 数据形状 | [`db-schema.md`](db-schema.md) | 本仓拥有哪些表？谁能写？ |
+| 接口形状 | [`api-schema.md`](api-schema.md) | 对外暴露什么？错误码与幂等怎么做？ |
+| 流向与顺序 | [`dataflow.md`](dataflow.md) | 数据怎么流？哪里 fail-closed？ |
 
-1. **不直连 DB**：所有数据经 `/api`。
-2. **不复制 openapi.yaml**：它被 core 的 `//go:embed` 嵌进二进制。
-3. **e2e 红就是红**：已知失败用 `test.fixme("AUD-61: 归因")` 显式登记，不改断言消红。
-4. **设计系统单一基准**：`docs/design/` 是 v2.0 的唯一基准，页面实现向它对齐，不是反过来。
+## 5. 依赖方向
 
-## 未决 / 待定
+```
+（无 Go 依赖）
+tellurion-ui ──(HTTP/SSE)──► analysis-service ──► data / ai / core
+     └── 契约来源：core 的 openapi.yaml（只读，不复制）
+```
 
-- 设计系统重构（`docs/design/stitch_quantlab_ux_redesign/`）落地后，e2e 选择器按页重对齐（AUD-61 阶段二）。
+## 6. 关键决策
+
+- [`adr/0001-openapi-单一真相且不直连-db.md`](adr/0001-openapi-单一真相且不直连-db.md)
+
+## 7. 非目标（明确不做）
+
+- 不做数据聚合 / 计算
+- 不做权限模型
+- 不做 BFF 生产部署
+- 不复制 API 契约
+
+## 8. 分期与状态
+
+| 阶段 | 内容 | 状态 |
+|---|---|---|
+| — | 设计系统 v2.0 重构 | 进行中 |
+| AUD-61 | e2e 与结构脱节（已知红登记 → 重构后重对齐） | ⬜ |
+| — | 契约变更时同步前端类型 | 持续 |
