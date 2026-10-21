@@ -138,9 +138,9 @@ describe('排程列表', { timeout: CI_TEST_TIMEOUT_MS }, () => {
       s({ id: 1, is_active: true, next_run_at: '2026-10-15T09:00:00Z' }),
       s({ id: 2, name: 'paused', is_active: false, next_run_at: '2026-10-15T09:00:00Z' }),
     ])
-    expect(w.find('[data-testid="schedule-row-1"]').text()).toContain('2026/10/15')
+    expect(w.find('[data-testid="schedule-row-1"]').text()).toContain(new Date('2026-10-15T09:00:00Z').toLocaleString())
     const pausedRow = w.find('[data-testid="schedule-row-2"]').text()
-    expect(pausedRow).not.toContain('2026/10/15')
+    expect(pausedRow).not.toContain(new Date('2026-10-15T09:00:00Z').toLocaleString())
     expect(pausedRow).toContain('—')
   })
 
