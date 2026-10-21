@@ -92,7 +92,16 @@ beforeEach(() => {
   vi.clearAllMocks()
 })
 
-describe('排程列表', () => {
+/**
+ * 时间余量：本文件的用例挂载 naive-UI 组件（NModal / NPopconfirm / NTag），是这仓里
+ * 偏重的一类。CI 争用下某条曾被拖到 4910ms 贴近 vitest 默认 5000ms 墙而红（QT-61 取证）。
+ * 本机 20× 连跑最慢单条仅 364ms、400 条 0 失败 —— 那次红是 runner 负载下的计时越界，
+ * 不是断言脆弱。故这里只提高时间预算（15s ≈ 本机最慢的 ~40×），不放宽任何断言、不跳过、
+ * 不 continue-on-error、不删用例（QT-61 §④ / ui AUD-61 红线：已知红只能登记，不能靠放宽变绿）。
+ */
+const CI_TEST_TIMEOUT_MS = 15_000
+
+describe('排程列表', { timeout: CI_TEST_TIMEOUT_MS }, () => {
   it('挂载只取排程，不重取 stats —— 一个数据集一个自动触发点（浏览器实测各打两遍的回归腿）', async () => {
     api.listSyncSchedules.mockResolvedValue({ count: 0, schedules: [] })
     mount(SchedulePanel, mountOptions)
@@ -141,7 +150,7 @@ describe('排程列表', () => {
   })
 })
 
-describe('新建 / 编辑（断言 2 的 CRUD 两腿）', () => {
+describe('新建 / 编辑（断言 2 的 CRUD 两腿）', { timeout: CI_TEST_TIMEOUT_MS }, () => {
   it('提交时显式发送 is_active，并把 JSON 参数还原成对象送给后端', async () => {
     api.createSyncSchedule.mockResolvedValue(s({ id: 9 }))
     const w = await mountPanel([])
@@ -256,7 +265,7 @@ describe('新建 / 编辑（断言 2 的 CRUD 两腿）', () => {
   })
 })
 
-describe('新建表单的默认作业类型', () => {
+describe('新建表单的默认作业类型', { timeout: CI_TEST_TIMEOUT_MS }, () => {
   it('ohlcv 不在注册表里时退到第一项，而不是留一个后端不认的默认值', async () => {
     const w = await mountPanel([], [], ['calendar', 'dividends'])
     await w.find('[data-testid="schedule-create"]').trigger('click')
@@ -272,7 +281,7 @@ describe('新建表单的默认作业类型', () => {
   })
 })
 
-describe('toggle / run-now / delete（断言 2 的后三条腿）', () => {
+describe('toggle / run-now / delete（断言 2 的后三条腿）', { timeout: CI_TEST_TIMEOUT_MS }, () => {
   it('停用中的排程点一下是"启用"，参数是 true', async () => {
     api.toggleSyncSchedule.mockResolvedValue({ message: 'schedule updated', id: 4, active: true })
     const w = await mountPanel([s({ id: 4, is_active: false })])
