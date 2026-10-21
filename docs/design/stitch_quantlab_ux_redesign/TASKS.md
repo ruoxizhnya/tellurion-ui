@@ -556,7 +556,7 @@ core SYNC-01 的验收第 1、2 条要防的形状，本任务不能替它绕过
 
 **② 本轮修掉的三处同族口径缺陷**（"读到空"与"没读到"是一句话的两副面孔）
 
-1. **空队列的真回包是 `{"count":0,"jobs":null}`**（2026-10-14 curl `?status=pending` 实测，Go 侧 nil slice 编成 `null`），而前端类型写 `SyncJob[]`。按 null 存进 store，`queueLength` 的 `.filter` 当场 TypeError ⇒ 整块队列白屏，而这恰恰是最常见的空态。修法：`resp.jobs ?? []`（与 `schedules` 同一 fail-closed 口径）。**先红后绿**：单测拿真形状写 → `expected null to deeply equal []` → 修 → 484 全绿。后端侧的编码问题登记为 core **DATA-04**（只登记不指挥）。
+1. **空队列的真回包是 `{"count":0,"jobs":null}`**（2026-10-14 curl `?status=pending` 实测，Go 侧 nil slice 编成 `null`），而前端类型写 `SyncJob[]`。按 null 存进 store，`queueLength` 的 `.filter` 当场 TypeError ⇒ 整块队列白屏，而这恰恰是最常见的空态。修法：`resp.jobs ?? []`（与 `schedules` 同一 fail-closed 口径）。**先红后绿**：单测拿真形状写 → `expected null to deeply equal []` → 修 → 484 全绿。后端侧的编码问题登记为 core **DATA-14**（原 DATA-04，2026-10-21 SPEC-R-03 换号；只登记不指挥）。
 2. `schedulesLoaded` / `jobsLoaded` 两面旗标：读数区不再拿 `schedules.length` 当"读到了没有"的代理（空表会被说成"未读取"），队列空态分三句（未读取 / 确实没有 / 被类型筛掉），排程空态分两句。
 3. **一个数据集一个自动触发点**：浏览器实测（页面加载的网络面板）`schedules`/`workers`/`scheduler/stats` 各被打通**两遍**（排程面板与读数面板各自挂载各取一遍）。single-flight 挡不住错开的 await，所以按归属收口（排程行归排程面板、两条读数归读数区，读数区的刷新按钮是唯一"拉全"入口），并给 `fetchSchedules`/`fetchStats` 加 single-flight 覆盖变更动作后的并发重读。收口后网络面板实测：**三条各一次**。共享限流桶是进程级的（core OPS-01），空耗预算会把真实请求挤成 429 —— 这不是洁癖，是本轮 e2e 自己被 429 打死过两次之后收回来的结论。
 

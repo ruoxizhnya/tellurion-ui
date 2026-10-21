@@ -23,7 +23,7 @@ verified-by: 功能边界固化（三份契约：db / api / dataflow）
 | 回测结果 / 指标 | core / `run` | 经 `/api/backtest` 等端点 |
 | 行情 / 因子值 | `tellurion-data` | 经 `/api/market`、`/api/factors` |
 | 实验与 Copilot | `tellurion-agent` | 经 `/api/{copilot,explore}` 反代 |
-| 鉴权 / 会话 | core | `/api/auth` |
+| 鉴权 / 会话（`users` 及会话/角色） | core（ADR-017 鉴权域；SPEC-R-02 认领 `users` 表 owner） | `/api/auth` |
 
 ## 2. 只读输入（不属于本仓，禁止写入）
 

@@ -131,9 +131,14 @@ verified-by: 补 frontmatter 与文档导航（QT-08 十二仓自治三件套）
   - 真请求：非法 cron 与非existent 资源各一次，屏幕文案与 `curl` 的 `error` 字段逐字一致。
 - **⑥ 边界**：只改 `api/client.ts` 的 message 取值一处 + 相关测试；`apiMessage.ts` 的调用点不改语义（它自然变成透传）。
 
-## DATA-04 · 空列表编码成 `null` 而不是 `[]`（🟠 契约说谎，任何客户端都会踩）⬜ 待做 · **已迁 core（2026-10-21，本仓留指针）**
+## DATA-14 · 空列表编码成 `null` 而不是 `[]`（🟠 契约说谎，任何客户端都会踩）⬜ 待做 · **已迁 core（2026-10-21，本仓留指针；原号 DATA-04，SPEC-R-03 换号）**
 
-> **正文已整体迁至 `tellurion:docs/TASKS.md`「七、存量任务」`DATA-04`**（ID 不变、六字段原样不改写；归属是 core 的 `cmd/data` + `pkg/storage`——原注「等那份文件空出来应把本节整体迁过去，本仓只留指针」即此）。执行与验收在彼处，此处不镜像；改动请去彼处改，勿在此回填正文。
+> **正文已整体迁至 `tellurion:docs/TASKS.md`「七、存量任务」`DATA-14`（原 DATA-04）**（ID 换号、六字段原样不改写；归属是 core 的 `cmd/data` + `pkg/storage`——原注「等那份文件空出来应把本节整体迁过去，本仓只留指针」即此）。执行与验收在彼处，此处不镜像；改动请去彼处改，勿在此回填正文。
+
+## SPEC-R-02 · 五张无主表 owner 认领（不在本仓，本仓留指针）✅ 2026-10-21
+
+> `users` 表唯一 owner = core（ADR-017 鉴权域，写者 `tellurion:pkg/auth/auth.go`）；本仓只经 `/api/auth` 只读消费。
+> 正文与五表认领结论在 `tellurion:docs/TASKS.md` §九；本仓 `docs/db-schema.md` §1「鉴权 / 会话」行已同步表名。
 
 ## UI-01 · 「研究质量读数」文案过期 + `fmtVolume/fmtAmount` 把 0 读成缺失（两处界面在撒谎）⬜ 待做
 
