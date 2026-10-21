@@ -15,6 +15,8 @@ verified-by: 功能边界固化（三份契约：db / api / dataflow）
    │  ① 静态资源：nginx 托管 dist
    │  ② API 调用：/api/*  → nginx 反代 → analysis-service（:8085）
    │  ③ SSE：/api/explore/runs/{id}/stream（逐写直通，FlushInterval=-1）
+   │  ④ 提交回测→job_id→轮询：与 ② 同一条反代边（POST /api/backtest、
+   │     GET /api/backtest/{id}，analysis-service 直接服务，不下探）
    ↓
 后端
   analysis-service ──► data-service（:8081）/ ai-service（:8086）/ core 引擎
@@ -24,7 +26,7 @@ verified-by: 功能边界固化（三份契约：db / api / dataflow）
 
 ### 打开一个回测结果
 1. 页面挂载 → `auth.ts` 取当前用户（401 → 跳登录）
-2. `backtest.ts` `GET /api/runs/{id}` 取摘要
+2. `backtest.ts` `GET /api/backtest/{id}/report` 取结果摘要（进度轮询 `GET /api/backtest/{id}`）
 3. 图表用返回的 DTO 渲染；缺字段走 `/api/analysis/*` 补算
 4. 写操作（提交回测）→ 拿 `job_id` → 轮询或订阅
 
@@ -37,7 +39,7 @@ verified-by: 功能边界固化（三份契约：db / api / dataflow）
 
 | 失败点 | 症状 | 兜底 |
 |---|---|---|
-| 轮询把 429 当失败 | 误报"后端挂了" | 区分 429 与 5xx（OPS-01） |
+| 轮询把 429 当失败 | 误报"后端挂了" | 区分 429 与 5xx（AUD-61） |
 | SSE 断线 | 进度停住 | 重连 + 拉一次快照 |
 | 契约漂移 | 页面字段空 | e2e + openapi 生成类型（若引入） |
 | 直连 DB 的诱惑 | 鉴权/兼容失控 | 红线：只走 /api |

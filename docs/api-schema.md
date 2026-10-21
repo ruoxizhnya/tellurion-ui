@@ -20,21 +20,21 @@ verified-by: 功能边界固化（三份契约：db / api / dataflow）
 |---|---|---|
 | `client.ts` | — | 统一 fetch：baseURL、超时、错误规范化、token 注入 |
 | `auth.ts` / `authToken.ts` | `/api/auth` | 登录 / 刷新 / 当前用户 |
-| `backtest.ts` | `/api/backtest`、`/api/runs` | 提交回测、查进度、取结果 |
+| `backtest.ts` | 现状：`/api/backtest`、`/api/ohlcv`；目标：`/api/runs`（orchestration 契约，尚无消费代码） | 提交回测、查进度、取结果、取 OHLCV 行情 |
 | `strategy.ts` | `/api/strategies` | 策略列表 / 版本 / 选择 |
-| `factor.ts` | `/api/factor` | 因子定义与因子值 |
+| `factor.ts` | `/api/factors` | 因子定义与因子值 |
 | `market.ts` | `/api/market` | 行情与标的 |
-| `sync.ts` | `/api/data` | 数据同步任务与状态 |
+| `sync.ts` | `/api/sync`、`/api/datasource` | 数据同步任务（jobs / schedules / workers / scheduler/stats）与数据源状态 |
 | `evidence.ts` | `/api/evidence` | 证据与引用（citation） |
 | `copilot.ts` | `/api/copilot` | 自然语言生成（异步 job） |
-| `explore.ts` | `/api/explore` | 实验探索（含 SSE 流） |
+| `explore.ts` | `/api/explore` | 实验探索（轮询状态，无 SSE 消费） |
 | `execution.ts` | `/api/execution` | 实盘 / paper 状态 |
 | `compliance.ts` | `/api/compliance` | 合规检测结果 |
 | `alerts.ts` | `/api/alerts` | 告警 |
 
 ### 关键的跨仓语义（必须与后端一致）
 
-- **SSE**：`/api/explore/runs/{id}/stream` 的事件名 `progress` / `complete` / `close` / `error`，`progress` 的 payload 与 `GET /runs/{id}` 同形状。
+- **SSE**：本仓唯一 EventSource 是 `stores/sync.ts` 的 `/api/sync/jobs/{id}/progress` 进度流，事件名 `progress` / `complete`，payload 与 `GET /api/sync/jobs/{id}` 同形状。explore 侧无 SSE 消费（`explore.ts` 走轮询 `GET /api/explore/runs/{id}`）。
 - **异步 job**：`copilot/generate`、`sensitivity`、`montecarlo` 都是"提交返回 id → 轮询 / 事件"，前端不许假设同步返回。
 
 ## 2. 错误码与 fail-closed 语义
@@ -43,8 +43,8 @@ verified-by: 功能边界固化（三份契约：db / api / dataflow）
 |---|---|
 | 401 | 清 token → 跳登录（不无限重试） |
 | 403 | 展示"无权限"，不隐藏入口（可解释性优先） |
-| 429 | 退避重试 + 提示；**不许把 429 当成失败**（OPS-01 的教训） |
-| 5xx | 展示错误码与 trace id；不自动重试写操作 |
+| 429 | 退避重试 + 提示；**不许把 429 当成失败**（AUD-61 的教训） |
+| 5xx | 展示错误码；不自动重试写操作 |
 | 网络断 | 只影响当前请求；SSE 断线后重连拿快照 |
 
 ## 3. 幂等性与重试

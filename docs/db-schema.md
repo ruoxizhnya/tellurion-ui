@@ -21,7 +21,7 @@ verified-by: 功能边界固化（三份契约：db / api / dataflow）
 | 数据 | 真实 owner | 本仓怎么用 |
 |---|---|---|
 | 回测结果 / 指标 | core / `run` | 经 `/api/backtest` 等端点 |
-| 行情 / 因子值 | `tellurion-data` | 经 `/api/market`、`/api/factor` |
+| 行情 / 因子值 | `tellurion-data` | 经 `/api/market`、`/api/factors` |
 | 实验与 Copilot | `tellurion-agent` | 经 `/api/{copilot,explore}` 反代 |
 | 鉴权 / 会话 | core | `/api/auth` |
 
