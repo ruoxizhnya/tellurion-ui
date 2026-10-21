@@ -77,6 +77,47 @@ function getStatusMessage(status: number, fallback: string): string {
   return STATUS_MESSAGES[status] || fallback
 }
 
+/**
+ * 后端原话的最大长度（API-01 ③-5 的护栏）：超过就截断并以 `…` 收尾。
+ * 一条 30 KB 的 SQL 报错不应该把告警条撑成一屏。
+ */
+const MAX_SERVER_MESSAGE = 500
+
+/**
+ * 从响应 body 里取「后端自己说的话」：`error` > `message` > `detail`，全空白 = 没有。
+ *
+ * 这一份实现在此文件是**唯一真相**（API-01 ③-2）：`utils/apiMessage.ts` 过去自带一份，
+ * 现在 import 它 —— 两处各自演化过，正是本单要收口的口径。
+ */
+export function serverBodyText(body?: Record<string, unknown>): string {
+  if (!body) return ''
+  for (const key of ['error', 'message', 'detail'] as const) {
+    const value = body[key]
+    if (typeof value === 'string' && value.trim()) {
+      const text = value.trim()
+      if (text.length <= MAX_SERVER_MESSAGE) return text
+      return `${text.slice(0, MAX_SERVER_MESSAGE - 1)}…`
+    }
+  }
+  return ''
+}
+
+/**
+ * 错误文案的优先级：**4xx 后端原话 > 状态码模板 > statusText**。
+ *
+ * 为什么要反过来（原来是模板优先）：core 在 4xx 把 `err.Error()` 原样放进 `error` 字段
+ * （`pkg/httpserver/errors.go:100-108`），那条消息本来就是给调用方看的；
+ * 前端按状态码查表换成「请求参数有误」，等于把「expected exactly 6 fields, found 3」这种
+ * 可质问的信息扔了 —— 用户只知道参数有误，不知道哪个参数怎么有误。
+ *
+ * 5xx 一支不动：core 故意只给人话 + code（`:163-176`，P1-5 的信息泄露收口），
+ * 细节留服务端 —— 所以这里对 ≥500 **恒**用模板，body 里有什么都不看。
+ */
+function resolveErrorMessage(status: number, serverText: string, statusText: string): string {
+  if (status >= 400 && status < 500 && serverText) return serverText
+  return getStatusMessage(status, statusText)
+}
+
 // CR-25 (ODR-012): one pagehide listener at module scope aborts every
 // in-flight controller. See request() below for the add/delete lifecycle.
 const inFlightControllers = new Set<AbortController>()
@@ -236,15 +277,15 @@ class ApiClient {
           }
         }
 
-        let errMsg: string
+        let serverText = ''
       let errBody: Record<string, unknown> | undefined
       try {
         errBody = await res.json()
-        errMsg = (errBody?.error as string) || (errBody?.message as string) || res.statusText
+        serverText = serverBodyText(errBody)
       } catch {
-        errMsg = res.statusText
+        // body 不是 JSON：没有原话可用 —— 落模板，而不是把 statusText 当原话
       }
-      const message = getStatusMessage(res.status, errMsg)
+      const message = resolveErrorMessage(res.status, serverText, res.statusText)
       throw new ApiError(res.status, message, errBody)
       }
 

@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
-import { ApiError, api } from '@/api/client'
+import { ApiError, api, serverBodyText } from '@/api/client'
+import clientSource from './client?raw'
 
 // CR-50 (ODR-012): api/client.ts had zero unit-test coverage for the
 // three critical paths the rest of the SPA depends on: timeout (60s
@@ -112,15 +113,22 @@ describe('api — error mapping (4xx / 5xx)', () => {
     vi.unstubAllGlobals()
   })
 
-  it('throws ApiError with localized message for 404', async () => {
+  // API-01 的行为变更（不是为消红改断言）：404 带原话时，屏幕上就该是原话。
+  // 旧断言钉的是「localized message」= 模板优先，那正是本单要改掉的口径。
+  it('404 with a server message shows the server message, not the template', async () => {
     vi.mocked(fetch).mockResolvedValueOnce(makeErrorResponse(404, { message: 'gone' }))
     await expect(api.get('/p')).rejects.toMatchObject({
       name: 'ApiError',
       status: 404,
       isClientError: true,
       isNotFound: true,
-      message: '请求的资源不存在',
+      message: 'gone',
     })
+  })
+
+  it('404 with an empty body still falls back to the localized template', async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(makeErrorResponse(404, {}))
+    await expect(api.get('/p')).rejects.toMatchObject({ status: 404, message: '请求的资源不存在' })
   })
 
   it('uses server-provided message for unmapped 4xx', async () => {
@@ -141,6 +149,123 @@ describe('api — error mapping (4xx / 5xx)', () => {
   it('maps 429 to a localized message', async () => {
     vi.mocked(fetch).mockResolvedValueOnce(makeErrorResponse(429, {}))
     await expect(api.get('/p')).rejects.toMatchObject({ status: 429, message: '请求过于频繁，请稍后再试' })
+  })
+})
+
+// API-01 ③-5 的五条透传护栏，逐条一条断言。
+// 主判据是第一条：非法 cron 那条实测（A-08 步骤 4）里，后端原话必须活着到界面。
+describe('api — 4xx 原话透传的五条护栏 (API-01)', () => {
+  beforeEach(() => {
+    vi.stubGlobal('fetch', vi.fn())
+  })
+  afterEach(() => {
+    vi.unstubAllGlobals()
+  })
+
+  // 拿到 ApiError 本体（不是 any / unknown）：断言字段之前先证明抛出来的确实是它。
+  async function apiErrorFrom(run: () => Promise<unknown>): Promise<ApiError> {
+    try {
+      await run()
+    } catch (e) {
+      if (e instanceof ApiError) return e
+      throw new Error(`期望 ApiError，实际是 ${String(e)}`, { cause: e })
+    }
+    throw new Error('期望抛出 ApiError，但调用成功了')
+  }
+
+  const CRON_MESSAGE = 'invalid cron expression: expected exactly 6 fields, found 3: [99 99 99]'
+
+  it('护栏 1｜4xx 有原话：ApiError.message 就是后端原话', async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(
+      makeErrorResponse(400, { code: 'bad_request', error: CRON_MESSAGE })
+    )
+    const err = await apiErrorFrom(() => api.post('/sync/schedules', {}))
+    expect(err).toBeInstanceOf(ApiError)
+    expect(err.message).toBe(CRON_MESSAGE)
+    // 状态码类判定不受影响（改了 message 不能顺手改坏 isClientError）
+    expect(err.isClientError).toBe(true)
+    expect(err.status).toBe(400)
+  })
+
+  it('护栏 1a｜透传只对 4xx 生效：5xx 带细节 body 也恒用模板', async () => {
+    // core 在 ≥500 故意只给人话 + code（P1-5 信息泄露收口），前端不许替它猜原因。
+    vi.mocked(fetch).mockResolvedValueOnce(
+      makeErrorResponse(500, { error: 'pq: connection string host=10.0.0.4 password=hunter2' })
+    )
+    const err = await apiErrorFrom(() => api.get('/p'))
+    expect(err.message).toBe('服务器内部错误')
+    expect(err.message).not.toContain('password')
+    // 原话仍在 body 里（不是被丢掉，只是不显示）—— 排障时能拿到。
+    expect(err.body?.error).toContain('pq:')
+  })
+
+  it('护栏 2｜原话全空白时回退模板，不显示空字符串', async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(makeErrorResponse(422, { error: '   ', message: '\n\t ' }))
+    const err = await apiErrorFrom(() => api.get('/p'))
+    expect(err.message).toBe('数据验证失败')
+  })
+
+  it('护栏 2a｜body 三个键都没有 / 不是字符串时回退模板', async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(makeErrorResponse(400, { code: 'bad_request', error: { nested: 1 } }))
+    const err = await apiErrorFrom(() => api.get('/p'))
+    expect(err.message).toBe('请求参数有误')
+  })
+
+  it('护栏 3｜超过 500 字符截断并以 … 收尾', async () => {
+    const long = 'x'.repeat(4000)
+    vi.mocked(fetch).mockResolvedValueOnce(makeErrorResponse(400, { error: long }))
+    const err = await apiErrorFrom(() => api.get('/p'))
+    expect(err.message).toHaveLength(500)
+    expect(err.message.endsWith('…')).toBe(true)
+    expect(err.message.startsWith('xxx')).toBe(true)
+  })
+
+  it('护栏 3a｜恰好 500 字符不截断（边界不是「大于等于」）', async () => {
+    const exact = 'y'.repeat(500)
+    vi.mocked(fetch).mockResolvedValueOnce(makeErrorResponse(400, { error: exact }))
+    const err = await apiErrorFrom(() => api.get('/p'))
+    expect(err.message).toBe(exact)
+    expect(err.message.endsWith('…')).toBe(false)
+  })
+
+  it('护栏 4｜读取顺序是 error > message > detail', async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(
+      makeErrorResponse(409, { detail: 'd', message: 'm', error: 'e-first' })
+    )
+    const err = await apiErrorFrom(() => api.get('/p'))
+    expect(err.message).toBe('e-first')
+  })
+
+  it('护栏 5｜client.ts 不把消息当 HTML：源码里没有 v-html / innerHTML / document.write', async () => {
+    // 纯文本渲染是这条链的 XSS 底线：后端原话是**不可信输入**，一旦被 v-html 渲染，
+    // 一个能把 error 字段写成 `<img src=x onerror=...>` 的响应就是存储型 XSS。
+    // 断言取源码而不是取渲染结果，是因为底线在「这一层不许引入富文本口子」。
+    // 用 Vite 的 ?raw 读源码（jsdom 下 import.meta.url 不是 file: 协议，readFileSync 会拒）。
+    expect(clientSource).not.toMatch(/v-html|innerHTML|document\.write|insertAdjacentHTML/)
+  })
+
+  it('401 带原话时同样透传，但会话处理链不受影响（④ 的约束）', async () => {
+    // refreshSession / settleUnauthorized 那条链由下面的既有测试钉着；
+    // 本条只证明「401 的文案换了」不会把 status 判定换掉。
+    vi.mocked(fetch).mockResolvedValueOnce(makeErrorResponse(401, { error: 'token expired' }))
+    const err = await apiErrorFrom(() => api.get('/p'))
+    expect(err.status).toBe(401)
+    expect(err.isClientError).toBe(true)
+  })
+})
+
+describe('serverBodyText — 共享的取值口径 (API-01 ③-2)', () => {
+  it('undefined body 与空对象都给空串（调用方据此落模板）', () => {
+    expect(serverBodyText()).toBe('')
+    expect(serverBodyText({})).toBe('')
+    expect(serverBodyText({ error: '' })).toBe('')
+    expect(serverBodyText({ error: '  ' })).toBe('')
+  })
+
+  it('截断口径与 client 一致（一处实现，两处不会再漂移）', () => {
+    const text = serverBodyText({ error: 'z'.repeat(600) })
+    expect(text).toHaveLength(500)
+    expect(text.endsWith('…')).toBe(true)
   })
 })
 

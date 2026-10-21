@@ -1,7 +1,7 @@
 ---
 status: active
-last-verified: 2026-10-21
-verified-by: 任务台账批量重分布（QT-61 ui 腿登记）
+last-verified: 2026-10-22
+verified-by: API-01 结案（4xx 原话透传 + 五条护栏；真请求腿未执行，已登记）
 ---
 
 # tellurion-ui · 任务台账
@@ -103,7 +103,7 @@ verified-by: 任务台账批量重分布（QT-61 ui 腿登记）
 
 ---
 
-## API-01 · client.ts 把后端 4xx 原话换成通用文案（🟠 全站错误可读性） ⬜ 待做（2026-10-21 已批准）
+## API-01 · client.ts 把后端 4xx 原话换成通用文案（🟠 全站错误可读性）✅ 完成（2026-10-22）
 
 - **① 目标**：任何一次 4xx 失败，界面上出现的**是后端那句话说**，而不是按状态码查表得到的「请求参数有误」。
 - **② 上下文**（2026-10-14 A-08 步骤 4 浏览器实测当场抓出）：
@@ -131,6 +131,39 @@ verified-by: 任务台账批量重分布（QT-61 ui 腿登记）
   - 破坏验证：把优先级改回模板优先 ⇒ 上述第一条红，还原绿。
   - 真请求：非法 cron 与非existent 资源各一次，屏幕文案与 `curl` 的 `error` 字段逐字一致。
 - **⑥ 边界**：只改 `api/client.ts` 的 message 取值一处 + 相关测试；`apiMessage.ts` 的调用点不改语义（它自然变成透传）。
+
+> **✅ 完成记录（2026-10-22）**
+>
+> **交付**：`web/src/api/client.ts` 新增 `resolveErrorMessage()`（**后端原话 > 模板 > statusText**）+ 导出的 `serverBodyText()`（`error > message > detail`，全空白 = 没有，>500 截断加 `…`）；
+> `request()` 的错误分支改用它，非 JSON body 落模板而不是把 `statusText` 当原话。
+> **一份实现两处用**：`utils/apiMessage.ts` 删掉自带的 `bodyText()` 改 import `serverBodyText`（③-2；那两份过去各长一角，正是口径漂移），
+> 并**就地订正了 A-08 写在文件头的那段边界声明**——「不改 client.ts，另有三条测试钉着旧口径」已被本单推翻，原文改写成「止血 → 同一口径的消费侧读法」。
+> 5xx 一支未动（④）；`ApiError` 字段与 `isClientError` 等判定未动；`refreshSession`/`settleUnauthorized` 链未动。
+>
+> **③-5 五条护栏逐条落点**：① 只对 4xx（`status >= 400 && < 500`）→ 护栏 1a 用一条带 `password=` 的 5xx body 钉住「不显示但保留在 body」；
+> ② 全空白回退模板（`{error:'   ', message:'\n\t '}` → 「数据验证失败」）；③ >500 截断加 `…`，**另加一条 500 恰好不截断的边界腿**（防把 `>` 写成 `>=`）；
+> ④ 键序 `error > message > detail`；⑤ 纯文本：`client.ts` 源码级断言无 `v-html|innerHTML|document.write|insertAdjacentHTML`（用 Vite `?raw` 读源码，jsdom 下 `import.meta.url` 不是 `file:` 协议，`readFileSync` 会拒）。
+> 全仓 `v-html` 扫描：**0 处真实使用**（唯一命中是 `components/validation/VerdictPanel.vue:93` 的一句「不走 v-html」注释），所以「后端原话当纯文本渲染」今天整体成立，不只是这一层。
+>
+> **⑤ 验收逐条（真退出码）**
+> 1. 单测：`npx vitest run src/api/client.test.ts` → **36 passed**（含新增 10 条 + 2 条 `serverBodyText` 口径腿）；
+>    `npm test`（lint:tests + vitest run）→ **38 files / 517 tests passed**；`npm run typecheck`（vue-tsc）→ **0 error**；
+>    `npx eslint` 三个改动文件 → **0 problem**，且**顺带关掉全仓唯一那条 lint error**（`preserve-caught-error`，我在 helper 里造的 symptom error 没带 `cause`）。
+> 2. 三条旧口径测试按**行为变更**处理：`:115` 的 404 断言从「请求的资源不存在」改成后端原话 `gone`（并补一条空 body 仍落模板的对照腿）；
+>    `:127`（418 未映射 → 原话）与 `:142`（429 空 body → 模板）**在两种口径下同结果**，未改断言、只复核了一遍它们不构成旧口径的证据。
+> 3. **破坏验证（现场，真退出码）**：把 `resolveErrorMessage` 改回模板优先 → **5 条红**
+>    （`404 with a server message…`、护栏 1、护栏 3、护栏 3a、护栏 4），退出码 **1** → 还原（`grep -c 破坏验证腿` = 0，`git diff --stat` 只剩本单 45 行新增）→ **36 passed**。
+> 4. **③-4 全站复核：静态做完，运行时未做**。四个页面的错误文案都取 `ApiError.message`，因此随本单自动变真：
+>    `pages/Screener.vue:144`、`pages/BacktestEngine.vue:375`、`pages/Dashboard.vue:148`、`pages/Copilot.vue:101`（另 `Alerts.vue:277`、`BacktestCompare.vue:298` 同形）。
+> 5. **⑤-3 真请求：未执行**。`curl :8085/api/health`、`:8081`、`:5173` 全 `000`（本机栈未起，`docker ps` 无容器）。
+>    ⇒ 「非法 cron 与不存在资源的屏幕文案与 `curl` 的 `error` 字段逐字一致」这条**没有实测凭据**，只有单测凭据；
+>    起栈后要做的是：填非法 cron（`99 99 99`）看告警条，以及请求一个不存在的 job id。这条腿属于「mock 抓不到的缺陷」高危区，不要当成已过。
+>
+> **做的技术决定与代价**：
+> - **401 也走透传**（它是 4xx）。会话处理链一行没动，只换了「refresh 失败最终落屏的那句话」。代价：登录过期时界面可能显示后端英文原话而不是「未授权，请重新登录」。
+> - `statusText` **不再当原话候选**（旧代码 `errMsg` 会把 `Bad Request` 喂给模板兜底）。代价：没模板也没 body 的冷门 4xx（如 418 无 body）会落通用文案而不是 `statusText` —— 418 那条测试测的是带 body 的形状，不受影响。
+> - 截断放在**共享提取器**里，不在展示层：`apiMessage()` 与 `client.ts` 同一条口径，面板拿 `err.body` 也不会绕过 500 上限。
+> - 未做 i18n（④）；未改后端任何响应形状。
 
 ## DATA-14 · 空列表编码成 `null` 而不是 `[]`（🟠 契约说谎，任何客户端都会踩）⬜ 待做 · **已迁 core（2026-10-21，本仓留指针；原号 DATA-04，SPEC-R-03 换号）**
 
