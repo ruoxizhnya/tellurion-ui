@@ -103,7 +103,7 @@ verified-by: 任务台账批量重分布（QT-61 ui 腿登记）
 
 ---
 
-## API-01 · client.ts 把后端 4xx 原话换成通用文案（🟠 全站错误可读性） ⬜ 待批
+## API-01 · client.ts 把后端 4xx 原话换成通用文案（🟠 全站错误可读性） ⬜ 待做（2026-10-21 已批准）
 
 - **① 目标**：任何一次 4xx 失败，界面上出现的**是后端那句话说**，而不是按状态码查表得到的「请求参数有误」。
 - **② 上下文**（2026-10-14 A-08 步骤 4 浏览器实测当场抓出）：
@@ -124,6 +124,7 @@ verified-by: 任务台账批量重分布（QT-61 ui 腿登记）
   2. 抽掉的模板不能变成空白：body 里 `error/message/detail` 皆空时仍落模板（`apiMessage.ts` 已有这条口径，复用而不是再写一份）。
   3. 三条钉旧口径的既有测试按**行为变更**更新（不是为消红改断言）：`client.test.ts:115`（404 localized）、`:127`（418 `error: 'I am a teapot'`）、`:142`（429）。
   4. 更新后全站复核：`Screener`/`BacktestEngine`/`Dashboard`/`Copilot` 各挑一条 4xx 路径确认文案来源可质问。
+  5. 透传护栏（2026-10-21 批准时追加）：只对 **4xx** 生效；`error/message/detail` 全空或全空白时回退模板；结果串超过 **500 字符**截断并以 `…` 收尾；**按纯文本渲染**（`textContent`/插值），禁止 `v-html`，防 XSS。
 - **④ 约束与非目标**：不改 5xx 与 401 的会话处理链（`refreshSession`/`settleUnauthorized` 那条不变）；不改 `ApiError` 的字段与 `isClientError` 等判定；不动后端任何响应形状；不把错误文案做 i18n。
 - **⑤ 验收**：
   - 单测：400 带 `body.error` ⇒ `ApiError.message` 等于后端原话；400 不带 ⇒ 等于「请求参数有误」；500 带细节 body ⇒ **仍**是模板（证明没把后端内部错误暴露出去）。
