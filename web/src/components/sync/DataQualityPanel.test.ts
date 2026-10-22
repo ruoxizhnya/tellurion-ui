@@ -42,12 +42,17 @@ function stockCount(over: Record<string, unknown> = {}) {
   }
 }
 
+/** 某一行的**值**（不含标签），用精确比对，避免 `toContain('0')` 这类能匹配到标签/别处数字的松断言。 */
+function valueOf(w: Awaited<ReturnType<typeof mountPanel>>, testid: string): string {
+  return w.find(`[data-testid="${testid}"] .quality-value`).text()
+}
+
 describe('幸存者偏差块', () => {
   it('只显示真读到的总数，且标签明写含已退市', async () => {
     market.getStockCount.mockResolvedValue(stockCount())
     const w = await mountPanel()
     expect(w.find('[data-testid="surv-total"]').text()).toContain('票池记录（含已退市）')
-    expect(w.find('[data-testid="surv-total"]').text()).toContain('5908')
+    expect(valueOf(w, 'surv-total')).toBe('5908')
     expect(w.text()).not.toContain('在市股票数')
   })
 
@@ -55,10 +60,10 @@ describe('幸存者偏差块', () => {
     market.getStockCount.mockResolvedValue(stockCount())
     const w = await mountPanel()
 
-    expect(w.find('[data-testid="surv-active"]').text()).toContain('5569')
-    expect(w.find('[data-testid="surv-delisted"]').text()).toContain('339')
+    expect(valueOf(w, 'surv-active')).toBe('5569')
+    expect(valueOf(w, 'surv-delisted')).toBe('339')
     // 占比 = 339 / 5908 = 5.74% ⇒ 屏上 5.7%
-    expect(w.find('[data-testid="surv-delisted-share"]').text()).toContain('5.7%')
+    expect(valueOf(w, 'surv-delisted-share')).toBe('5.7%')
   })
 
   it('占比跟着后端读数走，不是写死的数', async () => {
@@ -69,35 +74,50 @@ describe('幸存者偏差块', () => {
     )
     const w = await mountPanel()
 
-    expect(w.find('[data-testid="surv-active"]').text()).toContain('90')
-    expect(w.find('[data-testid="surv-delisted"]').text()).toContain('10')
-    expect(w.find('[data-testid="surv-delisted-share"]').text()).toContain('10.0%')
+    expect(valueOf(w, 'surv-active')).toBe('90')
+    expect(valueOf(w, 'surv-delisted')).toBe('10')
+    expect(valueOf(w, 'surv-delisted-share')).toBe('10.0%')
   })
 
-  it('拆分读数缺席时走显式空态：没有占比，也不拿总数反推在市数', async () => {
-    // by_status 缺席（票池为空时后端序列化成 {}，旧版本更是连键都没有）：
-    // 显式空态是唯一正确的表现 —— 拿总数减退市数去反推是在客户端重建后端语义。
+  it('总数不为 0 却缺某一档 = 契约违约：该档走显式空态，不拿总数反推', async () => {
+    // `by_status` 与 `count` 是同一条 GROUP BY 的产物，总数 5908 而拆分是 {} 只可能是
+    // 契约违约。这时唯一诚实的表现是"这一档没读到"—— 拿 5908 减去 0 去编一个在市数
+    // 就是在客户端重建后端语义（本单 ④ 明令禁止）。
     market.getStockCount.mockResolvedValue(stockCount({ by_status: {} }))
     const w = await mountPanel()
 
-    expect(w.find('[data-testid="surv-active"]').text()).toContain('未读取')
-    expect(w.find('[data-testid="surv-delisted"]').text()).toContain('未读取')
-    expect(w.find('[data-testid="surv-delisted-share"]').text()).toContain('未读取')
+    expect(valueOf(w, 'surv-active')).toBe('未读取')
+    expect(valueOf(w, 'surv-delisted')).toBe('未读取')
+    expect(valueOf(w, 'surv-delisted-share')).toBe('未读取')
     // 没有退市数就没有占比这回事：屏上一个百分比都不许出现
     expect(w.find('[data-testid="survivorship-block"]').text()).not.toMatch(/\d+(\.\d+)?\s*%/)
   })
 
-  it('票池为空时两档是 0（读数），占比没有分母走未读取', async () => {
-    // 0 是读数不是缺失：这里两档都是 0，所以显示 0；占比没有分母，是"没有这回事"。
+  it('by_status 整个缺席（比"空池"更坏）：三格都走显式空态', async () => {
+    // 与上一条的区别是**桶对象都不在**：那不是"一档都没有"，是没拿到拆分。
+    const resp = stockCount()
+    delete (resp as Record<string, unknown>).by_status
+    market.getStockCount.mockResolvedValue(resp)
+    const w = await mountPanel()
+
+    expect(valueOf(w, 'surv-active')).toBe('未读取')
+    expect(valueOf(w, 'surv-delisted')).toBe('未读取')
+    expect(valueOf(w, 'surv-delisted-share')).toBe('未读取')
+  })
+
+  it('空池（count 0 + by_status {}）两档是 0：那是"一档都没有"，不是"没读到"', async () => {
+    // core SPEC §1：票池为空时 by_status 序列化成 {}。这时在市/退市各 0 条是**真读数**，
+    // 说「未读取」等于把空库说成读失败（与本单要治的毛病变种）。
     market.getStockCount.mockResolvedValue(
-      stockCount({ count: 0, by_status: { active: 0, delisted: 0 }, latest_date: null }),
+      stockCount({ count: 0, by_status: {}, latest_date: null }),
     )
     const w = await mountPanel()
 
-    expect(w.find('[data-testid="surv-total"]').text()).toContain('0')
-    expect(w.find('[data-testid="surv-active"]').text()).toContain('0')
-    expect(w.find('[data-testid="surv-delisted"]').text()).toContain('0')
-    expect(w.find('[data-testid="surv-delisted-share"]').text()).toContain('未读取')
+    expect(valueOf(w, 'surv-total')).toBe('0')
+    expect(valueOf(w, 'surv-active')).toBe('0')
+    expect(valueOf(w, 'surv-delisted')).toBe('0')
+    // 分母是 0：0 条记录的池子里"退市占比"没有意义 ⇒ 空态，而不是 0.0%
+    expect(valueOf(w, 'surv-delisted-share')).toBe('未读取')
   })
 
   it('缺口要指名：仍缺的是逐只退市日期这条通道（DATA-02 已给拆分）', async () => {
@@ -112,16 +132,16 @@ describe('幸存者偏差块', () => {
   it('总数读不到时显示未读取，不用 0 顶替', async () => {
     market.getStockCount.mockRejectedValue(new ApiError(500, '服务暂时不可用，请稍后重试'))
     const w = await mountPanel()
-    expect(w.find('[data-testid="surv-total"]').text()).toContain('未读取')
+    expect(valueOf(w, 'surv-total')).toBe('未读取')
     expect(w.find('[data-testid="quality-error"]').text()).toBe('服务暂时不可用，请稍后重试')
   })
 
   it('读数读不到时拆分两格也是未读取，不拿 0 顶替', async () => {
     market.getStockCount.mockRejectedValue(new ApiError(500, '服务暂时不可用，请稍后重试'))
     const w = await mountPanel()
-    expect(w.find('[data-testid="surv-active"]').text()).toContain('未读取')
-    expect(w.find('[data-testid="surv-delisted"]').text()).toContain('未读取')
-    expect(w.find('[data-testid="surv-delisted-share"]').text()).toContain('未读取')
+    expect(valueOf(w, 'surv-active')).toBe('未读取')
+    expect(valueOf(w, 'surv-delisted')).toBe('未读取')
+    expect(valueOf(w, 'surv-delisted-share')).toBe('未读取')
   })
 
   it('用户可见文案里不夹 markdown（A-05/A-06 复发过的老坑，这次也在同一条上栽了）', async () => {
@@ -158,13 +178,31 @@ describe('PIT 三时刻块', () => {
     market.getStockCount.mockResolvedValue(stockCount())
     const w = await mountPanel()
     expect(w.find('[data-testid="pit-latest-date"]').text()).toContain('行情最新日')
-    expect(w.find('[data-testid="pit-latest-date"]').text()).toContain('2026-10-14')
+    expect(valueOf(w, 'pit-latest-date')).toBe('2026-10-14')
   })
 
-  it('库里没有行情时 latest_date 是 null：显式空态，不显示 0 也不显示别的日期', async () => {
+  /**
+   * `latest_date` 的三种形状（core SPEC §1）在屏上必须是**三句不同的话**，
+   * 因为这三种情形对读它的人是三件事：
+   *  - 有日期：行情到这一天为止；
+   *  - 显式 null：后端明确说库里还没有行情 —— 这是**读到的事实**；
+   *  - 键缺席 / 形状不对：我们没拿到这个读数（旧二进制、契约漂移）。
+   *
+   * 把后两者合并成「未读取」就是本单要治的「界面说的与后端实际相反」：
+   * 库里确实没行情时，界面不该说"我没读到"。
+   */
+  it('后端明确回 null（库里没有行情）：说"库里暂无行情"，不说"未读取"', async () => {
     market.getStockCount.mockResolvedValue(stockCount({ latest_date: null }))
     const w = await mountPanel()
-    expect(w.find('[data-testid="pit-latest-date"]').text()).toContain('未读取')
+    expect(valueOf(w, 'pit-latest-date')).toBe('库里暂无行情')
+  })
+
+  it('latest_date 键缺席（旧二进制 / 契约漂移）：说"未读取"，不冒充"库里没有行情"', async () => {
+    const resp = stockCount()
+    delete (resp as Record<string, unknown>).latest_date
+    market.getStockCount.mockResolvedValue(resp)
+    const w = await mountPanel()
+    expect(valueOf(w, 'pit-latest-date')).toBe('未读取')
   })
 
   it('缺口分两层写清：数据没摄取（EQD-P1-2）与通道没转发（DATA-03），并各留实测形状', async () => {

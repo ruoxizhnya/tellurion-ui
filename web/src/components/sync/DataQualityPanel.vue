@@ -51,7 +51,7 @@
       </div>
       <div class="quality-row" data-testid="pit-latest-date">
         <span class="quality-label">行情最新日（latest_date）</span>
-        <span class="quality-value">{{ latestDate === null ? '未读取' : latestDate }}</span>
+        <span class="quality-value">{{ latestDateText }}</span>
       </div>
       <div class="quality-gap" data-testid="pit-gap">
         <NTag type="warning" size="small">缺口有两层</NTag>
@@ -96,6 +96,12 @@ const activeCount = ref<number | null>(null)
 const delistedCount = ref<number | null>(null)
 const delistedSharePct = ref<number | null>(null)
 const latestDate = ref<string | null>(null)
+/**
+ * `latest_date` 是不是后端**明确**回的 null（= 库里没有行情），而不是"这个键没读到"
+ * （旧二进制 / 契约漂移）。两者不能共用一句话：前者是后端给出的事实，后者是我们没拿到
+ * —— 把前者说成「未读取」，正是本单要治的「界面说的与后端实际相反」。
+ */
+const latestDateIsExplicitlyEmpty = ref(false)
 const error = ref('')
 
 /**
@@ -106,6 +112,26 @@ const error = ref('')
  */
 function reading(v: unknown): number | null {
   return typeof v === 'number' && Number.isFinite(v) ? v : null
+}
+
+/**
+ * 取 `by_status` 里的一档。
+ *
+ * - 后端给了这一档 ⇒ 用它的值（0 也是读数）。
+ * - **桶对象在场、这一档缺席、且票池总数为 0** ⇒ 0：空池时后端把 `by_status`
+ *   序列化成 `{}`（core SPEC §1），那是「一档都没有」，不是「没读到」。
+ * - 其余（`by_status` 整个缺席 / 总数不为 0 却缺这一档 = 契约违约）⇒ null，走显式空态。
+ *   也**不**拿 `count` 减退市数反推在市数 —— 那是客户端重建后端语义。
+ */
+function bucketCount(
+  buckets: Record<string, unknown> | null,
+  key: string,
+  total: number | null,
+): number | null {
+  if (!buckets) return null
+  const direct = reading(buckets[key])
+  if (direct !== null) return direct
+  return total === 0 ? 0 : null
 }
 
 /**
@@ -124,6 +150,26 @@ const delistedShareText = computed(() =>
   delistedSharePct.value === null ? '未读取' : `${delistedSharePct.value.toFixed(1)}%`,
 )
 
+/**
+ * 三态（照 core SPEC §1 的三种形状，不合并成一句）：
+ * 有日期 ⇒ 日期；显式 null ⇒ 库里暂无行情；键缺席 / 形状不对 ⇒ 未读取。
+ */
+const latestDateText = computed(() => {
+  if (latestDate.value !== null) return latestDate.value
+  return latestDateIsExplicitlyEmpty.value ? '库里暂无行情' : '未读取'
+})
+
+/** 把 `latest_date` 的三种形状摊到两个 ref 上（见 latestDateText 的注释）。 */
+function setLatestDate(raw: unknown) {
+  if (typeof raw === 'string' && raw.trim() !== '') {
+    latestDate.value = raw
+    latestDateIsExplicitlyEmpty.value = false
+    return
+  }
+  latestDate.value = null
+  latestDateIsExplicitlyEmpty.value = raw === null
+}
+
 async function load() {
   error.value = ''
   poolCount.value = null
@@ -131,13 +177,20 @@ async function load() {
   delistedCount.value = null
   delistedSharePct.value = null
   latestDate.value = null
+  latestDateIsExplicitlyEmpty.value = false
   try {
     const resp = await getStockCount()
     poolCount.value = reading(resp.count)
-    activeCount.value = reading(resp.by_status?.active)
-    delistedCount.value = reading(resp.by_status?.delisted)
+    // `by_status` 只有"确实是个对象"时才算读到了这份拆分；整个缺席 ⇒ 整块走空态。
+    const rawBuckets: unknown = resp.by_status
+    const buckets =
+      rawBuckets !== null && typeof rawBuckets === 'object'
+        ? (rawBuckets as Record<string, unknown>)
+        : null
+    activeCount.value = bucketCount(buckets, 'active', poolCount.value)
+    delistedCount.value = bucketCount(buckets, 'delisted', poolCount.value)
     delistedSharePct.value = delistedShare(poolCount.value, delistedCount.value)
-    latestDate.value = typeof resp.latest_date === 'string' && resp.latest_date ? resp.latest_date : null
+    setLatestDate(resp.latest_date)
   } catch (err) {
     error.value = apiMessage(err, '票池读数获取失败')
   }

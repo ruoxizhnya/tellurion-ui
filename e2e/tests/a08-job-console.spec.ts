@@ -467,6 +467,9 @@ test.describe('A-08 作业控制台', () => {
   });
 
   test('拆分读数缺席时走显式空态：不编占比，也不拿总数反推在市数', async ({ page }) => {
+    // 总数 5908 而 by_status 是 {} 只可能是契约违约（两者是同一条 GROUP BY 的产物）：
+    // 这一帧判的是"缺档时不编数"。latest_date 用 null 是另一种情形（后端明确说库里没行情），
+    // 它该说「库里暂无行情」而不是「未读取」—— 两条腿在同一次回包里分开钉住。
     await page.route('**/api/stocks/count', (route) =>
       route.fulfill({
         contentType: 'application/json',
@@ -477,7 +480,9 @@ test.describe('A-08 作业控制台', () => {
     await expect(page.locator('[data-testid="surv-active"]')).toContainText('未读取');
     await expect(page.locator('[data-testid="surv-delisted"]')).toContainText('未读取');
     await expect(page.locator('[data-testid="surv-delisted-share"]')).toContainText('未读取');
-    await expect(page.locator('[data-testid="pit-latest-date"]')).toContainText('未读取');
+    // 显式 null 是"读到的事实"：库里没有行情 ≠ 我们没读到
+    await expect(page.locator('[data-testid="pit-latest-date"]')).toContainText('库里暂无行情');
+    await expect(page.locator('[data-testid="pit-latest-date"]')).not.toContainText('未读取');
     // 没有退市数就没有占比这回事：屏上一个百分比都不许出现
     await expect(page.locator('[data-testid="survivorship-block"]')).not.toContainText(/\d+(\.\d+)?\s*%/);
   });

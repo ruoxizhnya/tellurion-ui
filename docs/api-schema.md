@@ -36,7 +36,10 @@ verified-by: 功能边界固化（三份契约：db / api / dataflow）
 
 - **SSE**：本仓唯一 EventSource 是 `stores/sync.ts` 的 `/api/sync/jobs/{id}/progress` 进度流，事件名 `progress` / `complete`，payload 与 `GET /api/sync/jobs/{id}` 同形状。explore 侧无 SSE 消费（`explore.ts` 走轮询 `GET /api/explore/runs/{id}`）。
 - **异步 job**：`copilot/generate`、`sensitivity`、`montecarlo` 都是"提交返回 id → 轮询 / 事件"，前端不许假设同步返回。
-- **`/api/stocks/count`（票池读数）**：`count` 含已退市且等于 `by_status` 各档之和；要在市数取 `by_status.active`，**不许**在前端拿 `count` 减退市数反推（同一概念两处真相）。`by_status` 缺席或为空即"没有读数"，走显式空态。`latest_date` 键恒在：库里没行情时是显式 `null`，**null 才是没有读数，0 就是 0**（展示层的读数口径，见 `web/src/utils/format.ts`）。
+- **`/api/stocks/count`（票池读数）**：`count` 含已退市且等于 `by_status` 各档之和；要在市数取 `by_status.active`，**不许**在前端拿 `count` 减退市数反推（同一概念两处真相）。
+  - `by_status`：按档取读数；**票池为空时后端给 `{}`**（`count` 同时为 0），此时在市 / 退市各 0 条是读数，显示 0 而不是「未读取」。桶对象整个缺席、或 `count ≠ 0` 却缺某一档（与"各档之和 = `count`"矛盾，属契约违约）⇒ 显式空态「未读取」，前端不反推。
+  - `latest_date`：**三种形状三句话** —— 有日期 ⇒ 显示日期；显式 `null` ⇒ 后端明确说"库里还没有行情"（显示「库里暂无行情」）；键缺席 / 形状不对 ⇒ 「未读取」（我们没拿到这个读数）。
+  - 通用读数口径（与 A-08 / DATA-07 一致）：**`null` 才是没有读数，`0` 就是 0**（见 `web/src/utils/format.ts` 的 `isMissingReading`）。
 
 ## 2. 错误码与 fail-closed 语义
 
