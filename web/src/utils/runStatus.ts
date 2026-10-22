@@ -98,14 +98,14 @@ export function invalidReasonsText(codes?: string[]): string {
  * 判据顺序是刻意的：
  * 1. `status` 认得就按三值说。
  * 2. 认不出时**不默认成有效**，退回后端给这条链路的真实判据 `invalid_reasons`
- *    —— `pkg/backtest/engine.go:924` 每次返回前都跑 `CheckValidity` 并挂上
+ *    —— `pkg/backtest/engine.go:1087` 每次返回前都跑 `CheckValidity` 并挂上
  *    这组 Code（有效 = 空数组），`tellurion-agent` 的 AI 循环
  *    （`pkg/ai/loop/loop.go:223`）用的也是同一条。这不是前端发明的判据。
  *
- * 已登记的缺口：`pkg/ai/client/backtest_client.go:47` 的 `RunBacktest` 解出了
- * `BacktestResponse.Status`（同文件 :43）却只返回 `*domain.BacktestResult`，
- * 三值被丢在客户端边界上；`domain.BacktestResult` 本身没有 Status 字段。
- * 补上之后第 1 条会自己接管，这里无需改动。
+ * 历史缺口已关闭：REV-01-A 之后 `tellurion-agent:pkg/ai/client` 的 `RunBacktest`
+ * 返回带 status 的 `BacktestOutcome`，三值不再丢在客户端边界上。这里仍保留
+ * `invalid_reasons` fallback，因为 `job.backtest_result` 是 core 落盘的**结果体**
+ * （`domain.BacktestResult` 本身没有 status），历史行和异步路径都可能没有 status。
  */
 export function backtestValidityNote(result?: Record<string, unknown>): string {
   if (!result) return ''
