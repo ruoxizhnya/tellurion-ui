@@ -206,7 +206,14 @@ test.describe('Visual Regression — Key Pages', () => {
       active_schedules: 1, total_entries: 1,
       next_runs: [{ schedule_id: 9001, name: '', next_run: '2026-05-06T09:00:00Z' }],
     },
-    stocksCount: { count: 5908, latest_date: '' },
+    // `/api/stocks/count` 的形状（core DATA-02 / DATA-03）：`by_status` 各档 + `latest_date`
+    // 键恒在。UI-01 起这页消费 by_status 与 latest_date ⇒ fixture 必须跟着补，否则
+    // 基线会把"读数缺席"的空态烙进去，而屏上真实的拆分读数没有像素覆盖（假护栏）。
+    stocksCount: {
+      count: 5908,
+      by_status: { active: 5569, delisted: 339 },
+      latest_date: '2026-05-06',
+    },
     datasourceStatus: { enabled: true, primary: 'postgres', mode: 'direct' },
     datasourceHealth: { healthy: true, status: 'up' },
   };

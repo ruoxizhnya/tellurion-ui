@@ -30,15 +30,31 @@ export function formatTime(d: string): string {
   return new Date(d).toLocaleTimeString('zh-CN')
 }
 
+/**
+ * 「这一格有没有读数」的判据（UI-01）。
+ *
+ * 旧实现用 `if (!v) return '-'`，而 `0` 是 falsy ⇒ 「成交量 0 股」被显示成 `-`，
+ * 也就是把一个**真读数**说成「没读到」。这与 A-08 / DATA-07 立的口径直接冲突：
+ * **null 才是没有读数，0 就是 0**。
+ *
+ * 缺失的四种形态：null / undefined / 空串（trim 后）/ 解析不成数的串。
+ * 数字 0（以及 '0'）是读数，走正常格式化。
+ */
+function isMissingReading(v: number | string | null | undefined): boolean {
+  if (v == null) return true
+  if (typeof v === 'string' && v.trim() === '') return true
+  return Number.isNaN(Number(v))
+}
+
 export function fmtVolume(v: number | string | null | undefined): string {
-  if (!v) return '-'
+  if (isMissingReading(v)) return '-'
   const num = Number(v)
   if (num >= 1e8) return (num / 1e8).toFixed(1) + '亿'
   return (num / 1e4).toFixed(0) + '万'
 }
 
 export function fmtAmount(a: number | string | null | undefined): string {
-  if (!a) return '-'
+  if (isMissingReading(a)) return '-'
   return (Number(a) / 1e8).toFixed(1)
 }
 

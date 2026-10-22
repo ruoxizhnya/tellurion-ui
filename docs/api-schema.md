@@ -1,6 +1,6 @@
 ---
 status: active
-last-verified: 2026-10-20
+last-verified: 2026-10-22
 verified-by: 功能边界固化（三份契约：db / api / dataflow）
 ---
 
@@ -36,6 +36,7 @@ verified-by: 功能边界固化（三份契约：db / api / dataflow）
 
 - **SSE**：本仓唯一 EventSource 是 `stores/sync.ts` 的 `/api/sync/jobs/{id}/progress` 进度流，事件名 `progress` / `complete`，payload 与 `GET /api/sync/jobs/{id}` 同形状。explore 侧无 SSE 消费（`explore.ts` 走轮询 `GET /api/explore/runs/{id}`）。
 - **异步 job**：`copilot/generate`、`sensitivity`、`montecarlo` 都是"提交返回 id → 轮询 / 事件"，前端不许假设同步返回。
+- **`/api/stocks/count`（票池读数）**：`count` 含已退市且等于 `by_status` 各档之和；要在市数取 `by_status.active`，**不许**在前端拿 `count` 减退市数反推（同一概念两处真相）。`by_status` 缺席或为空即"没有读数"，走显式空态。`latest_date` 键恒在：库里没行情时是显式 `null`，**null 才是没有读数，0 就是 0**（展示层的读数口径，见 `web/src/utils/format.ts`）。
 
 ## 2. 错误码与 fail-closed 语义
 

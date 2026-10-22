@@ -429,11 +429,23 @@ test.describe('A-08 作业控制台', () => {
     );
   });
 
-  test('PIT 与幸存者两块明写缺通道，不造数也不在前端自算', async ({ page }) => {
+  /**
+   * UI-01（2026-10-22）改了这块的口径：拆分读数（core DATA-02 的 `by_status`）与
+   * 行情最新日（DATA-03 的 `latest_date`）现在是**真读数**，屏上直接显示；
+   * 仍然没有通道的只有 PIT 三时刻与逐只退市日期。
+   *
+   * 拦截面说明：这一条拦 `stocks/count` 是为了把读数钉成已知值（真后端的值随库变），
+   * 形状与 core 的实测一致（count 含已退市、by_status 各档、latest_date 键恒在）。
+   */
+  test('PIT 与幸存者两块：拆分读数与行情最新日接上屏，PIT 三时刻仍明写无通道', async ({ page }) => {
     await page.route('**/api/stocks/count', (route) =>
       route.fulfill({
         contentType: 'application/json',
-        body: JSON.stringify({ count: 5908, latest_date: '2026-10-14' }),
+        body: JSON.stringify({
+          count: 5908,
+          by_status: { active: 5569, delisted: 339 },
+          latest_date: '2026-10-14',
+        }),
       }),
     );
     await page.goto('/data-sync');
@@ -441,12 +453,32 @@ test.describe('A-08 作业控制台', () => {
     await expect(survivorship).toContainText('5908');
     // 标签必须写"含已退市"：把 5908 叫"在市股票数"就是假数字。
     await expect(survivorship).toContainText('含已退市');
+    // 在市 / 退市两档与退市占比是后端给的读数（前端只做一次除法，不拿总数反推）
+    await expect(page.locator('[data-testid="surv-active"]')).toContainText('5569');
+    await expect(page.locator('[data-testid="surv-delisted"]')).toContainText('339');
+    await expect(page.locator('[data-testid="surv-delisted-share"]')).toContainText('5.7%');
     await expect(page.locator('[data-testid="surv-gap"]')).toContainText('DATA-02');
     for (const id of ['pit-financial-end', 'pit-ann-date', 'pit-tradeable']) {
       await expect(page.locator(`[data-testid="${id}"]`)).toContainText('无通道');
     }
     await expect(page.locator('[data-testid="pit-gap"]')).toContainText('DATA-03');
-    // 前端不自算退市占比（那等于在客户端重建后端语义，两处真相）。
-    await expect(survivorship).not.toContainText(/339|5569|5\.7/);
+    // 行情最新日也是真读数（DATA-03：键恒在，库里没行情时是显式 null）
+    await expect(page.locator('[data-testid="pit-latest-date"]')).toContainText('2026-10-14');
+  });
+
+  test('拆分读数缺席时走显式空态：不编占比，也不拿总数反推在市数', async ({ page }) => {
+    await page.route('**/api/stocks/count', (route) =>
+      route.fulfill({
+        contentType: 'application/json',
+        body: JSON.stringify({ count: 5908, by_status: {}, latest_date: null }),
+      }),
+    );
+    await page.goto('/data-sync');
+    await expect(page.locator('[data-testid="surv-active"]')).toContainText('未读取');
+    await expect(page.locator('[data-testid="surv-delisted"]')).toContainText('未读取');
+    await expect(page.locator('[data-testid="surv-delisted-share"]')).toContainText('未读取');
+    await expect(page.locator('[data-testid="pit-latest-date"]')).toContainText('未读取');
+    // 没有退市数就没有占比这回事：屏上一个百分比都不许出现
+    await expect(page.locator('[data-testid="survivorship-block"]')).not.toContainText(/\d+(\.\d+)?\s*%/);
   });
 });

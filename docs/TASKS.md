@@ -174,7 +174,7 @@ verified-by: UI-02 结案（C1 两码展示口径 + 破坏验证双还原；真�
 > `users` 表唯一 owner = core（ADR-017 鉴权域，写者 `tellurion:pkg/auth/auth.go`）；本仓只经 `/api/auth` 只读消费。
 > 正文与五表认领结论在 `tellurion:docs/TASKS.md` §九；本仓 `docs/db-schema.md` §1「鉴权 / 会话」行已同步表名。
 
-## UI-01 · 「研究质量读数」文案过期 + `fmtVolume/fmtAmount` 把 0 读成缺失（两处界面在撒谎）⬜ 待做
+## UI-01 · 「研究质量读数」文案过期 + `fmtVolume/fmtAmount` 把 0 读成缺失（两处界面在撒谎）✅ 完成（2026-10-22）
 
 > 2026-10-16 做 core 仓 DATA-03 + DATA-07 合体单时顺带实测发现，归属本仓（前端展示与文案）。
 > 那两单里已改的是**契约与类型**（`StockCount` 现含 `by_status` 与 `latest_date: string | null`；
@@ -197,6 +197,43 @@ verified-by: UI-02 结案（C1 两码展示口径 + 破坏验证双还原；真�
 - **④ 约束与非目标**：不动后端契约（形状由 core 定，本单只是接住已给的字段）；不在前端算 `5908 - 339` 之类客户端重建（core AGENTS.md §9 禁止两处真相）；不改其他格式化函数。
 - **⑤ 验收**：`npm test` + `npm run typecheck` + `npm run lint`（0 error）绿；新增/更新的 `MarketMetrics`/`DataQualityPanel` 单测钉住「0 不再显示成占位」与「空态只在 null 时出现」；浏览器实测 `/data-sync` 与 `/` 两页 DOM 回读，屏幕上的文字与 `curl` 拿到的字段集合一致；`e2e/tests/visual-regression.spec.ts` 的 `dashboard.png` 若因文案变化需 `--update-snapshots`，须在结案里写明是有意变化。**破坏验证**：把面板改回读 `count` 单一字段 ⇒ 新断言红；把 `fmtVolume` 的 null 判据改回 `!v` ⇒ 0 那条用例红。
 - **⑥ 边界**：只做"文案与能力对齐 + 0 与缺失分得开"；~~`/market/index` 的参数不生效（core DATA-11）~~ **该句已于 2026-10-16 被 core DATA-11 落地证伪**：`(a1)` 参数化后 `?symbol`/`?date` 真下传（网关那层原本连 query 都不带，也一并补上），ui 侧取值改为按选中项命中 + 选中项/日期一变就重取（本仓 `f473fa9`，已在 ui main），日期框同时改成不可清空 —— 清空会让 `market.ts` 的 `if (date)` 把参数省掉，屏上仍是最新一期而框里没有日期，正是本节立的「文案与能力相反」那一族。指数 bar 数据面（core DATA-12）仍不在本单。
+
+> **✅ 完成记录（2026-10-22）**
+>
+> **③ 要求逐条落点**
+>
+> | 要求 | 落在哪 |
+> |---|---|
+> | ① `by_status` 两档 + 退市占比接上屏 | `web/src/components/sync/DataQualityPanel.vue` 新增 `surv-active` / `surv-delisted` / `surv-delisted-share` 三行：在市取 `by_status.active`、退市取 `by_status.delisted`，占比 = `delisted / count`（分子分母都是 core 给的读数，前端只做一次除法；**不**拿 `count` 减退市数反推在市数 —— 那是客户端重建后端语义） |
+> | ① `latest_date` 接上屏 | 同页新增 `pit-latest-date` 行「行情最新日（latest_date）」；值为 `null`（库里没行情）时走显式空态「未读取」，不显示别的日期 |
+> | ① 文案按现状重写 | `surv-gap` 那段「在市 / 退市拆分**没有只读接口**…已登记为 core 工单 DATA-02」整段重写：DATA-02 已于 2026-10-14 落地，现在这段写的是**仍缺**的东西（逐只退市日期，网关不转发）；`pit-gap` 补一句「行情最新日是另一回事：它有读数」，免得把那一格也读成无通道。三个 PIT 时刻仍是「无通道」，文案与 DATA-03 的裁决一致，未动 |
+> | ② `fmtVolume`/`fmtAmount` 只在缺失时占位 | `web/src/utils/format.ts` 新增 `isMissingReading()`：缺失 = `null` / `undefined` / 空串（trim 后）/ 解析不成数的串；**`0` 走正常格式化**（`0` → `0万`，`fmtAmount(0)` → `0.0`） |
+> | ② 断言与实现一起改 | `format.test.ts` 里钉住旧行为的那条（`fmtVolume(0) → '-'`）**明确翻转**并在注释里写明理由（不是静默改期望）；顺带补上此前**完全没有用例**的 `fmtAmount`（3 条）。另在 `MarketMetrics.test.ts`（组件层 0 与缺失）、`DataQualityPanel.test.ts`（读数 / 空态 / 0）各加新用例 |
+>
+> **⑤ 验收（真退出码）**
+>
+> 1. `cd web && npm test` → **0**（38 个测试文件 / **538** 条；本单开工前 524 条 ⇒ **+14**：`format` +4、`MarketMetrics` +3、`DataQualityPanel` +7）。
+> 2. `npm run typecheck`（`vue-tsc --noEmit`）→ **0**，无输出。
+> 3. `npm run lint` → **0 errors**（943 warnings，全是既有的 `vue/max-attributes-per-line` / `singleline-html-element-content-newline` 一类；新增的四行沿用本文件既有写法，未新增 error、规则未放宽）。
+> 4. **破坏验证（现场，真退出码）**：
+>    - 改坏 A：`isMissingReading` 改回 `!v`（falsy 即缺失）→ **1**，**6 条红**（`format` 的 0 腿 3 条 + `MarketMetrics` 的 0 腿 3 条）；
+>    - 改坏 B：面板改回只读 `count` 单一字段 → **1**，**4 条红**（在市 / 退市两档、占比、票池为空那两档、行情最新日）；
+>    - 改坏 C：在市数改成前端反推（`count - delisted`）→ **1**，**1 条红**（`expected '在市（active）5908' to contain '未读取'`）—— 正是 ④ 禁止的那条客户端重建；
+>    - 还原：`git diff --stat` 与改坏前逐行相同（6 files / 296 insertions / 42 deletions），`grep` 复查无改坏残留（`return !v`、`count - (` 均 0 命中），`npx vitest run` 回到 **0**（62 条）。
+> 5. **浏览器实测（真 DOM 回读，本机栈起起来了）**：`docker start` 共享的 data-service / analysis-service（此前是停的）⇒ `curl :8085/api/stocks/count` → **200** `{"by_status":{"active":5569,"delisted":339},"count":5908}`；vite dev server 起在 :5173，Chromium 实读 `/data-sync` 的 DOM：
+>    - 票池记录（含已退市）**5908**、在市（active）**5569**、退市（delisted）**339**、退市占比 **5.7%**（= 339/5908）—— 与 `curl` 的字段集合逐值一致；
+>    - **行情最新日（latest_date）显示「未读取」**：本机跑的 data-service 是 DATA-03 之前的旧二进制，回包里**没有** `latest_date` 这个键 ⇒ 前端按「读不到」走显式空态，没有编一个日期出来（这正是本单要的「缺席不冒充读数」）；
+>    - `/`（仪表盘）实读：本机 `market.index_daily` 0 行 ⇒ 四格指标**不渲染**，走 DATA-07 的显式空态（"接口对 000001.SH 回了空数组…0 行"），屏上没有 `-` 占位；控制台无报错。
+> 6. **e2e**（真 Chromium，本机栈 + dev server 已起）：`e2e/tests/a08-job-console.spec.ts` 本单改动的两条**实跑绿**（`2 passed`）：
+>    - 「拆分读数与行情最新日接上屏，PIT 三时刻仍明写无通道」（拦截 `/api/stocks/count` 成 core 的实测形状）；
+>    - 「拆分读数缺席时走显式空态：不编占比，也不拿总数反推在市数」（`by_status: {}` + `latest_date: null` ⇒ 三格「未读取」且屏上一个百分比都没有）。
+> 7. **视觉基线**：`e2e/tests/visual-regression.spec.ts` 的 `/api/stocks/count` fixture 按本仓自己的规矩补齐（"页面消费新字段时回包必须跟着补，否则基线照常绿而界面已经错"）—— 补上 `by_status` 与合规的 `latest_date`（原 fixture 是 `latest_date: ''`，而契约里这个键恒在且非空串）。
+>    **基线图未改、也不需要改**：`data-sync.png` 是**视口**截图，研究质量面板在首屏之外（实测 `quality-panel` 的 top ≈ 2876px > 视口 680px）⇒ 本单文案与新行不在基线图里。
+>    全套视觉用例跑下来 **4 条红**（`dashboard.png` / `backtest.png` / `dashboard-mobile.png` / `backtest-tablet.png`），**与本单无关**：把本单改动 `git stash` 掉、在原始 HEAD 上重跑，**同样这 4 条红**（本机行情表 0 行 ⇒ 仪表盘渲染与基线里的那份不同）。这 4 条属既有红，不在本单边界内，未动基线。
+>
+> **边界与现状**：只改 `web/src/utils/format.ts`（两个函数的缺失判据）、`web/src/components/sync/DataQualityPanel.vue`（读数接线 + 文案）、三个测试文件与两处 e2e；**未动后端契约**（形状由 core 定，本单只是接住已给的字段）、未改其他格式化函数、未做 i18n、未重建共享容器镜像（本机跑的是旧二进制，`latest_date` 那格因此走空态）。
+> **口径取舍（明写，供下一个改这块的人）**：① 退市占比用 `count` 作分母（后端读数），不是前端把 `by_status` 各档加起来 —— 后者同样是客户端重建；② `fmtVolume(0)` 显示 `0万`（沿用万位刻度，不为 0 单开一档）—— `0` 是真读数，「0 万股」就是 0 股；③ `by_status` 里若有 `unknown` 档（status 为 NULL/空串折出），本页只展示在市 / 退市两档，占比分母仍是 `count`，不另造第三行。
+> **未收口的既有漂移（本单不动，登记在案）**：`docs/design/visual.md` §2.3 的 `fmtVolume(1230000) // "1.23M"` 示例与实现的刻度（`123万`）对不上 —— 那是设计稿里的旧刻度示例，与本单的「0 与缺失」无关。
 
 ---
 

@@ -100,6 +100,31 @@ describe('市场概览：刻度与字段名单点（旧缺陷的两种复发形�
   })
 })
 
+describe('市场概览：0 是读数不是缺失（UI-01）', () => {
+  it('成交量 0 显示 0，不显示成"没有读数"的占位', () => {
+    // 旧实现 fmtVolume(0) 走 falsy 分支返回 '-' —— 一个真读数在屏上与
+    // 「没读到成交量」长得一模一样。这里钉住：0 就该显示 0。
+    const values = mountCard(bar({ volume: 0 })).findAll('.metric-val').map((n) => n.text())
+    expect(values[2]).toBe('0万')
+    expect(values[2]).not.toBe('-')
+  })
+
+  it('成交额 0 显示 0.0亿，不是"未读取"', () => {
+    const values = mountCard(bar({ amount: 0 })).findAll('.metric-val').map((n) => n.text())
+    expect(values[3]).toBe('0.0亿')
+    expect(values[3]).not.toBe('未读取')
+  })
+
+  it('0 与缺失在屏上是两种东西：缺失才走空态', () => {
+    const zero = mountCard(bar({ volume: 0, amount: 0 })).findAll('.metric-val').map((n) => n.text())
+    const missing = mountCard(bar({ amount: null })).findAll('.metric-val').map((n) => n.text())
+
+    expect(zero[2]).toBe('0万')
+    expect(zero[3]).toBe('0.0亿')
+    expect(missing[3]).toBe('未读取')
+  })
+})
+
 describe('市场概览：没有指数日线时走显式空态', () => {
   it('metrics 为 null 时不渲染四格，改为指名缺口的空态', () => {
     const w = mountCard(null)

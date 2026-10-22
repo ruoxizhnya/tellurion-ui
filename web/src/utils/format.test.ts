@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { fmtPercent, fmtNumber, fmtCurrency, formatDate, fmtVolume, fmtMetric } from '@/utils/format'
+import { fmtPercent, fmtNumber, fmtCurrency, formatDate, fmtVolume, fmtAmount, fmtMetric } from '@/utils/format'
 
 describe('fmtPercent', () => {
   it('formats positive percentage with plus sign', () => {
@@ -100,9 +100,50 @@ describe('fmtVolume', () => {
     expect(fmtVolume(50000)).toBe('5万')
   })
 
-  it('returns dash for falsy value', () => {
-    expect(fmtVolume(0)).toBe('-')
+  /**
+   * 行为变更（UI-01，2026-10-22）—— 这条断言是**故意翻过来**的，不是静默改期望。
+   *
+   * 旧实现 `if (!v) return '-'` 把 0 当成缺失（旧用例把 `fmtVolume(0) → '-'`
+   * 钉成了期望），于是「成交量 0 股」被显示成「没读到」—— 一个真读数被说成缺失。
+   * A-08 / DATA-07 立的口径是**null 才是没有读数，0 就是 0**，所以：
+   *  - 0 走正常格式化（万位刻度），不是占位；
+   *  - 「缺失」的口径从 falsy 换成 null / undefined / NaN / 空串。
+   */
+  it('0 是读数不是缺失：正常格式化，不返回占位', () => {
+    expect(fmtVolume(0)).toBe('0万')
+    expect(fmtVolume('0')).toBe('0万')
+  })
+
+  it('只有真读不到时才返回占位（null / undefined / NaN / 空串 / 非数字串）', () => {
     expect(fmtVolume(null)).toBe('-')
+    expect(fmtVolume(undefined)).toBe('-')
+    expect(fmtVolume(NaN)).toBe('-')
+    expect(fmtVolume('')).toBe('-')
+    expect(fmtVolume('   ')).toBe('-')
+    expect(fmtVolume('不是数字')).toBe('-')
+  })
+})
+
+describe('fmtAmount', () => {
+  it('按亿展示（界面自己补「亿」字）', () => {
+    expect(fmtAmount(375461676.1428)).toBe('3.8')
+    expect(fmtAmount(200000000)).toBe('2.0')
+  })
+
+  /**
+   * 与 fmtVolume 同一条口径（UI-01）：旧实现 `if (!a) return '-'` 把 0 显示成缺失，
+   * 「成交额 0 元」在屏上与「没读到成交额」长得一模一样。
+   */
+  it('0 是读数不是缺失：显示 0.0 而不是占位', () => {
+    expect(fmtAmount(0)).toBe('0.0')
+    expect(fmtAmount('0')).toBe('0.0')
+  })
+
+  it('只有真读不到时才返回占位（null / undefined / NaN / 空串）', () => {
+    expect(fmtAmount(null)).toBe('-')
+    expect(fmtAmount(undefined)).toBe('-')
+    expect(fmtAmount(NaN)).toBe('-')
+    expect(fmtAmount('')).toBe('-')
   })
 })
 
