@@ -87,6 +87,39 @@ describe('invalidReasonsText — Code 要落到人话', () => {
 })
 
 /**
+ * UI-02（refactor-plan-review C1 传播）：新增的两个 `invalid_reasons` code。
+ *
+ * 它们是 **invalid 语义**，不是第四种状态、也不是故障 —— 所以措辞必须说
+ * 「结果不可用 / 不完整」，不能出现「失败」二字（那会被读成没跑成、可重试）。
+ * 这两码今天在 core 源码里还没有生产者（QT-10 / QT-15 待落），但消费侧口径
+ * 必须先落地：等生产者上线时前端不需要再改一次文案。
+ */
+describe('invalidReasonsText — C1 新增的两个 code', () => {
+  it('data_gap_skipped ⇒ 数据缺口跳天，结果不可用', () => {
+    expect(invalidReasonLabel('data_gap_skipped')).toBe('数据缺口跳天，结果不可用')
+  })
+
+  it('session_terminated ⇒ session 终止，结果不完整', () => {
+    expect(invalidReasonLabel('session_terminated')).toBe('session 终止，结果不完整')
+  })
+
+  it('两码同时出现时逐条翻译，用同一分隔符连接', () => {
+    expect(invalidReasonsText(['data_gap_skipped', 'session_terminated'])).toBe(
+      '数据缺口跳天，结果不可用 · session 终止，结果不完整'
+    )
+  })
+
+  it('措辞不混入 failed：这两码是"结果不可用"，不是"没跑成"', () => {
+    const text = invalidReasonsText(['data_gap_skipped', 'session_terminated'])
+    expect(text).not.toContain('失败')
+  })
+
+  it('未登记的新 code 仍原样展示（加两个码不等于改成猜测式映射）', () => {
+    expect(invalidReasonLabel('future_code')).toBe('future_code')
+  })
+})
+
+/**
  * AI 流水线产物那次回测的有效性说法。
  *
  * 这条链路的特殊之处：`job.backtest_result` 里没有 `status`（后端把三值丢在了
@@ -110,6 +143,16 @@ describe('backtestValidityNote — 三值到说话', () => {
   it('failed：说没跑成，且不带收益数字', () => {
     const note = backtestValidityNote({ status: 'failed', total_return: 0 })
     expect(note).toBe('，但那次回测失败，没有可用结果')
+  })
+
+  it('C1 两码在 Copilot 链路同样翻成人话（全站一张表，不另说一套）', () => {
+    const note = backtestValidityNote({
+      status: 'invalid',
+      invalid_reasons: ['data_gap_skipped', 'session_terminated'],
+    })
+    expect(note).toContain('数据缺口跳天，结果不可用')
+    expect(note).toContain('session 终止，结果不完整')
+    expect(note).not.toContain('data_gap_skipped')
   })
 
   /**

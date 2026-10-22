@@ -69,6 +69,11 @@ const REASON_LABELS: Record<string, string> = {
   zero_trades: '一次成交都没有',
   garbage_metric: '指标是不可用值',
   insufficient_data: '数据不足',
+  // C1（refactor-plan-review）新增的两码：degraded 语义映射进三值 invalid，
+  // 不引入第四值。它们**不是**故障，所以措辞要说「结果不可用 / 不完整」，
+  // 不能说「失败」—— 后者会被读成"没跑成、可重试"。
+  data_gap_skipped: '数据缺口跳天，结果不可用',
+  session_terminated: 'session 终止，结果不完整',
 }
 
 export function invalidReasonLabel(code: string): string {

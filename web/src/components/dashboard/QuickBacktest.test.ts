@@ -90,6 +90,24 @@ describe('QuickBacktest — invalid', () => {
     const w = mounted({ status: 'invalid' })
     expect(w.get('[data-testid="quick-invalid-reasons"]').text()).toContain('未给出原因')
   })
+
+  /**
+   * UI-02：C1 新增的两个 code 走同一张表落到人话，且仍然**不显示指标** ——
+   * 「结果不可用」不是「结果正常」，更不是「失败」。
+   */
+  it('C1 两码（data_gap_skipped / session_terminated）落到人话且不显示指标', () => {
+    const w = mounted({
+      status: 'invalid',
+      invalid_reasons: ['data_gap_skipped', 'session_terminated'],
+      total_return: 0,
+      sharpe_ratio: 0,
+    })
+    const reasons = w.get('[data-testid="quick-invalid-reasons"]').text()
+    expect(reasons).toContain('数据缺口跳天，结果不可用')
+    expect(reasons).toContain('session 终止，结果不完整')
+    expect(w.text()).not.toContain('收益')
+    expect(w.text()).not.toContain('夏普')
+  })
 })
 
 describe('QuickBacktest — failed', () => {

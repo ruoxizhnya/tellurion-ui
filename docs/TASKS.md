@@ -1,7 +1,7 @@
 ---
 status: active
 last-verified: 2026-10-22
-verified-by: API-01 结案（4xx 原话透传 + 五条护栏；真请求腿未执行，已登记）
+verified-by: UI-02 结案（C1 两码展示口径 + 破坏验证双还原；真请求腿未执行，已登记）
 ---
 
 # tellurion-ui · 任务台账
@@ -200,7 +200,7 @@ verified-by: API-01 结案（4xx 原话透传 + 五条护栏；真请求腿未�
 
 ---
 
-## UI-02 · 三值 status 消费与 `invalid_reasons` 展示口径（refactor-plan-review C1 传播）⬜ 待做
+## UI-02 · 三值 status 消费与 `invalid_reasons` 展示口径（refactor-plan-review C1 传播）✅ 完成（2026-10-22）
 
 > 2026-10-20 自 refactor 计划审查修复传播登记。三值映射规则冻结在 core `tellurion:docs/TASKS.md` QT-10 ③-④ / QT-15 ⑤ 与 `tellurion:docs/SPEC.md`（**以彼处为准，本单只落本仓展示/消费侧**）。
 
@@ -216,6 +216,30 @@ verified-by: API-01 结案（4xx 原话透传 + 五条护栏；真请求腿未�
 - **④ 约束与非目标**：不改后端契约与映射（core QT-10/QT-15）；不放宽既有三值单测断言（A-07 那 7 条只许加强不许削弱）；不做 i18n；指标展示逻辑重构另立。
 - **⑤ 验收**：`npm test` + `npm run typecheck` + `npm run lint` 绿；新增单测钉住 `data_gap_skipped` / `session_terminated` 两个 code 的展示文案与「unknown code 原样展示」；`completed`/`invalid`/`failed` 三分支各有可区分断言。**破坏验证**：把 `invalid` 误渲染成成功（或吞掉 `invalid_reasons` 列表）→ 对应用例红 → 还原绿。e2e 若涉及状态文案断言同步更新并在结案写明。
 - **⑥ 边界**：只做三值 status 与 `invalid_reasons` 的展示/消费口径；`result.id` 判成功、指标缺席空态等旧账在 A-07/OPS 相关单；agent 侧消费在 REV-01-A；wire 契约落定在 core QT-50。
+
+> **✅ 完成记录（2026-10-22）**
+>
+> **③ 要求逐条落点**
+>
+> | 要求 | 落在哪 |
+> |---|---|
+> | ① 两码可读化、unknown 原样 | `web/src/utils/runStatus.ts` 的 `REASON_LABELS` 补两行（措辞逐字按本单：`data_gap_skipped`→「数据缺口跳天，结果不可用」、`session_terminated`→「session 终止，结果不完整」）；未登记 code 的 `?? code` 原样分支未动 |
+> | ① invalid 警示 + 列表、failed 原文 | 既有 A-07 组件接线未改（`QuickBacktest.vue` 的 invalid 分支带 warning 标签 + `invalidReasonsText`；failed 分支 `result.error` 原文；详情页 `BacktestEngine.vue` 同样走 `statusTagFor`/`invalidReasonLabel`），只补了两码的文案表 |
+> | ② invalid 运行不显示指标 | 既有口径未倒退：`QuickBacktest` 的 completed 分支是显式匹配，invalid 不上指标位；新增用例对两码同时断言「不出现收益/夏普」 |
+> | ③ 不新增第四值 / 不自行改判 | 未动 `RunStatus` 联合类型与 `KNOWN` 三值表；两码只进「原因翻译表」，不进状态表 |
+>
+> **⑤ 验收（真退出码）**
+>
+> 1. `cd web && npm test` → **0**（38 个测试文件 / **524** 条；新增 4 条：`runStatus.test.ts` 的两码 describe 3 条 + `QuickBacktest.test.ts` 两码渲染 1 条；另在 `backtestValidityNote` 加 1 条 Copilot 链路同表断言，合计 5 条）。
+> 2. `npm run typecheck` → **0**（`vue-tsc --noEmit` 无输出）。
+> 3. `npm run lint` → **0 errors**（939 条既有 warning，0 条新增 error；规则未放宽）。
+> 4. **破坏验证（现场，真退出码）**：
+>    - 改坏 A：把 `data_gap_skipped` 的译文改回裸 code → `npx vitest run` 两条测试文件 → **1**，**4 条红**（标签、两码拼接、Copilot 链路、QuickBacktest 渲染各一条）；
+>    - 改坏 B：把 `QuickBacktest.vue` 的 `{{ invalidReasonsText }}` 改成 `{{ '' }}`（吞掉原因列表）→ **1**，**3 条红**（含 A-07 既有的「警示样式**且**列出 invalid_reasons」——证明既有断言没被削弱）；
+>    - 还原：两个文件 sha256 与改坏前**逐字节一致**（`3eff21f3…` / `9bd1e68a…`）→ `npx vitest run` 回到 **0**（44 条）。
+> 5. **e2e**：未同步修改。理由：既有 e2e 断言的状态文案（「无效运行」、`empty_universe`/`zero_trades` 的人话）逐字未变；两个新 code 今天没有生产者（core QT-10/QT-15 待落），e2e 若造假响应只能测 mock 自身。登记在案，等 core 有真生产者时再补 e2e 腿。
+>
+> **边界与现状**：只改 `runStatus.ts` 一张文案表 + 两个测试文件 + 本台账；未动后端契约、未动状态联合类型、未做 i18n、未重构指标展示。`data_gap_skipped` / `session_terminated` 在 core 源码里今天**还没有生产者**，前端消费口径先落地，生产者上线时不需要再改文案。
 
 ---
 
