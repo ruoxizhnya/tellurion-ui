@@ -1,6 +1,6 @@
 ---
 status: active
-last-verified: 2026-10-23
+last-verified: 2026-10-24
 verified-by: AUD-61 阶段二 ③/④ 批收口（全量 e2e 186 条 → 168 passed / 18 skipped / 0 failed，退出码 0；剩余 16 条 ① 待重构落地）
 ---
 
