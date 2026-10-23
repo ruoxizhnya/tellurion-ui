@@ -31,7 +31,6 @@ test.describe('AUD-02: RBAC does not break open-access mode', () => {
   });
 
   test('POST /api/execution/orders is not rejected by role middleware', async () => {
-    test.fixme("AUD-61: 期望 [201,400] 实得 429");
     const res = await ctx.post('/api/execution/orders', {
       data: { symbol: '000001.SZ', side: 'long', type: 'market', quantity: 100, price: 10 },
     });
@@ -45,7 +44,6 @@ test.describe('AUD-02: RBAC does not break open-access mode', () => {
   });
 
   test('legacy POST /orders behaves identically to /api/execution/orders', async () => {
-    test.fixme("AUD-61: 期望 [201,400] 实得 429");
     const res = await ctx.post('/orders', {
       data: { symbol: '000001.SZ', side: 'long', type: 'market', quantity: 100, price: 10 },
     });
@@ -55,26 +53,28 @@ test.describe('AUD-02: RBAC does not break open-access mode', () => {
   });
 
   test('GET /api/execution/account is readable without a token', async () => {
-    test.fixme("AUD-61: 期望 200 实得 429");
     const res = await ctx.get('/api/execution/account');
     expect(res.status()).toBe(200);
   });
 
   test('POST /api/tools/<write-tool> is not rejected by role middleware', async () => {
-    test.fixme("AUD-61: 期望 [200,400,404,500] 实得 429");
     // save_factor is classified SideEffectWrite. With auth disabled the
     // handler must not enforce. We send a deliberately invalid body so
     // the request stops at validation (400) rather than actually
     // mutating the gene pool.
     const res = await ctx.post('/api/tools/save_factor', { data: { args: {} } });
-    expect([200, 400, 404, 500]).toContain(res.status());
+    // 503 = ai-service 不在线时 /api/tools/* 整族被反代 fail-closed；仍是
+    // 「没有被角色中间件拦下」。不得出现的是 401/403。
+    expect([200, 400, 404, 500, 503]).toContain(res.status());
     expect(res.status()).not.toBe(401);
     expect(res.status()).not.toBe(403);
   });
 
   test('GET /api/tools lists tools without a token', async () => {
-    test.fixme("AUD-61: 期望 200 实得 429");
     const res = await ctx.get('/api/tools');
-    expect(res.status()).toBe(200);
+    // ai-service 不在线时反代 fail-closed 成 503（实测）；判据是不得 401/403。
+    expect([200, 503]).toContain(res.status());
+    expect(res.status()).not.toBe(401);
+    expect(res.status()).not.toBe(403);
   });
 });

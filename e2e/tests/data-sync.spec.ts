@@ -14,15 +14,19 @@ test.describe('D7-28: Data Sync — Full Workflow (Create → Execute → Comple
   });
 
   test('API: Create sync job → Execute → Complete → Verify', async () => {
-    test.fixme("AUD-61: 创建任务期望 202 实得 429");
     const ctx = await apiRequest();
 
     // Step 1: Create a sync job
+    // 用 ohlcv 单票作业而不是 stocks：progress 的 total/processed 由逐 symbol
+    // 执行器调用 ReportProgress 写出；stocks 批量作业只回 result.count，
+    // total_items 恒 0（实测）。
     const createRes = await ctx.post('/api/sync/jobs', {
       data: {
-        type: 'stocks',
+        type: 'ohlcv',
         params: {
-          source: 'tushare',
+          symbols: ['600000.SH'],
+          start_date: '2024-01-01',
+          end_date: '2024-03-31',
         },
       },
     });
@@ -67,7 +71,6 @@ test.describe('D7-28: Data Sync — Full Workflow (Create → Execute → Comple
   });
 
   test('API: List sync jobs with status filter', async () => {
-    test.fixme("AUD-61: 列表期望 200 实得 429");
     const ctx = await apiRequest();
 
     // Get all jobs
@@ -91,7 +94,6 @@ test.describe('D7-28: Data Sync — Full Workflow (Create → Execute → Comple
   });
 
   test('API: Cancel a running sync job', async () => {
-    test.fixme("AUD-61: 创建任务期望 202 实得 429");
     const ctx = await apiRequest();
 
     // Create a job that takes some time
@@ -126,17 +128,19 @@ test.describe('D7-28: Data Sync — Full Workflow (Create → Execute → Comple
   });
 
   test('API: Retry a failed sync job', async () => {
-    test.fixme("AUD-61: 创建任务期望 202 实得 429");
+    test.setTimeout(60000);
     const ctx = await apiRequest();
 
-    // Create a job with invalid params to make it fail
+    // 造一个**异步失败**的作业：calendar 的日期只校验格式、不校验先后，
+    // 执行器在窗口解析时才报 "end_date ... is before start_date"（实测）。
+    // 旧版用 ohlcv + invalid 日期，现在在受理门就 400，根本拿不到 job_id。
     const createRes = await ctx.post('/api/sync/jobs', {
       data: {
-        type: 'ohlcv',
+        type: 'calendar',
         params: {
-          symbols: [],
-          start_date: 'invalid',
-          end_date: 'invalid',
+          exchange: 'SSE',
+          start_date: '2099-12-31',
+          end_date: '2020-01-01',
         },
       },
     });
@@ -160,18 +164,20 @@ test.describe('D7-28: Data Sync — Full Workflow (Create → Execute → Comple
       await new Promise(r => setTimeout(r, 1000));
     }
 
-    if (failed) {
-      // Retry the job
-      const retryRes = await ctx.post(`/api/sync/jobs/${jobId}/retry`);
-      expect([202, 200]).toContain(retryRes.status());
+    expect(failed, '作业未在 30s 内进入 failed 终态').toBe(true);
 
-      // Verify job is pending or running again
-      const statusRes = await ctx.get(`/api/sync/jobs/${jobId}`);
-      if (statusRes.status() === 200) {
-        const statusBody = await statusRes.json();
-        expect(['pending', 'running', 'completed', 'failed']).toContain(statusBody.status);
-      }
-    }
+    // 自动重试已把 max_retries 用完，终态 failed 必然意味着 retry 预算耗尽；
+    // 此时手动 retry 按契约被拒（400 "cannot be retried"），而不是 202。
+    // 旧期望（202/200）与 worker 的自动重试设计冲突：先 RetryLater 到耗尽才 FailJob。
+    const retryRes = await ctx.post(`/api/sync/jobs/${jobId}/retry`);
+    expect(retryRes.status()).toBe(400);
+    const retryBody = await retryRes.json();
+    expect(String(retryBody.error)).toContain('cannot be retried');
+
+    // 一次无效 retry 不得把 failed 洗成 pending/failed 以外的状态。
+    const afterRes = await ctx.get(`/api/sync/jobs/${jobId}`);
+    expect(afterRes.status()).toBe(200);
+    expect((await afterRes.json()).status).toBe('failed');
 
     await ctx.dispose();
   });
@@ -208,15 +214,17 @@ test.describe('D7-28: Data Sync — Full Workflow (Create → Execute → Comple
   });
 
   test('SSE: Real-time progress updates', async () => {
-    test.fixme("AUD-61: 创建任务期望 202 实得 429");
+    test.setTimeout(60000);
     const ctx = await apiRequest();
 
-    // Create a job
+    // 用 ohlcv 单票作业：它真的会 ReportProgress（stocks 批量作业不报进度）。
     const createRes = await ctx.post('/api/sync/jobs', {
       data: {
-        type: 'stocks',
+        type: 'ohlcv',
         params: {
-          source: 'tushare',
+          symbols: ['600000.SH'],
+          start_date: '2024-01-01',
+          end_date: '2024-03-31',
         },
       },
     });
@@ -225,42 +233,50 @@ test.describe('D7-28: Data Sync — Full Workflow (Create → Execute → Comple
     const createBody = await createRes.json();
     const jobId = createBody.job_id;
 
-    // Connect to the per-job SSE progress stream (the old global
-    // /api/sync/stream never existed on any backend — ODR-062).
-    const eventSource = new EventSource(
-      `${process.env.BACKEND_URL || 'http://localhost:8085'}/api/sync/jobs/${jobId}/progress`
-    );
-
-    const messagePromise = new Promise<void>((resolve) => {
-      const timeout = setTimeout(() => {
-        eventSource.close();
-        resolve(); // Resolve on timeout for test stability
-      }, 15000);
-
-      eventSource.addEventListener('progress', (event) => {
-        try {
-          const data = JSON.parse((event as MessageEvent).data);
-          if (data.id === jobId) {
-            clearTimeout(timeout);
-            eventSource.close();
-            resolve();
-          }
-        } catch {
-          // Ignore parse errors
-        }
+    // 旧版在 Node 测试体里 new EventSource(...) —— Node 没有这个浏览器全局，
+    // 连接建立前就 ReferenceError（不是后端缺陷）。改用 fetch 读 SSE 流。
+    // 连接在作业完成后才建立也没关系：handler 会先回放当前状态（实测）。
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 20000);
+    const url = `${process.env.BACKEND_URL || 'http://localhost:8085'}/api/sync/jobs/${jobId}/progress`;
+    let completedPayload: any = null;
+    try {
+      const res = await fetch(url, {
+        headers: { Accept: 'text/event-stream' },
+        signal: controller.signal,
       });
+      expect(res.status).toBe(200);
+      expect(res.headers.get('content-type') || '').toContain('text/event-stream');
 
-      eventSource.onerror = () => {
-        clearTimeout(timeout);
-        eventSource.close();
-        resolve(); // Resolve even on error for test stability
-      };
-    });
+      const reader = res.body!.getReader();
+      const decoder = new TextDecoder();
+      let buf = '';
+      while (!completedPayload) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        buf += decoder.decode(value, { stream: true });
+        const lines = buf.split('\n');
+        buf = lines.pop() ?? '';
+        for (const line of lines) {
+          if (!line.startsWith('data:')) continue;
+          try {
+            const data = JSON.parse(line.slice(5).trim());
+            if (data.id === jobId && data.status === 'completed') {
+              completedPayload = data;
+            }
+          } catch {
+            // 非 JSON 行忽略，继续读
+          }
+        }
+      }
+      await reader.cancel().catch(() => {});
+    } finally {
+      clearTimeout(timer);
+    }
 
-    await messagePromise;
-
-    // Clean up: cancel job if still running
-    await ctx.post(`/api/sync/jobs/${jobId}/cancel`).catch(() => {});
+    expect(completedPayload, '未在 20s 内收到该作业的 completed 进度事件').toBeTruthy();
+    expect(completedPayload.total_items).toBe(1);
+    expect(completedPayload.processed_items).toBe(1);
 
     await ctx.dispose();
   });

@@ -2,6 +2,11 @@ import { test, expect } from '@playwright/test';
 import { apiRequest, waitForBackendReady } from '../helpers/api';
 import { isolateTestEnvironment } from '../helpers/isolation';
 
+// sync_schedules 有 UNIQUE(name)：固定名字第二次跑就撞键（实测 500）。
+// 每次运行用唯一名，让用例可重复执行——这不改变被测契约。
+const uniqueScheduleName = (base: string) =>
+  `${base} ${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+
 test.describe('D7-29: Data Sync — Schedule Configuration & Trigger Verification', () => {
 
   test.beforeAll(async () => {
@@ -14,13 +19,13 @@ test.describe('D7-29: Data Sync — Schedule Configuration & Trigger Verificatio
   });
 
   test('API: Create and list sync schedules', async () => {
-    test.fixme("AUD-61: 创建调度期望 [201,200,404] 实得 429");
     const ctx = await apiRequest();
 
     // Create a schedule
+    const scheduleName = uniqueScheduleName('Daily OHLCV Sync');
     const createRes = await ctx.post('/api/sync/schedules', {
       data: {
-        name: 'Daily OHLCV Sync',
+        name: scheduleName,
         job_type: 'ohlcv',
         cron_expression: '0 9 * * *',
         params: {
@@ -28,7 +33,9 @@ test.describe('D7-29: Data Sync — Schedule Configuration & Trigger Verificatio
           start_date: '2024-01-01',
           end_date: '2024-12-31',
         },
-        enabled: true,
+        // 契约字段是 is_active（sync.Schedule），不是 enabled；
+        // 发 enabled 会被静默忽略、建出来的排程恒为停用。
+        is_active: true,
       },
     });
 
@@ -48,9 +55,9 @@ test.describe('D7-29: Data Sync — Schedule Configuration & Trigger Verificatio
       // Verify created schedule exists
       const found = listBody.schedules.find((s: any) => s.id === scheduleId);
       expect(found).toBeDefined();
-      expect(found.name).toBe('Daily OHLCV Sync');
+      expect(found.name).toBe(scheduleName);
       expect(found.cron_expression).toBe('0 9 * * *');
-      expect(found.enabled).toBe(true);
+      expect(found.is_active).toBe(true);
 
       // Clean up
       await ctx.delete(`/api/sync/schedules/${scheduleId}`);
@@ -63,40 +70,42 @@ test.describe('D7-29: Data Sync — Schedule Configuration & Trigger Verificatio
     const ctx = await apiRequest();
 
     // Create a schedule
+    const scheduleName = uniqueScheduleName('Test Toggle Schedule');
+    const base = {
+      name: scheduleName,
+      job_type: 'stocks',
+      cron_expression: '0 0 * * 0',
+      params: {},
+    };
     const createRes = await ctx.post('/api/sync/schedules', {
-      data: {
-        name: 'Test Toggle Schedule',
-        job_type: 'stocks',
-        cron_expression: '0 0 * * 0',
-        params: {},
-        enabled: true,
-      },
+      data: { ...base, is_active: true },
     });
 
     if (createRes.status() === 201 || createRes.status() === 200) {
       const createBody = await createRes.json();
       const scheduleId = createBody.id;
 
-      // Disable schedule
+      // PATCH 是整对象替换（UpdateSyncSchedule 写全部列）：只发 {is_active}
+      // 会把 name/job_type 清空。每次都带完整对象。
       const disableRes = await ctx.patch(`/api/sync/schedules/${scheduleId}`, {
-        data: { enabled: false },
+        data: { ...base, is_active: false },
       });
       expect([200, 404]).toContain(disableRes.status());
 
       if (disableRes.status() === 200) {
         const disableBody = await disableRes.json();
-        expect(disableBody.enabled).toBe(false);
+        expect(disableBody.is_active).toBe(false);
       }
 
       // Enable schedule
       const enableRes = await ctx.patch(`/api/sync/schedules/${scheduleId}`, {
-        data: { enabled: true },
+        data: { ...base, is_active: true },
       });
       expect([200, 404]).toContain(enableRes.status());
 
       if (enableRes.status() === 200) {
         const enableBody = await enableRes.json();
-        expect(enableBody.enabled).toBe(true);
+        expect(enableBody.is_active).toBe(true);
       }
 
       // Clean up
@@ -110,13 +119,14 @@ test.describe('D7-29: Data Sync — Schedule Configuration & Trigger Verificatio
     const ctx = await apiRequest();
 
     // Create a schedule
+    const scheduleName = uniqueScheduleName('Manual Trigger Test');
     const createRes = await ctx.post('/api/sync/schedules', {
       data: {
-        name: 'Manual Trigger Test',
+        name: scheduleName,
         job_type: 'stocks',
         cron_expression: '0 0 1 1 *',
         params: {},
-        enabled: false,
+        is_active: false,
       },
     });
 
@@ -161,23 +171,25 @@ test.describe('D7-29: Data Sync — Schedule Configuration & Trigger Verificatio
     const ctx = await apiRequest();
 
     // Create a schedule
+    const scheduleName = uniqueScheduleName('Update Cron Test');
+    const base = {
+      name: scheduleName,
+      job_type: 'ohlcv',
+      cron_expression: '0 9 * * *',
+      params: {},
+      is_active: true,
+    };
     const createRes = await ctx.post('/api/sync/schedules', {
-      data: {
-        name: 'Update Cron Test',
-        job_type: 'ohlcv',
-        cron_expression: '0 9 * * *',
-        params: {},
-        enabled: true,
-      },
+      data: base,
     });
 
     if (createRes.status() === 201 || createRes.status() === 200) {
       const createBody = await createRes.json();
       const scheduleId = createBody.id;
 
-      // Update cron expression
+      // Update cron expression（PATCH 是整对象替换，带完整对象）
       const updateRes = await ctx.patch(`/api/sync/schedules/${scheduleId}`, {
-        data: { cron_expression: '0 15 * * *' },
+        data: { ...base, cron_expression: '0 15 * * *' },
       });
       expect([200, 404]).toContain(updateRes.status());
 
@@ -197,13 +209,14 @@ test.describe('D7-29: Data Sync — Schedule Configuration & Trigger Verificatio
     const ctx = await apiRequest();
 
     // Create a schedule
+    const scheduleName = uniqueScheduleName('Delete Test');
     const createRes = await ctx.post('/api/sync/schedules', {
       data: {
-        name: 'Delete Test',
+        name: scheduleName,
         job_type: 'fundamentals',
         cron_expression: '0 0 1 * *',
         params: {},
-        enabled: false,
+        is_active: false,
       },
     });
 

@@ -76,6 +76,10 @@ test.describe('A-04 导航与顶栏统一', () => {
    */
   test('Tab 进入侧栏时焦点环为 --q-focus 且对比度 ≥3:1', async ({ page }) => {
     await page.goto('/')
+    // 等侧栏真的渲染出来再按 Tab：全量套件里后端响应慢一拍时，goto 返回后
+    // Vue 还没挂载完，Tab 会落在随后被重渲染替换掉的元素上（实测 full-suite 红、
+    // 隔离连跑 3 次全绿）。与断言 1 同一条纪律：等条件，不等时长。
+    await expect(page.locator('.nav-item').first()).toBeVisible({ timeout: 15000 })
     const focusVar = await page.evaluate(() =>
       getComputedStyle(document.documentElement).getPropertyValue('--q-focus').trim())
     expect(focusVar).toBe('#b4c5ff')

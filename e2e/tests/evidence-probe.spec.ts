@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { apiRequest, getJsonWithBackoff, waitForBackendReady } from '../helpers/api';
+import { apiRequest, dataApiRequest, getJsonWithBackoff, waitForBackendReady } from '../helpers/api';
 import { isolateTestEnvironment } from '../helpers/isolation';
 
 /**
@@ -7,17 +7,48 @@ import { isolateTestEnvironment } from '../helpers/isolation';
  *
  * 分工不是偷懒，是照着"哪条断言今天真的有真数据"划的：
  *
- * - 真数据能覆盖的：`ingest.raw` 有 11952 条真记录（命中态 / 404 未摄取态）、
- *   `backtest_jobs` 有完成的回测（无坐标 → 无法回溯）、深链 `?content_hash=` 仍在。
+ * - 真数据能覆盖的：`ingest.raw`（命中态 / 404 未摄取态）、`backtest_jobs`
+ *   有完成的回测（无坐标 → 无法回溯）、深链 `?content_hash=` 仍在。
  * - 真数据**覆盖不到**的：抽屉里的命中态。带坐标的数字只有因子侧有，而
  *   `factor_cache` 今天 0 行（实测 `GET /api/factors/... → 404 factor cache
  *   entry not found`）。不往那张表里塞假行 —— 引擎启动时会 warm 它
  *   （日志里就有 "factor cache warming enabled"），一条假因子可能悄悄进真回测。
  *   所以那两条走 mock，并在名字里写清楚它是 mock。
+ *
+ * ⚠️ 深链那条（断言 6）原先硬编码一条 2026-09 的 akshare content_hash；
+ * 2026-10-23 实测该行已不在 ingest.raw（深链翻成「未摄取」），硬编码 hash
+ * 会随数据消失而腐烂。现在改为**用平台唯一写门 POST /api/ingest/raw 自建
+ * 夹具**（幂等：content_hash 主键 + ON CONFLICT DO NOTHING），hash 由服务端
+ * 算出，不再手工维护。
  */
 
-const REAL_HASH = 'fc14d53f9773e3aa95977e7035ca3948becb7b2c41706b1897d545010320d114';
+// mock 用例只需要一个形状合法的 64 位 hash；真数据用例走 ensureArchivedEvidence()。
+const MOCK_HASH = '59814525507f16b7c7514a72ffa3910eaf18ef21824980189276b0ff9bb01133';
 const ABSENT_HASH = '0'.repeat(64);
+
+/**
+ * 归档一条本用例自建的 raw 记录，返回服务端算出的 content_hash。
+ * 写的是 ingest.raw 这条**追加式归档**（ADR-022 的 class A），不碰 factor_cache，
+ * 因此不会像假因子那样渗进真回测。
+ */
+async function ensureArchivedEvidence(): Promise<{ content_hash: string; dataset: string; key: string }> {
+  const ctx = await dataApiRequest();
+  const res = await ctx.post('/api/ingest/raw', {
+    data: {
+      source: 'e2e.fixture',
+      dataset: 'e2e.fixture.evidence_probe',
+      key: '600519.SH/2024Q1',
+      as_of: '2024-09-30T00:00:00Z',
+      payload: { instrument: '600519.SH', note: 'AUD-61 e2e fixture (idempotent)' },
+    },
+    timeout: 10000,
+  });
+  const body = await res.json();
+  await ctx.dispose();
+  expect(res.status(), `POST /api/ingest/raw 未成功：${res.status()} ${JSON.stringify(body)}`).toBe(201);
+  expect(body.content_hash).toHaveLength(64);
+  return body as { content_hash: string; dataset: string; key: string };
+}
 
 /** 拿一条真完成的回测 id；拿不到就让测试红，不静默 skip */
 async function aCompletedBacktestID(): Promise<string> {
@@ -45,23 +76,21 @@ test.describe('A-06 证据质问内嵌', () => {
   });
 
   test('断言 6：/evidence 深链仍是兜底，且真能取回原始记录', async ({ page }) => {
-    test.fixme("AUD-61: 证据查询被限流（rate limit exceeded 文案入页面）");
-    await page.goto(`/evidence?content_hash=${REAL_HASH}`);
-    // 真数据：这条来自 ingest.raw 的 akshare 记录
-    await expect(page.locator('main')).toContainText('akshare.stock_financial_abstract');
-    await expect(page.locator('main')).toContainText(REAL_HASH);
+    const fixture = await ensureArchivedEvidence();
+    await page.goto(`/evidence?content_hash=${fixture.content_hash}`);
+    // 真数据：这条 raw 记录由本用例经平台写门归档，content_hash 由服务端算出。
+    await expect(page.locator('main')).toContainText(fixture.dataset);
+    await expect(page.locator('main')).toContainText(fixture.content_hash);
     await expect(page.locator('main')).not.toContainText('未摄取');
   });
 
   test('断言 5：404 是「未摄取」警示态，不是查询失败（真后端）', async ({ page }) => {
-    test.fixme("AUD-61: 同 47：404 警示态被限流响应顶替");
     await page.goto(`/evidence?content_hash=${ABSENT_HASH}`);
     await expect(page.locator('main')).toContainText('未摄取');
     await expect(page.locator('main')).not.toContainText('查询失败');
   });
 
   test('断言 1+4：回测报告的每个指标都挂着质问入口，且「无法回溯」不点也看得见', async ({ page }) => {
-    test.fixme("AUD-61: 取数 helper 末次状态码 429（退避预算耗尽）");
     const id = await aCompletedBacktestID();
     await page.goto(`/backtest?id=${id}`);
 
@@ -82,7 +111,6 @@ test.describe('A-06 证据质问内嵌', () => {
   });
 
   test('断言 2：点质问入口开抽屉，URL 逐字不变（真后端）', async ({ page }) => {
-    test.fixme("AUD-61: 取数 helper 末次状态码 429（退避预算耗尽）");
     const id = await aCompletedBacktestID();
     await page.goto(`/backtest?id=${id}`);
     const before = page.url();
@@ -101,7 +129,7 @@ test.describe('A-06 证据质问内嵌', () => {
       route.fulfill({
         contentType: 'application/json',
         body: JSON.stringify({
-          content_hash: REAL_HASH,
+          content_hash: MOCK_HASH,
           source: 'akshare',
           dataset: 'akshare.stock_financial_abstract',
           key: '600519.SH/2024Q1',
@@ -124,7 +152,7 @@ test.describe('A-06 证据质问内嵌', () => {
           percentile: 0.69,
           citation: [
             {
-              content_hash: REAL_HASH,
+              content_hash: MOCK_HASH,
               source: 'akshare',
               dataset: 'akshare.stock_financial_abstract',
               key: '600519.SH/2024Q1',

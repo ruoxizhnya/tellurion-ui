@@ -70,7 +70,6 @@ test.describe('D7-30: Data Sync — Failure Retry & Error Handling', () => {
   });
 
   test('API: Non-existent job returns 404', async () => {
-    test.fixme("AUD-61: 期望 [404,400] 实得 429");
     const ctx = await apiRequest();
 
     const res = await ctx.get('/api/sync/jobs/non-existent-job-id');
@@ -80,7 +79,6 @@ test.describe('D7-30: Data Sync — Failure Retry & Error Handling', () => {
   });
 
   test('API: Job with empty symbol list fails gracefully', async () => {
-    test.fixme("AUD-61: 期望 [202,400] 实得 429");
     const ctx = await apiRequest();
 
     const createRes = await ctx.post('/api/sync/jobs', {
@@ -122,17 +120,20 @@ test.describe('D7-30: Data Sync — Failure Retry & Error Handling', () => {
   });
 
   test('API: Retry count increments on failure', async () => {
-    test.fixme("AUD-61: 创建任务期望 202 实得 429");
+    test.setTimeout(60000);
     const ctx = await apiRequest();
 
-    // Create a job that will fail
+    // 造一个**异步失败**的作业：calendar 只校验日期格式、不校验先后，
+    // 执行器窗口解析时才报错（实测）。旧的 ohlcv + INVALID_SYMBOL 会被
+    // 执行器当作「已处理」而成功完成（per-symbol 错误被 continue 吞掉），
+    // 永远等不到 failed。
     const createRes = await ctx.post('/api/sync/jobs', {
       data: {
-        type: 'ohlcv',
+        type: 'calendar',
         params: {
-          symbols: ['INVALID_SYMBOL'],
-          start_date: '2024-01-01',
-          end_date: '2024-12-31',
+          exchange: 'SSE',
+          start_date: '2099-12-31',
+          end_date: '2020-01-01',
         },
       },
     });
@@ -143,7 +144,7 @@ test.describe('D7-30: Data Sync — Failure Retry & Error Handling', () => {
 
     // Wait for job to fail (may take multiple retries)
     let finalJob: any = null;
-    const deadline = Date.now() + 60000;
+    const deadline = Date.now() + 40000;
     while (Date.now() < deadline) {
       const pollRes = await ctx.get(`/api/sync/jobs/${jobId}`);
       if (pollRes.status() === 200) {
@@ -156,17 +157,17 @@ test.describe('D7-30: Data Sync — Failure Retry & Error Handling', () => {
       await new Promise(r => setTimeout(r, 1000));
     }
 
-    if (finalJob) {
-      expect(finalJob.retry_count).toBeGreaterThanOrEqual(0);
-      expect(finalJob.error_message).toBeDefined();
-      expect(finalJob.error_message).not.toBe('');
-    }
+    expect(finalJob, '作业未在 40s 内进入 failed 终态').toBeTruthy();
+    // failed 是自动重试预算耗尽后的终态：retry_count 必须真的涨过，
+    // 且错误原话非空（旧断言 >= 0 是恒真，等于没测）。
+    expect(finalJob.retry_count).toBeGreaterThan(0);
+    expect(typeof finalJob.error_message).toBe('string');
+    expect(finalJob.error_message).not.toBe('');
 
     await ctx.dispose();
   });
 
   test('API: Cancel non-existent job returns error', async () => {
-    test.fixme("AUD-61: 期望 [404,400] 实得 429");
     const ctx = await apiRequest();
 
     const res = await ctx.post('/api/sync/jobs/non-existent-id/cancel');
@@ -176,7 +177,6 @@ test.describe('D7-30: Data Sync — Failure Retry & Error Handling', () => {
   });
 
   test('API: Retry non-failed job returns error', async () => {
-    test.fixme("AUD-61: 创建任务期望 202 实得 429");
     const ctx = await apiRequest();
 
     // Create a job that should succeed
@@ -237,7 +237,6 @@ test.describe('D7-30: Data Sync — Failure Retry & Error Handling', () => {
   });
 
   test('API: Concurrent job creation handles load', async () => {
-    test.fixme("AUD-61: 并发创建期望 202 实得 429");
     const ctx = await apiRequest();
 
     // Create 5 jobs concurrently

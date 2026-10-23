@@ -1,7 +1,7 @@
 ---
 status: active
 last-verified: 2026-10-23
-verified-by: AUD-61 阶段一收口（全量 e2e 实测 186 条 → 64 红 fixme 登记 + 复跑 0 failed）
+verified-by: AUD-61 阶段二 ③/④ 批收口（全量 e2e 186 条 → 168 passed / 18 skipped / 0 failed，退出码 0；剩余 16 条 ① 待重构落地）
 ---
 
 # tellurion-ui · 任务台账
@@ -19,7 +19,8 @@ verified-by: AUD-61 阶段一收口（全量 e2e 实测 186 条 → 64 红 fixme
 | 阶段 | 内容 | 上游单号 | 前置 |
 |---|---|---|---|
 | AUD-61 阶段一（✅ 2026-10-23） | 起齐三服务跑 e2e，把已知红改 `test.fixme` 并登记 | `AUD-61` | 无 |
-| AUD-61 阶段二 | 设计系统重构落地后按页重对齐选择器与期望值 | `AUD-61` | 阶段一 + 重构完成 |
+| AUD-61 阶段二 ③/④（✅ 2026-10-23） | 先做不依赖 DOM 的 API 期望与共享限流两类，逐条清 fixme 与登记 | `AUD-61` | 阶段一 |
+| AUD-61 阶段二 ①（⬜ 待做） | 结构漂移/视觉基线 16 条，等 `feat/design-tokens-v2-palette-sweep` 合并 | `AUD-61` | ③/④ + 重构合并 |
 
 ## AUD-61 · e2e 套件与前端结构脱节（测试债） 🔶（阶段一 ✅ 2026-10-23；阶段二 ③/④ 批 ✅ 2026-10-23，① 批待设计系统重构落地）
 
@@ -39,39 +40,9 @@ verified-by: AUD-61 阶段一收口（全量 e2e 实测 186 条 → 64 红 fixme
 
   | spec 文件 | 用例名 | 红因归类 | fixme 日期 | 对齐批次 | 清除日期 |
   |---|---|---|---|---|---|
-  | api-health.spec.ts | GET /stocks/count returns stock count | ④ 共享限流 | 2026-10-23 | 阶段二 | |
-  | api-health.spec.ts | GET /market/index returns index data | ④ 共享限流 | 2026-10-23 | 阶段二 | |
-  | api-health.spec.ts | GET /api/strategies returns strategy list | ④ 共享限流 | 2026-10-23 | 阶段二 | |
-  | api-negative.spec.ts | POST /api/backtest with empty body returns 400 | ④ 共享限流 | 2026-10-23 | 阶段二 | |
-  | api-negative.spec.ts | POST /api/backtest with missing strategy returns 400 | ④ 共享限流 | 2026-10-23 | 阶段二 | |
-  | api-negative.spec.ts | POST /api/backtest with missing stock_pool returns 400 | ④ 共享限流 | 2026-10-23 | 阶段二 | |
-  | api-negative.spec.ts | GET /api/backtest/nonexistent-id/report returns 404 | ④ 共享限流 | 2026-10-23 | 阶段二 | |
-  | api-negative.spec.ts | GET /api/backtest/nonexistent-id/trades returns 404 | ④ 共享限流 | 2026-10-23 | 阶段二 | |
-  | api-negative.spec.ts | GET /api/backtest/nonexistent-id/equity returns 404 | ④ 共享限流 | 2026-10-23 | 阶段二 | |
-  | api-negative.spec.ts | GET /api/ohlcv with missing params returns 400 | ④ 共享限流 | 2026-10-23 | 阶段二 | |
-  | api-negative.spec.ts | GET /api/strategies/nonexistent returns 404 | ④ 共享限流 | 2026-10-23 | 阶段二 | |
-  | api-negative.spec.ts | GET /api/walkforward/nonexistent returns 404 | ④ 共享限流 | 2026-10-23 | 阶段二 | |
-  | api-strategy.spec.ts | GET /api/strategies returns built-in strategies | ④ 共享限流 | 2026-10-23 | 阶段二 | |
-  | api-strategy.spec.ts | POST /api/copilot/generate requires AI_API_KEY (returns error when not set) | ④ 共享限流 | 2026-10-23 | 阶段二 | |
   | backtest-engine.spec.ts | form fields render correctly | ① 结构漂移 | 2026-10-23 | 阶段二 | |
-  | backtest-engine.spec.ts | async backtest creates job and shows progress | ④ 共享限流 | 2026-10-23 | 阶段二 | |
-  | backtest-engine.spec.ts | backtest result renders metrics cards after completion | ④ 共享限流 | 2026-10-23 | 阶段二 | |
-  | backtest-engine.spec.ts | equity chart canvas renders after backtest completes | ④ 共享限流 | 2026-10-23 | 阶段二 | |
-  | backtest-engine.spec.ts | trade markers toggle shows/hides trade data | ④ 共享限流 | 2026-10-23 | 阶段二 | |
-  | backtest-engine.spec.ts | form prevents duplicate submission while running | ④ 共享限流 | 2026-10-23 | 阶段二 | |
-  | backtest-engine.spec.ts | complete backtest workflow: run → view results → check trades | ④ 共享限流 | 2026-10-23 | 阶段二 | |
   | backtest-engine.spec.ts | backtest history shows completed jobs with correct data | ① 结构漂移 | 2026-10-23 | 阶段二 | |
-  | backtest-engine.spec.ts | equity chart renders with dual axes when data available | ④ 共享限流 | 2026-10-23 | 阶段二 | |
-  | backtest-engine.spec.ts | strategy selector loads strategies from backend | ③ API 期望 | 2026-10-23 | 阶段二 | |
   | backtest-engine.spec.ts | responsive layout on different viewport sizes | ① 结构漂移 | 2026-10-23 | 阶段二 | |
-  | copilot-e2e.spec.ts | API: POST /api/copilot/generate 空 description 返回 400 | ④ 共享限流 | 2026-10-23 | 阶段二 | |
-  | copilot-e2e.spec.ts | API: POST /api/copilot/generate 有效 prompt 返回结构化响应 | ④ 共享限流 | 2026-10-23 | 阶段二 | |
-  | copilot-e2e.spec.ts | API: POST /api/copilot/save 已删除，应返回 404 | ④ 共享限流 | 2026-10-23 | 阶段二 | |
-  | copilot-e2e.spec.ts | API: GET /api/copilot/stats 返回统计信息 | ④ 共享限流 | 2026-10-23 | 阶段二 | |
-  | copilot-e2e.spec.ts | SSE: /api/sync/stream 返回 text/event-stream 内容类型 (契约) | ④ 共享限流 | 2026-10-23 | 阶段二 | |
-  | critical-e2e.spec.ts | 指标卡片显示正确数值类型（非NaN/undefined） | ④ 共享限流 | 2026-10-23 | 阶段二 | |
-  | critical-e2e.spec.ts | 净值曲线canvas存在且尺寸合理 | ④ 共享限流 | 2026-10-23 | 阶段二 | |
-  | critical-e2e.spec.ts | 回测完成后图表上可显示交易标记 | ④ 共享限流 | 2026-10-23 | 阶段二 | |
   | critical-e2e.spec.ts | 访问不存在的报告ID显示友好错误提示 | ① 结构漂移 | 2026-10-23 | 阶段二 | |
   | cross-navigation.spec.ts | Dashboard nav tiles navigate to correct routes | ① 结构漂移 | 2026-10-23 | 阶段二 | |
   | dashboard.spec.ts | sidebar navigation renders with all items | ① 结构漂移 | 2026-10-23 | 阶段二 | |
@@ -79,31 +50,7 @@ verified-by: AUD-61 阶段一收口（全量 e2e 实测 186 条 → 64 红 fixme
   | dashboard.spec.ts | quick backtest form renders correctly | ① 结构漂移 | 2026-10-23 | 阶段二 | |
   | dashboard.spec.ts | navigation tiles are present and link to correct routes | ① 结构漂移 | 2026-10-23 | 阶段二 | |
   | dashboard.spec.ts | history card section renders | ① 结构漂移 | 2026-10-23 | 阶段二 | |
-  | data-sync-error.spec.ts | API: Non-existent job returns 404 | ④ 共享限流 | 2026-10-23 | 阶段二 | |
-  | data-sync-error.spec.ts | API: Job with empty symbol list fails gracefully | ④ 共享限流 | 2026-10-23 | 阶段二 | |
-  | data-sync-error.spec.ts | API: Retry count increments on failure | ④ 共享限流 | 2026-10-23 | 阶段二 | |
-  | data-sync-error.spec.ts | API: Cancel non-existent job returns error | ④ 共享限流 | 2026-10-23 | 阶段二 | |
-  | data-sync-error.spec.ts | API: Retry non-failed job returns error | ④ 共享限流 | 2026-10-23 | 阶段二 | |
-  | data-sync-error.spec.ts | API: Concurrent job creation handles load | ④ 共享限流 | 2026-10-23 | 阶段二 | |
-  | data-sync-schedule.spec.ts | API: Create and list sync schedules | ④ 共享限流 | 2026-10-23 | 阶段二 | |
-  | data-sync.spec.ts | API: Create sync job → Execute → Complete → Verify | ④ 共享限流 | 2026-10-23 | 阶段二 | |
-  | data-sync.spec.ts | API: List sync jobs with status filter | ④ 共享限流 | 2026-10-23 | 阶段二 | |
-  | data-sync.spec.ts | API: Cancel a running sync job | ④ 共享限流 | 2026-10-23 | 阶段二 | |
-  | data-sync.spec.ts | API: Retry a failed sync job | ④ 共享限流 | 2026-10-23 | 阶段二 | |
   | data-sync.spec.ts | UI: Data source panel displays correctly | ① 结构漂移 | 2026-10-23 | 阶段二 | |
-  | data-sync.spec.ts | SSE: Real-time progress updates | ④ 共享限流 | 2026-10-23 | 阶段二 | |
-  | evidence-probe.spec.ts | 断言 6：/evidence 深链仍是兜底，且真能取回原始记录 | ④ 共享限流 | 2026-10-23 | 阶段二 | |
-  | evidence-probe.spec.ts | 断言 5：404 是「未摄取」警示态，不是查询失败（真后端） | ④ 共享限流 | 2026-10-23 | 阶段二 | |
-  | evidence-probe.spec.ts | 断言 1+4：回测报告的每个指标都挂着质问入口，且「无法回溯」不点也看得见 | ④ 共享限流 | 2026-10-23 | 阶段二 | |
-  | evidence-probe.spec.ts | 断言 2：点质问入口开抽屉，URL 逐字不变（真后端） | ④ 共享限流 | 2026-10-23 | 阶段二 | |
-  | rbac-open-access.spec.ts | POST /api/execution/orders is not rejected by role middleware | ④ 共享限流 | 2026-10-23 | 阶段二 | |
-  | rbac-open-access.spec.ts | legacy POST /orders behaves identically to /api/execution/orders | ④ 共享限流 | 2026-10-23 | 阶段二 | |
-  | rbac-open-access.spec.ts | GET /api/execution/account is readable without a token | ④ 共享限流 | 2026-10-23 | 阶段二 | |
-  | rbac-open-access.spec.ts | POST /api/tools/<write-tool> is not rejected by role middleware | ④ 共享限流 | 2026-10-23 | 阶段二 | |
-  | rbac-open-access.spec.ts | GET /api/tools lists tools without a token | ④ 共享限流 | 2026-10-23 | 阶段二 | |
-  | status-tristate.spec.ts | 对比页：被排除项与其原因可见（真后端，走 missing 通道） | ④ 共享限流 | 2026-10-23 | 阶段二 | |
-  | status-tristate.spec.ts | 对比页（mock）：invalid 运行单列成"已排除的无效运行"并带原因 | ④ 共享限流 | 2026-10-23 | 阶段二 | |
-  | strategy-selector.spec.ts | strategy cards render with data | ③ API 期望 | 2026-10-23 | 阶段二 | |
   | strategy-selector.spec.ts | navigation from dashboard works | ① 结构漂移 | 2026-10-23 | 阶段二 | |
   | visual-regression.spec.ts | dashboard renders correctly | ① 结构漂移 | 2026-10-23 | 阶段二 | |
   | visual-regression.spec.ts | backtest page renders correctly | ① 结构漂移 | 2026-10-23 | 阶段二 | |
@@ -119,7 +66,7 @@ verified-by: AUD-61 阶段一收口（全量 e2e 实测 186 条 → 64 红 fixme
   - **归因方法**：逐条读 playwright 失败详情的 Expected/Received，不定性的不硬归——backtest-engine 的 7 条流程红以「回测失败 rate limit exceeded」为直接证据归 ④；`backtest history` 区块与限流无关归 ①。api-backtest:331（期望两笔不同本金的 `total_return` 深相等）是本轮确认的**错误期望**而非漂移。api-health 三条经隔离复跑取证（仍 429）后归 ④。
   - **红线执行情况**：除 fixme 与本登记表外零改动。
 
-- **阶段二 · ③ API 期望批（✅ 2026-10-23，commit 待记）**：
+- **阶段二 · ③ API 期望批（✅ 2026-10-23，commit 68ff6dd）**：
   - **清掉的 8 条**（逐条读后端实测响应后对齐，不靠推断）：
     - `api-backtest: persisted report contains all required metrics fields`：`win_rate` 在契约里是 `json:"win_rate,omitempty"`（`tellurion-contracts:engine/contracts.go`），零胜率时键缺席是契约行为。改为「有则必须 number；缺席则 `win_trades ?? 0 === 0`」——缺席只在没有盈利平仓时合法。
     - `api-backtest: larger initial capital …`：深相等是**错误期望**。实测 50 万 vs 200 万（同参数）收益率 0.1164% vs 0.1423%、绝对盈亏 582 vs 2846——100 股整手量化 + 规模相关市场冲击，收益率不是规模不变量。改为断言「平仓笔数不变、收益率同号、绝对盈亏显著放大」。
@@ -130,6 +77,19 @@ verified-by: AUD-61 阶段一收口（全量 e2e 实测 186 条 → 64 红 fixme
   - **验收**：三条 spec 合跑 `23 passed / 14 skipped / EXIT=0`（含 8 条新绿）；未放宽任何断言为「恒真」，改的两处深相等换成有物理依据的断言并在用例内写清依据。
   - **破坏验证**：把 `win_rate` 那条改回 `expect(typeof report.win_rate).toBe('number')` → 该条重新变红（实得 `undefined`）；逐字节还原后转绿。
   - 登记表 78 → 70 行，fixme 78 → 70 条，两边仍一一对应。
+
+- **阶段二 · ④ 共享限流批（✅ 2026-10-23，commit 待记）**：
+  - **先改姿势，再谈断言（根因不是断言）**：analysis-service 的限流桶是**全进程、每 ClientIP 100 req/min**（`core:pkg/bootstrap/server.go`），整套 playwright 从 `127.0.0.1` 一个 IP 出量，全量必然越额。按 core 仓既有的 e2e 覆盖层重建后端：`core:docker-compose.e2e.yml`（AUD-58）把 `RATE_LIMIT_PER_MINUTE` 抬到 100000，基础 compose 默认值不动。起栈、自检（110 次 `/api/strategies` 应全 200）与恢复默认的命令写进 `e2e/README.md`。**没有放宽、跳过或删除任何断言。**
+  - **清掉的 54 条**（52 条登记为 ④ + 2 条原 ③ 复核后改归 ④）：逐条删 fixme 与登记行。其中 11 条在 429 消失后暴露的是**别的原因**，按实测对齐而不是洗红：
+    - `backtest-engine`：Naive UI 用 `n-button--loading` class 挡重复提交（DOM 上没有 disabled 属性）→ 断言 loading + 单张进度卡；策略下拉选项类在 Naive 2.44 是 `.n-base-select-option`（旧 `.n-select-option` 0 命中）；「查看报告」是**就地装入本页报告**、不改 URL → 断言指标卡真的出现（旧 `/report=/` 描述的是不存在的路由行为）。
+    - `data-sync`：`stocks` 批量作业不写 progress 计数器（`total_items`/`processed_items` 恒 0，progress 由逐 symbol 执行器才 ReportProgress）→ 进度断言改用 `ohlcv` 单票作业；`calendar` 只校验日期**格式**、不校验先后，反向日期可造出真 `failed`（`ohlcv` + `INVALID_SYMBOL` 会被执行器 `continue` 吞掉而成功）；终态 `failed` 意味着自动重试预算已耗尽，手动 retry 按契约返回 400（旧期望 202 与「先 RetryLater 到耗尽才 FailJob」的设计冲突）；SSE 用例在 Node 测试体里 `new EventSource`（Node 无此浏览器全局）→ 改 `fetch` 读流，并**真的断言**收到该作业的 `completed` 事件（旧实现超时也 resolve，等于恒绿）。
+    - `data-sync-schedule`：契约字段是 `is_active`（`sync.Schedule`），不是 `enabled`（发 `enabled` 被静默忽略）；PATCH 是整对象替换（`UpdateSyncSchedule` 写全部列），只发局部对象会清空 name/job_type → 带完整对象；表上有 UNIQUE(name)，固定名字复跑撞键（实测 500）→ 每次运行用唯一名。
+    - `evidence-probe`：硬编码的 akshare content_hash 已不在 `ingest.raw`（2026-10-23 实测表内 11974 行、该 hash 0 行；深链退化成「未摄取」）→ 改为经平台唯一写门 `POST /api/ingest/raw` 自建**幂等**夹具（content_hash 主键 + ON CONFLICT DO NOTHING），hash 由服务端算出，不再手工维护会腐烂的常量。
+    - `rbac-open-access`：ai-service 不在线时 `/api/tools*` 整族被反代 fail-closed 成 503；判据仍是「不得 401/403」。
+  - **顺带修的既有 flake（不是本批引入，登记在案）**：`nav-consistency` 的 Tab 焦点环用例在全量套件里红、隔离 `--repeat-each=3` 全绿——根因是 `goto` 返回后侧栏尚未挂载完。改为先等 `.nav-item` 可见再按 Tab（与同文件断言 1 同一纪律：等条件，不等时长）。
+  - **验收**：全量 `npx playwright test` → **168 passed / 18 skipped / 0 failed，退出码 0**（4.0 分钟；18 skipped = 16 条 ① fixme + 2 条原有）。登记表 70 → 16 行（全为 ① 结构漂移），fixme 同步 16 条。
+  - **破坏验证**：把后端重建回默认 100 req/min，先连打 110 次 `GET /api/strategies` 抽干桶，再跑 `api-health: GET /api/strategies returns strategy list` → **429 红**；恢复 `RATE_LIMIT_PER_MINUTE=100000` 重建后同一条 **绿**。证明这批的绿来自姿势，不是断言被放宽。
+  - **留待**：① 结构漂移 16 条仍等 `feat/design-tokens-v2-palette-sweep` 合并（本仓与 origin 均无此分支，2026-10-23 核）。
 
 - **实测登记（2026-10-14，A-07 收口时顺手取的真实读数；阶段一的 fixme 转换仍未做）**：
   - **179 条用例 = 61 failed / 116 passed / 2 skipped**（`workers: 1`，本地栈齐全）。

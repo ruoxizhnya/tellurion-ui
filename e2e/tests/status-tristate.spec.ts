@@ -49,7 +49,6 @@ test.describe('A-07 状态三值全站收口', () => {
   });
 
   test('对比页：被排除项与其原因可见（真后端，走 missing 通道）', async ({ page }) => {
-    test.fixme("AUD-61: 取数 helper 末次状态码 429（退避预算耗尽）");
     const good = await aCompletedID();
     /**
      * 用一个**故意不存在**的 id，而不是去库里捞一条 failed。
@@ -75,7 +74,6 @@ test.describe('A-07 状态三值全站收口', () => {
   });
 
   test('对比页（mock）：invalid 运行单列成"已排除的无效运行"并带原因', async ({ page }) => {
-    test.fixme("AUD-61: 取数 helper 末次状态码 429（退避预算耗尽）");
     const good = await aCompletedID();
     const badId = 'invalid-demo-0001';
     await page.addInitScript(
