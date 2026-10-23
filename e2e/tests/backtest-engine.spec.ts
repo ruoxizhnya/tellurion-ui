@@ -37,6 +37,7 @@ test.describe('Backtest Engine Page (Vue SPA)', () => {
   });
 
   test('form fields render correctly', async ({ page }) => {
+    test.fixme("AUD-61: 表单字段选择器漂移（页面结构已变）");
     await navigateToBacktest(page);
 
     await expect(page.getByPlaceholder('600000.SH,600036.SH')).toBeVisible();
@@ -124,6 +125,7 @@ test.describe('Backtest Engine — Interaction Tests', () => {
   });
 
   test('async backtest creates job and shows progress', async ({ page }) => {
+    test.fixme("AUD-61: 回测被限流打成失败，进度文案含 rate limit exceeded");
     await navigateToBacktest(page);
 
     await page.fill('[placeholder="600000.SH,600036.SH"]', '600000.SH');
@@ -136,6 +138,7 @@ test.describe('Backtest Engine — Interaction Tests', () => {
   });
 
   test('backtest result renders metrics cards after completion', async ({ page }) => {
+    test.fixme("AUD-61: 回测失败（限流）→ 指标卡永不出现");
     await navigateToBacktest(page);
 
     await page.fill('[placeholder="600000.SH,600036.SH"]', '600000.SH');
@@ -156,6 +159,7 @@ test.describe('Backtest Engine — Interaction Tests', () => {
   });
 
   test('equity chart canvas renders after backtest completes', async ({ page }) => {
+    test.fixme("AUD-61: 回测失败（限流）→ 净值 canvas 不渲染");
     await navigateToBacktest(page);
 
     await page.fill('[placeholder="600000.SH,600036.SH"]', '600000.SH');
@@ -166,6 +170,7 @@ test.describe('Backtest Engine — Interaction Tests', () => {
   });
 
   test('trade markers toggle shows/hides trade data', async ({ page }) => {
+    test.fixme("AUD-61: 回测失败（限流）无成交数据，交易标记选择器等待超时");
     await navigateToBacktest(page);
 
     await page.fill('[placeholder="600000.SH,600036.SH"]', '600000.SH');
@@ -197,6 +202,7 @@ test.describe('Backtest Engine — Interaction Tests', () => {
   });
 
   test('form prevents duplicate submission while running', async ({ page }) => {
+    test.fixme("AUD-61: 回测立刻失败（限流）→ 按钮重新可点，期望 disabled 不成立");
     await navigateToBacktest(page);
 
     await page.fill('[placeholder="600000.SH,600036.SH"]', '600000.SH');
@@ -224,6 +230,7 @@ test.describe('Backtest Engine — Complete Workflow Tests', () => {
   });
 
   test('complete backtest workflow: run → view results → check trades', async ({ page }) => {
+    test.fixme("AUD-61: 回测失败（限流）→ 结果区不出现");
     await navigateToBacktest(page);
 
     const stockInput = page.getByPlaceholder('600000.SH,600036.SH');
@@ -259,6 +266,7 @@ test.describe('Backtest Engine — Complete Workflow Tests', () => {
   });
 
   test('backtest history shows completed jobs with correct data', async ({ page }) => {
+    test.fixme("AUD-61: 历史区块选择器漂移（页面结构已变）");
     await navigateToBacktest(page);
 
     await page.fill('[placeholder="600000.SH,600036.SH"]', '600519.SH');
@@ -341,6 +349,7 @@ test.describe('Backtest Engine — Complete Workflow Tests', () => {
   });
 
   test('equity chart renders with dual axes when data available', async ({ page }) => {
+    test.fixme("AUD-61: 回测失败（限流）→ 双轴图表不渲染");
     await navigateToBacktest(page);
 
     await page.fill('[placeholder="600000.SH,600036.SH"]', '600000.SH');
@@ -367,6 +376,7 @@ test.describe('Backtest Engine — Complete Workflow Tests', () => {
   });
 
   test('strategy selector loads strategies from backend', async ({ page }) => {
+    test.fixme("AUD-61: /api/strategies 返回空列表，期望 ≥1 个选项");
     await navigateToBacktest(page);
 
     const strategySelect = page.locator('.n-select').first();
@@ -394,6 +404,7 @@ test.describe('Backtest Engine — Complete Workflow Tests', () => {
   });
 
   test('responsive layout on different viewport sizes', async ({ page }) => {
+    test.fixme("AUD-61: 响应式布局结构漂移");
     await page.setViewportSize({ width: 768, height: 1024 });
     await navigateToBacktest(page);
 

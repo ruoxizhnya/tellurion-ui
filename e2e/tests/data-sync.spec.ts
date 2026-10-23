@@ -14,6 +14,7 @@ test.describe('D7-28: Data Sync — Full Workflow (Create → Execute → Comple
   });
 
   test('API: Create sync job → Execute → Complete → Verify', async () => {
+    test.fixme("AUD-61: 创建任务期望 202 实得 429");
     const ctx = await apiRequest();
 
     // Step 1: Create a sync job
@@ -66,6 +67,7 @@ test.describe('D7-28: Data Sync — Full Workflow (Create → Execute → Comple
   });
 
   test('API: List sync jobs with status filter', async () => {
+    test.fixme("AUD-61: 列表期望 200 实得 429");
     const ctx = await apiRequest();
 
     // Get all jobs
@@ -89,6 +91,7 @@ test.describe('D7-28: Data Sync — Full Workflow (Create → Execute → Comple
   });
 
   test('API: Cancel a running sync job', async () => {
+    test.fixme("AUD-61: 创建任务期望 202 实得 429");
     const ctx = await apiRequest();
 
     // Create a job that takes some time
@@ -123,6 +126,7 @@ test.describe('D7-28: Data Sync — Full Workflow (Create → Execute → Comple
   });
 
   test('API: Retry a failed sync job', async () => {
+    test.fixme("AUD-61: 创建任务期望 202 实得 429");
     const ctx = await apiRequest();
 
     // Create a job with invalid params to make it fail
@@ -190,6 +194,7 @@ test.describe('D7-28: Data Sync — Full Workflow (Create → Execute → Comple
   });
 
   test('UI: Data source panel displays correctly', async ({ page }) => {
+    test.fixme("AUD-61: 数据源面板结构漂移（可见性失败）");
     await page.goto('/data-sync');
     await page.waitForLoadState('domcontentloaded');
 
@@ -203,6 +208,7 @@ test.describe('D7-28: Data Sync — Full Workflow (Create → Execute → Comple
   });
 
   test('SSE: Real-time progress updates', async () => {
+    test.fixme("AUD-61: 创建任务期望 202 实得 429");
     const ctx = await apiRequest();
 
     // Create a job

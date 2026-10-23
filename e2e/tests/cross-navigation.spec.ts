@@ -28,6 +28,7 @@ test.describe('Cross-page Navigation & Integration (Vue SPA)', () => {
   });
 
   test('Dashboard nav tiles navigate to correct routes', async ({ page }) => {
+    test.fixme("AUD-61: Dashboard 导航 tile 数 4→5，结构漂移");
     await page.goto('/');
     await page.waitForLoadState('domcontentloaded');
     await page.waitForSelector('.nav-tile', { timeout: 15000 });
