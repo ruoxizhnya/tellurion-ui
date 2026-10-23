@@ -90,7 +90,7 @@ verified-by: AUD-61 阶段二 ③/④ 批收口（全量 e2e 186 条 → 168 pas
   - **顺带修的既有 flake（不是本批引入，登记在案）**：`nav-consistency` 的 Tab 焦点环用例在全量套件里红、隔离 `--repeat-each=3` 全绿——根因是 `goto` 返回后侧栏尚未挂载完。改为先等 `.nav-item` 可见再按 Tab（与同文件断言 1 同一纪律：等条件，不等时长）。
   - **验收**：全量 `npx playwright test` → **168 passed / 18 skipped / 0 failed，退出码 0**（4.0 分钟；18 skipped = 16 条 ① fixme + 2 条原有）。登记表 70 → 16 行（全为 ① 结构漂移），fixme 同步 16 条。
   - **破坏验证**：把后端重建回默认 100 req/min，先连打 110 次 `GET /api/strategies` 抽干桶，再跑 `api-health: GET /api/strategies returns strategy list` → **429 红**；恢复 `RATE_LIMIT_PER_MINUTE=100000` 重建后同一条 **绿**。证明这批的绿来自姿势，不是断言被放宽。
-  - **留待**：① 结构漂移 16 条仍等 `feat/design-tokens-v2-palette-sweep` 合并（本仓与 origin 均无此分支，2026-10-23 核）。
+  - **留待**：① 结构漂移 16 条仍等 `feat/design-tokens-v2-palette-sweep` 合并（2026-10-24 复核：本仓 `tellurion-ui` 与 origin 均无此分支；该分支只存在于旧仓 `quant-trading-ui`（本地 + origin），尚未迁入本仓）。
 
 - **实测登记（2026-10-14，A-07 收口时顺手取的真实读数；阶段一的 fixme 转换仍未做）**：
   - **179 条用例 = 61 failed / 116 passed / 2 skipped**（`workers: 1`，本地栈齐全）。
