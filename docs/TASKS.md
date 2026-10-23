@@ -21,7 +21,7 @@ verified-by: AUD-61 阶段一收口（全量 e2e 实测 186 条 → 64 红 fixme
 | AUD-61 阶段一（✅ 2026-10-23） | 起齐三服务跑 e2e，把已知红改 `test.fixme` 并登记 | `AUD-61` | 无 |
 | AUD-61 阶段二 | 设计系统重构落地后按页重对齐选择器与期望值 | `AUD-61` | 阶段一 + 重构完成 |
 
-## AUD-61 · e2e 套件与前端结构脱节（测试债） 🔶（阶段一 ✅ 2026-10-23，阶段二待重构落地）
+## AUD-61 · e2e 套件与前端结构脱节（测试债） 🔶（阶段一 ✅ 2026-10-23；阶段二 ③/④ 批 ✅ 2026-10-23，① 批待设计系统重构落地）
 
 > 2026-10-14 自 core 仓 `tellurion/docs/TASKS.md` §五迁入——e2e 套件随前端拆仓（2026-10-09）已物理归属本仓，且本仓前端正处设计系统重构（DESIGN.md v2.0），e2e 将大改，留 core 主线已无执行意义。本文件为 AUD-61 唯一归属地。
 
@@ -39,8 +39,6 @@ verified-by: AUD-61 阶段一收口（全量 e2e 实测 186 条 → 64 红 fixme
 
   | spec 文件 | 用例名 | 红因归类 | fixme 日期 | 对齐批次 | 清除日期 |
   |---|---|---|---|---|---|
-  | api-backtest.spec.ts | persisted report contains all required metrics fields | ③ API 期望 | 2026-10-23 | 阶段二 | |
-  | api-backtest.spec.ts | larger initial capital produces proportionally larger absolute PnL | ③ API 期望 | 2026-10-23 | 阶段二 | |
   | api-health.spec.ts | GET /stocks/count returns stock count | ④ 共享限流 | 2026-10-23 | 阶段二 | |
   | api-health.spec.ts | GET /market/index returns index data | ④ 共享限流 | 2026-10-23 | 阶段二 | |
   | api-health.spec.ts | GET /api/strategies returns strategy list | ④ 共享限流 | 2026-10-23 | 阶段二 | |
@@ -53,8 +51,6 @@ verified-by: AUD-61 阶段一收口（全量 e2e 实测 186 条 → 64 红 fixme
   | api-negative.spec.ts | GET /api/ohlcv with missing params returns 400 | ④ 共享限流 | 2026-10-23 | 阶段二 | |
   | api-negative.spec.ts | GET /api/strategies/nonexistent returns 404 | ④ 共享限流 | 2026-10-23 | 阶段二 | |
   | api-negative.spec.ts | GET /api/walkforward/nonexistent returns 404 | ④ 共享限流 | 2026-10-23 | 阶段二 | |
-  | api-negative.spec.ts | POST /api/screen with empty body returns 400 or 500 | ③ API 期望 | 2026-10-23 | 阶段二 | |
-  | api-negative.spec.ts | POST /api/copilot/generate with empty prompt returns 400 | ③ API 期望 | 2026-10-23 | 阶段二 | |
   | api-strategy.spec.ts | GET /api/strategies returns built-in strategies | ④ 共享限流 | 2026-10-23 | 阶段二 | |
   | api-strategy.spec.ts | POST /api/copilot/generate requires AI_API_KEY (returns error when not set) | ④ 共享限流 | 2026-10-23 | 阶段二 | |
   | backtest-engine.spec.ts | form fields render correctly | ① 结构漂移 | 2026-10-23 | 阶段二 | |
@@ -68,15 +64,11 @@ verified-by: AUD-61 阶段一收口（全量 e2e 实测 186 条 → 64 红 fixme
   | backtest-engine.spec.ts | equity chart renders with dual axes when data available | ④ 共享限流 | 2026-10-23 | 阶段二 | |
   | backtest-engine.spec.ts | strategy selector loads strategies from backend | ③ API 期望 | 2026-10-23 | 阶段二 | |
   | backtest-engine.spec.ts | responsive layout on different viewport sizes | ① 结构漂移 | 2026-10-23 | 阶段二 | |
-  | copilot-e2e.spec.ts | UI: 端到端自然语言 → API 调用 → 响应 (或错误) 消息渲染 | ③ API 期望 | 2026-10-23 | 阶段二 | |
-  | copilot-e2e.spec.ts | UI: 多轮对话 — 第二条消息追加到消息列表 | ③ API 期望 | 2026-10-23 | 阶段二 | |
-  | copilot-e2e.spec.ts | UI: 复制代码按钮存在且可点击 | ③ API 期望 | 2026-10-23 | 阶段二 | |
   | copilot-e2e.spec.ts | API: POST /api/copilot/generate 空 description 返回 400 | ④ 共享限流 | 2026-10-23 | 阶段二 | |
   | copilot-e2e.spec.ts | API: POST /api/copilot/generate 有效 prompt 返回结构化响应 | ④ 共享限流 | 2026-10-23 | 阶段二 | |
   | copilot-e2e.spec.ts | API: POST /api/copilot/save 已删除，应返回 404 | ④ 共享限流 | 2026-10-23 | 阶段二 | |
   | copilot-e2e.spec.ts | API: GET /api/copilot/stats 返回统计信息 | ④ 共享限流 | 2026-10-23 | 阶段二 | |
   | copilot-e2e.spec.ts | SSE: /api/sync/stream 返回 text/event-stream 内容类型 (契约) | ④ 共享限流 | 2026-10-23 | 阶段二 | |
-  | copilot-e2e.spec.ts | UI+API: 助手响应 code/explanation 都渲染到 UI | ③ API 期望 | 2026-10-23 | 阶段二 | |
   | critical-e2e.spec.ts | 指标卡片显示正确数值类型（非NaN/undefined） | ④ 共享限流 | 2026-10-23 | 阶段二 | |
   | critical-e2e.spec.ts | 净值曲线canvas存在且尺寸合理 | ④ 共享限流 | 2026-10-23 | 阶段二 | |
   | critical-e2e.spec.ts | 回测完成后图表上可显示交易标记 | ④ 共享限流 | 2026-10-23 | 阶段二 | |
@@ -126,6 +118,18 @@ verified-by: AUD-61 阶段一收口（全量 e2e 实测 186 条 → 64 红 fixme
   - **四类根因分布（并集 78 条）**：④ 共享限流 **52** 条（Received 显式 429 或页面文案含 rate limit exceeded；其中 12 条已被 `getJsonWithBackoff` 覆盖但退避预算在满负荷下耗尽——evidence-probe / status-tristate；其余 API spec 的同类改造归阶段二）、③ API 期望/响应形状漂移 **10** 条（invalid 运行无指标键、screen 空体 200、copilot 503、策略列表空、生成错误体形状）、① 结构漂移/死选择器 **16** 条（导航计数 4→5 / 5→12、`.quick-bt-card` 全仓 0 命中、视觉基线 4 张、错误态与历史区块选择器）。
   - **归因方法**：逐条读 playwright 失败详情的 Expected/Received，不定性的不硬归——backtest-engine 的 7 条流程红以「回测失败 rate limit exceeded」为直接证据归 ④；`backtest history` 区块与限流无关归 ①。api-backtest:331（期望两笔不同本金的 `total_return` 深相等）是本轮确认的**错误期望**而非漂移。api-health 三条经隔离复跑取证（仍 429）后归 ④。
   - **红线执行情况**：除 fixme 与本登记表外零改动。
+
+- **阶段二 · ③ API 期望批（✅ 2026-10-23，commit 待记）**：
+  - **清掉的 8 条**（逐条读后端实测响应后对齐，不靠推断）：
+    - `api-backtest: persisted report contains all required metrics fields`：`win_rate` 在契约里是 `json:"win_rate,omitempty"`（`tellurion-contracts:engine/contracts.go`），零胜率时键缺席是契约行为。改为「有则必须 number；缺席则 `win_trades ?? 0 === 0`」——缺席只在没有盈利平仓时合法。
+    - `api-backtest: larger initial capital …`：深相等是**错误期望**。实测 50 万 vs 200 万（同参数）收益率 0.1164% vs 0.1423%、绝对盈亏 582 vs 2846——100 股整手量化 + 规模相关市场冲击，收益率不是规模不变量。改为断言「平仓笔数不变、收益率同号、绝对盈亏显著放大」。
+    - `api-negative: /api/screen 空 body`：空 body = 无筛选条件，代理返回 200 + `{count, results}`（契约 `core:docs/openapi.yaml` 的 /api/screen）。改为断言 200 与形状。
+    - `api-negative: copilot 空 description`：实测 ai-service 不在线时 /api/copilot/* 整族被反代 fail-closed 成 503；在线时才是 400。改为 `[400,503]` + `error` 必在，请求字段改用活契约的 `description`（旧 `prompt` 会被静默忽略）。
+    - `copilot-e2e` 的 4 条 UI 用例：前端自 OBS-12 起按**异步 job** 契约工作（POST 202 `{job_id,status}` → GET `/generate/{job_id}` 轮询到终态），旧 stub 返回同步 `{code,explanation}`，页面拿不到 job_id 必然走「生成失败」。stub 全部改异步两段式；`explanation` 字段已不在契约，该条改名为「code 与策略名都渲染到 UI」。
+  - **改归类的 2 条**：`backtest-engine: strategy selector loads strategies from backend`、`strategy-selector: strategy cards render with data` 的根因是 429 期间 `/api/strategies` 取不到（页面卡片为空），不是期望值错——登记表里改归 ④，随 ④ 批处理。
+  - **验收**：三条 spec 合跑 `23 passed / 14 skipped / EXIT=0`（含 8 条新绿）；未放宽任何断言为「恒真」，改的两处深相等换成有物理依据的断言并在用例内写清依据。
+  - **破坏验证**：把 `win_rate` 那条改回 `expect(typeof report.win_rate).toBe('number')` → 该条重新变红（实得 `undefined`）；逐字节还原后转绿。
+  - 登记表 78 → 70 行，fixme 78 → 70 条，两边仍一一对应。
 
 - **实测登记（2026-10-14，A-07 收口时顺手取的真实读数；阶段一的 fixme 转换仍未做）**：
   - **179 条用例 = 61 failed / 116 passed / 2 skipped**（`workers: 1`，本地栈齐全）。

@@ -70,20 +70,29 @@ test.describe('P1-30: AI Copilot E2E', () => {
   });
 
   test('UI: 端到端自然语言 → API 调用 → 响应 (或错误) 消息渲染', async ({ page }) => {
-    test.fixme("AUD-61: 生成接口错误体形状漂移，前端渲染「生成失败: ...slice」，期望 stub 文案已过时");
     await page.goto('/copilot');
     await page.waitForLoadState('domcontentloaded');
 
-    // 拦截 /api/copilot/generate, 用稳定 stub 响应
+    // OBS-12（2026-10-09）：生成接口是**异步 job** —— POST 受理 202
+    // {job_id,status}，再 GET /generate/{job_id} 轮询到终态
+    // （契约见 core:docs/openapi.yaml 的 /api/copilot/generate*）。
+    // 旧 stub 直接返回同步 {code,explanation}，页面拿不到 job_id 必然失败。
     await page.route('**/api/copilot/generate', route => {
+      route.fulfill({
+        status: 202,
+        contentType: 'application/json',
+        body: JSON.stringify({ job_id: 'stub-job-1', status: 'pending' }),
+      });
+    });
+    await page.route('**/api/copilot/generate/stub-job-1', route => {
       route.fulfill({
         status: 200,
         contentType: 'application/json',
         body: JSON.stringify({
-          code: 'package plugins\n\nimport "context"\n\n// stub strategy\nfunc Foo(ctx context.Context) { _ = ctx }',
-          language: 'go',
-          explanation: 'P1-30 stub: 一个最小可编译的 Go 策略占位',
-          strategy_name: 'StubStrategy',
+          job_id: 'stub-job-1',
+          status: 'generated',
+          strategy_name: 'P1-30 StubStrategy',
+          generated_code: 'package plugins\n\nimport "context"\n\n// P1-30 stub strategy\nfunc Foo(ctx context.Context) { _ = ctx }',
         }),
       });
     });
@@ -98,8 +107,8 @@ test.describe('P1-30: AI Copilot E2E', () => {
     const assistantMsg = page.locator('.msg.assistant').last();
     await expect(assistantMsg).toBeVisible({ timeout: 15000 });
 
-    // 验证响应内容
-    await expect(assistantMsg).toContainText(/P1-30 stub/);
+    // 验证响应内容（终态消息带策略名）
+    await expect(assistantMsg).toContainText(/P1-30 StubStrategy/);
 
     // 验证 code block 渲染
     const codeBlock = page.locator('.code-block').last();
@@ -132,20 +141,29 @@ test.describe('P1-30: AI Copilot E2E', () => {
   });
 
   test('UI: 多轮对话 — 第二条消息追加到消息列表', async ({ page }) => {
-    test.fixme("AUD-61: 同 72：生成失败后第二条消息未追加");
     await page.goto('/copilot');
     await page.waitForLoadState('domcontentloaded');
 
-    // 拦截 /api/copilot/generate
+    // 异步 job 契约：每轮一次 202 受理 + 一次终态轮询（见文件头 OBS-12）。
+    let turn = 0;
     await page.route('**/api/copilot/generate', route => {
+      turn += 1;
+      route.fulfill({
+        status: 202,
+        contentType: 'application/json',
+        body: JSON.stringify({ job_id: `mt-${turn}`, status: 'pending' }),
+      });
+    });
+    await page.route('**/api/copilot/generate/**', route => {
+      const jobId = route.request().url().split('/').pop();
       route.fulfill({
         status: 200,
         contentType: 'application/json',
         body: JSON.stringify({
-          code: '// turn response',
-          language: 'go',
-          explanation: 'multi-turn response',
+          job_id: jobId,
+          status: 'generated',
           strategy_name: 'MultiTurnStrategy',
+          generated_code: '// turn response',
         }),
       });
     });
@@ -157,7 +175,9 @@ test.describe('P1-30: AI Copilot E2E', () => {
     await textarea.fill(STRATEGY_PROMPTS[0]);
     await sendBtn.click();
     await expect(page.locator('.msg.user').first()).toBeVisible({ timeout: 5000 });
-    await expect(page.locator('.msg.assistant').first()).toBeVisible({ timeout: 10000 });
+    await expect(page.locator('.msg.assistant').first()).toContainText(/MultiTurnStrategy/, {
+      timeout: 10000,
+    });
 
     // 第二轮
     await textarea.fill(STRATEGY_PROMPTS[1]);
@@ -167,23 +187,30 @@ test.describe('P1-30: AI Copilot E2E', () => {
 
     // 第二条 assistant 消息内容
     const lastAssistant = page.locator('.msg.assistant').last();
-    await expect(lastAssistant).toContainText('multi-turn response');
+    await expect(lastAssistant).toContainText('MultiTurnStrategy');
   });
 
   test('UI: 复制代码按钮存在且可点击', async ({ page }) => {
-    test.fixme("AUD-61: 生成失败无代码块 → 复制按钮不可见");
     await page.goto('/copilot');
     await page.waitForLoadState('domcontentloaded');
 
+    // 异步 job 契约：代码在终态响应的 generated_code 里（OBS-12）。
     await page.route('**/api/copilot/generate', route => {
+      route.fulfill({
+        status: 202,
+        contentType: 'application/json',
+        body: JSON.stringify({ job_id: 'copy-job', status: 'pending' }),
+      });
+    });
+    await page.route('**/api/copilot/generate/copy-job', route => {
       route.fulfill({
         status: 200,
         contentType: 'application/json',
         body: JSON.stringify({
-          code: '// click-to-copy test',
-          language: 'go',
-          explanation: 'copy test',
+          job_id: 'copy-job',
+          status: 'generated',
           strategy_name: 'CopyTest',
+          generated_code: '// click-to-copy test',
         }),
       });
     });
@@ -318,23 +345,30 @@ test.describe('P1-30: AI Copilot E2E', () => {
   // 混合: UI + API 验证 response 字段在 UI 端正确渲染
   // ==========================================================================
 
-  test('UI+API: 助手响应 code/explanation 都渲染到 UI', async ({ page, request }) => {
-    test.fixme("AUD-61: 同 72：explanation 字段未渲染");
+  test('UI+API: 助手响应的 code 与策略名都渲染到 UI', async ({ page }) => {
     await page.goto('/copilot');
     await page.waitForLoadState('domcontentloaded');
 
-    // 通过 API stub 返回包含完整字段的响应
-    const testExplanation = 'UI+API 集成测试专用 explanation 字段';
+    // 异步 job 契约：explanation 字段已不在契约里，终态响应给的是
+    // strategy_name + generated_code（见 core:docs/openapi.yaml）。
+    const testStrategy = 'UIApiIntegrationTest';
     const testCode = '// UI+API 集成测试 code\npackage plugins';
     await page.route('**/api/copilot/generate', route => {
+      route.fulfill({
+        status: 202,
+        contentType: 'application/json',
+        body: JSON.stringify({ job_id: 'uiapi-job', status: 'pending' }),
+      });
+    });
+    await page.route('**/api/copilot/generate/uiapi-job', route => {
       route.fulfill({
         status: 200,
         contentType: 'application/json',
         body: JSON.stringify({
-          code: testCode,
-          language: 'go',
-          explanation: testExplanation,
-          strategy_name: 'UIApiIntegrationTest',
+          job_id: 'uiapi-job',
+          status: 'generated',
+          strategy_name: testStrategy,
+          generated_code: testCode,
         }),
       });
     });
@@ -344,13 +378,13 @@ test.describe('P1-30: AI Copilot E2E', () => {
     const sendBtn = page.locator('.n-button--primary-type:has-text("发送")');
     await sendBtn.click();
 
-    // 验证 explanation 在 msg-bubble 内
+    // 验证策略名在 msg-bubble 内
     const assistantBubble = page.locator('.msg.assistant .msg-bubble').last();
-    await expect(assistantBubble).toContainText(testExplanation, { timeout: 10000 });
+    await expect(assistantBubble).toContainText(testStrategy, { timeout: 10000 });
 
     // 验证 code 在 code-block 内
     const codeBlock = page.locator('.msg.assistant .code-block').last();
-    await expect(codeBlock).toContainText(testCode);
+    await expect(codeBlock).toContainText('package plugins');
 
     // 验证 language 标签
     const codeHeader = codeBlock.locator('.code-header span').first();

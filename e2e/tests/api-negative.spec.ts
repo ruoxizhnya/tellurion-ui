@@ -58,10 +58,14 @@ test.describe('API Negative Tests', () => {
     expect(res.status()).toBe(400);
   });
 
-  test('POST /api/screen with empty body returns 400 or 500', async () => {
-    test.fixme("AUD-61: /api/screen 空体现在返回 200，期望 400/500 已过时");
+  test('POST /api/screen with empty body applies no filters (200)', async () => {
     const res = await ctx.post('/api/screen', { data: {} });
-    expect([400, 500]).toContain(res.status());
+    // /api/screen 是数据服务代理：空 body = 无筛选条件，不是非法输入。
+    // 契约见 core:docs/openapi.yaml 的 /api/screen（200 = Screen results）。
+    expect(res.status()).toBe(200);
+    const body = await res.json();
+    expect(typeof body.count).toBe('number');
+    expect(Array.isArray(body.results)).toBe(true);
   });
 
   test('GET /api/strategies/nonexistent returns 404', async () => {
@@ -70,10 +74,14 @@ test.describe('API Negative Tests', () => {
     expect([404, 500]).toContain(res.status());
   });
 
-  test('POST /api/copilot/generate with empty prompt returns 400', async () => {
-    test.fixme("AUD-61: copilot/generate 空参 fail-closed 返 503，期望集合 [400,500] 未含 503");
-    const res = await ctx.post('/api/copilot/generate', { data: { prompt: '' } });
-    expect([400, 500]).toContain(res.status());
+  test('POST /api/copilot/generate with empty description is rejected', async () => {
+    // ai-service 不在线时整族 /api/copilot/* 被反代 fail-closed 成 503
+    // （实测 analysis :8085）；在线时才是 400 校验。两者都是「拒绝」，
+    // 都不能把空描述放过去。
+    const res = await ctx.post('/api/copilot/generate', { data: { description: '' } });
+    expect([400, 503]).toContain(res.status());
+    const body = await res.json();
+    expect(body.error).toBeDefined();
   });
 
   test('GET /api/walkforward/nonexistent returns 404', async () => {
