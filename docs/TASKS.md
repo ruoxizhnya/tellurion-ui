@@ -78,7 +78,7 @@ verified-by: AUD-61 阶段二 ③/④ 批收口（全量 e2e 186 条 → 168 pas
   - **破坏验证**：把 `win_rate` 那条改回 `expect(typeof report.win_rate).toBe('number')` → 该条重新变红（实得 `undefined`）；逐字节还原后转绿。
   - 登记表 78 → 70 行，fixme 78 → 70 条，两边仍一一对应。
 
-- **阶段二 · ④ 共享限流批（✅ 2026-10-23，commit 待记）**：
+- **阶段二 · ④ 共享限流批（✅ 2026-10-23，commit c70bce0）**：
   - **先改姿势，再谈断言（根因不是断言）**：analysis-service 的限流桶是**全进程、每 ClientIP 100 req/min**（`core:pkg/bootstrap/server.go`），整套 playwright 从 `127.0.0.1` 一个 IP 出量，全量必然越额。按 core 仓既有的 e2e 覆盖层重建后端：`core:docker-compose.e2e.yml`（AUD-58）把 `RATE_LIMIT_PER_MINUTE` 抬到 100000，基础 compose 默认值不动。起栈、自检（110 次 `/api/strategies` 应全 200）与恢复默认的命令写进 `e2e/README.md`。**没有放宽、跳过或删除任何断言。**
   - **清掉的 54 条**（52 条登记为 ④ + 2 条原 ③ 复核后改归 ④）：逐条删 fixme 与登记行。其中 11 条在 429 消失后暴露的是**别的原因**，按实测对齐而不是洗红：
     - `backtest-engine`：Naive UI 用 `n-button--loading` class 挡重复提交（DOM 上没有 disabled 属性）→ 断言 loading + 单张进度卡；策略下拉选项类在 Naive 2.44 是 `.n-base-select-option`（旧 `.n-select-option` 0 命中）；「查看报告」是**就地装入本页报告**、不改 URL → 断言指标卡真的出现（旧 `/report=/` 描述的是不存在的路由行为）。
