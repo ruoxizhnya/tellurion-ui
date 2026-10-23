@@ -336,7 +336,7 @@ test.describe('Backend API — Backtest Result Comparison', () => {
     await ctx.dispose();
   });
 
-  test('larger initial capital produces proportionally larger absolute PnL', async () => {
+  test('larger initial capital scales position size (PnL is not a precision invariant)', async () => {
     const ctx = await apiRequest();
 
     const smallCapital = {
@@ -362,15 +362,22 @@ test.describe('Backend API — Backtest Result Comparison', () => {
     expect(rLarge.status()).toBe(200);
     const bLarge = await rLarge.json();
 
-    // 资金规模不是精度不变量：下单按 100 股整手量化，成交价还受规模相关的
-    // 市场冲击影响（实测 50 万 vs 200 万：收益率 0.1164% vs 0.1423%，
-    // 绝对盈亏 582 vs 2846）。所以断言引擎确实按规模放大——决策笔数不变、
-    // 盈亏同号且绝对额显著变大——不再要求收益率深相等。
+    // 资金规模只保证「下单规模按本金比例放大」，**不保证**收益率或盈亏符号：
+    // 同一策略同区间实测 50 万 vs 200 万曾出现 -0.0037% vs +0.0182%
+    // （100 股整手量化 + 规模相关的市场冲击，PnL 本身贴着零轴）。
+    // 断言真实机制：平仓笔数不变，买入股数按 4× 本金同比例放大。
     expect(bLarge.total_trades).toBe(bSmall.total_trades);
-    expect(Math.sign(bLarge.total_return)).toBe(Math.sign(bSmall.total_return));
-    const pnlSmall = bSmall.total_return * smallCapital.initial_capital;
-    const pnlLarge = bLarge.total_return * largeCapital.initial_capital;
-    expect(Math.abs(pnlLarge)).toBeGreaterThan(Math.abs(pnlSmall));
+    const longQty = (b: any) =>
+      (b.trades ?? [])
+        .filter((t: any) => t.direction === 'long')
+        .reduce((s: number, t: any) => s + (t.quantity ?? 0), 0);
+    const qtyRatio = longQty(bLarge) / longQty(bSmall);
+    // 4× 本金的整手量化 + 冲击容差带：3~5 倍。资金被忽略就是 1 倍，
+    // 单位/量纲错就是数量级偏差，都落在带外。
+    expect(qtyRatio).toBeGreaterThanOrEqual(3);
+    expect(qtyRatio).toBeLessThanOrEqual(5);
+    expect(Number.isFinite(bSmall.total_return)).toBe(true);
+    expect(Number.isFinite(bLarge.total_return)).toBe(true);
 
     await ctx.dispose();
   });
