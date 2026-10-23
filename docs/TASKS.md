@@ -77,7 +77,7 @@ verified-by: AUD-61 阶段二 ③/④ 批收口（全量 e2e 186 条 → 168 pas
   - **验收**：三条 spec 合跑 `23 passed / 14 skipped / EXIT=0`（含 8 条新绿）；未放宽任何断言为「恒真」，改的两处深相等换成有物理依据的断言并在用例内写清依据。
   - **破坏验证**：把 `win_rate` 那条改回 `expect(typeof report.win_rate).toBe('number')` → 该条重新变红（实得 `undefined`）；逐字节还原后转绿。
   - 登记表 78 → 70 行，fixme 78 → 70 条，两边仍一一对应。
-  - **订正（2026-10-24，commit 待记）**：原第三句「收益率同号」**不成立** —— 终态复跑实测同一 payload 50 万 `-0.0037%` vs 200 万 `+0.0182%`（PnL 贴零轴，整手量化 + 规模相关冲击会让符号翻转；早两轮同号只是运气）。该用例改名为 `larger initial capital scales position size (PnL is not a precision invariant)`，断言真实机制：平仓笔数不变 + 买入股数按 4× 本金同比例放大（实测 3300 股 vs 14000 股 = 4.24×，容差带 3~5 倍）+ 两侧总收益率是有限数。不再断言收益率符号或绝对盈亏大小。
+  - **订正（2026-10-24，commit 17dbc36）**：原第三句「收益率同号」**不成立** —— 终态复跑实测同一 payload 50 万 `-0.0037%` vs 200 万 `+0.0182%`（PnL 贴零轴，整手量化 + 规模相关冲击会让符号翻转；早两轮同号只是运气）。该用例改名为 `larger initial capital scales position size (PnL is not a precision invariant)`，断言真实机制：平仓笔数不变 + 买入股数按 4× 本金同比例放大（实测 3300 股 vs 14000 股 = 4.24×，容差带 3~5 倍）+ 两侧总收益率是有限数。不再断言收益率符号或绝对盈亏大小。
 
 - **阶段二 · ④ 共享限流批（✅ 2026-10-23，commit c70bce0）**：
   - **先改姿势，再谈断言（根因不是断言）**：analysis-service 的限流桶是**全进程、每 ClientIP 100 req/min**（`core:pkg/bootstrap/server.go`），整套 playwright 从 `127.0.0.1` 一个 IP 出量，全量必然越额。按 core 仓既有的 e2e 覆盖层重建后端：`core:docker-compose.e2e.yml`（AUD-58）把 `RATE_LIMIT_PER_MINUTE` 抬到 100000，基础 compose 默认值不动。起栈、自检（110 次 `/api/strategies` 应全 200）与恢复默认的命令写进 `e2e/README.md`。**没有放宽、跳过或删除任何断言。**
