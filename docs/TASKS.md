@@ -1,7 +1,7 @@
 ---
 status: active
-last-verified: 2026-10-24
-verified-by: AUD-61 阶段二 ③/④ 批收口（全量 e2e 186 条 → 168 passed / 18 skipped / 0 failed，退出码 0；剩余 16 条 ① 待重构落地）
+last-verified: 2026-10-25
+verified-by: 2026-10-25 只做 AUD-61 ① 批的**前置核对**（git 取证，未跑 e2e、未改任何断言）：重构合并这一条**已成立**，上一条记的「分支只在旧仓、origin 也有」两处皆不实。最近一次全量读数仍是 ③/④ 批收口时的 186 条 → 168 passed / 18 skipped / 0 failed（退出码 0，2026-10-23）；剩余 16 条 ① 待做，障碍是运行环境。
 ---
 
 # tellurion-ui · 任务台账
@@ -20,9 +20,9 @@ verified-by: AUD-61 阶段二 ③/④ 批收口（全量 e2e 186 条 → 168 pas
 |---|---|---|---|
 | AUD-61 阶段一（✅ 2026-10-23） | 起齐三服务跑 e2e，把已知红改 `test.fixme` 并登记 | `AUD-61` | 无 |
 | AUD-61 阶段二 ③/④（✅ 2026-10-23） | 先做不依赖 DOM 的 API 期望与共享限流两类，逐条清 fixme 与登记 | `AUD-61` | 阶段一 |
-| AUD-61 阶段二 ①（⬜ 待做） | 结构漂移/视觉基线 16 条，等 `feat/design-tokens-v2-palette-sweep` 合并 | `AUD-61` | ③/④ + 重构合并 |
+| AUD-61 阶段二 ①（⬜ 待做，**前置已解除**） | 结构漂移/视觉基线 16 条；原写「等 `feat/design-tokens-v2-palette-sweep` 合并」——2026-10-25 实测该分支已并入旧仓 main 且内容已随迁移进本仓（见本节「订正」条），**今天的障碍是跑不起栈**，不是重构未落地 | `AUD-61` | ③/④ ✅ + 重构合并 ✅（2026-10-25 核对）+ 三服务与 PG/Redis 起齐 ⬜ |
 
-## AUD-61 · e2e 套件与前端结构脱节（测试债） 🔶（阶段一 ✅ 2026-10-23；阶段二 ③/④ 批 ✅ 2026-10-23，① 批待设计系统重构落地）
+## AUD-61 · e2e 套件与前端结构脱节（测试债） 🔶（阶段一 ✅ 2026-10-23；阶段二 ③/④ 批 ✅ 2026-10-23；① 批 ⬜ 前置已成立，待三服务起齐）
 
 > 2026-10-14 自 core 仓 `tellurion/docs/TASKS.md` §五迁入——e2e 套件随前端拆仓（2026-10-09）已物理归属本仓，且本仓前端正处设计系统重构（DESIGN.md v2.0），e2e 将大改，留 core 主线已无执行意义。本文件为 AUD-61 唯一归属地。
 
@@ -31,7 +31,7 @@ verified-by: AUD-61 阶段二 ③/④ 批收口（全量 e2e 186 条 → 168 pas
   - 套件位置：`e2e/tests/` 共 **19** 个 spec（api-backtest / api-health / api-negative / api-strategy / auth-login-flow / backtest-engine / copilot / copilot-e2e / critical-e2e / cross-navigation / **nav-consistency** / dashboard / data-sync / data-sync-error / data-sync-schedule / rbac-open-access / screener / strategy-selector / visual-regression；重构期间 spec 有增减，**阶段一以 `npx playwright test --list` 实测为准**）。
   - 运行配置：`e2e/playwright.config.ts`——`BASE_URL`（默认 :5173）、`DATA_SERVICE_URL`（:8081）、`BACKEND_URL`（:8085）、`workers: 1`、CI 下 `forbidOnly` + retries 2；数据隔离由 `e2e/helpers/isolation.ts`（库级隔离）保证。
   - 历史实测（**2026-09-26** 干净环境，出处 core 仓 `tellurion-docs/docs/TEST.md` §7.2.0 实测读数 + core 台账原记录）：**127 passed / 34 failed / 2 skipped（共 163）**；34 条全归因（24 条 DOM/选择器漂移 + 4 条 API 期望过时 + …）、与代码改动无关——套件选择器/期望值与前端结构脱节。
-  - 前端现状：`feat/design-tokens-v2-palette-sweep` 分支正在做设计系统重构（DESIGN.md v2.0 为唯一基准、调色板全量扫仓），页面结构将大改 ⇒ **现在按旧结构重对齐是白做工**，先登记、后对齐。
+  - 前端现状：`feat/design-tokens-v2-palette-sweep` 分支正在做设计系统重构（DESIGN.md v2.0 为唯一基准、调色板全量扫仓），页面结构将大改 ⇒ **现在按旧结构重对齐是白做工**，先登记、后对齐。**（2026-10-25 注：本句是 2026-10-14 立单时的现状，今天已不成立——该分支已并入 main 且内容已随迁移进本仓，"白做工"这个前提消失；证据见本节末「订正（2026-10-25）」条。原文照留，是为了保住"阶段一为什么只登记不改断言"这条判断的来历。）**
   - 红线（继承 core 台账原文）：不得把「34 条红」洗成「已验证通过」，也不得放宽断言消红。
 - **③ 要求**：
   - **阶段一（先做，独立可交付）**：起齐三服务（前端 :5173 / data-service :8081 / analysis :8085）后干净环境跑 `npx playwright test` 取得**当前**红清单（重构进行中，数字会漂移，以实测为准）；每条红改为 `test.fixme("AUD-61: <一句话归因>")` 并在下方登记表登记一行。除 fixme 与登记表外**不改任何断言/选择器/期望值**。
@@ -91,6 +91,14 @@ verified-by: AUD-61 阶段二 ③/④ 批收口（全量 e2e 186 条 → 168 pas
   - **验收**：全量 `npx playwright test` → **168 passed / 18 skipped / 0 failed，退出码 0**（4.0 分钟；18 skipped = 16 条 ① fixme + 2 条原有）。登记表 70 → 16 行（全为 ① 结构漂移），fixme 同步 16 条。
   - **破坏验证**：把后端重建回默认 100 req/min，先连打 110 次 `GET /api/strategies` 抽干桶，再跑 `api-health: GET /api/strategies returns strategy list` → **429 红**；恢复 `RATE_LIMIT_PER_MINUTE=100000` 重建后同一条 **绿**。证明这批的绿来自姿势，不是断言被放宽。
   - **留待**：① 结构漂移 16 条仍等 `feat/design-tokens-v2-palette-sweep` 合并（2026-10-24 复核：本仓 `tellurion-ui` 与 origin 均无此分支；该分支只存在于旧仓 `quant-trading-ui`（本地 + origin），尚未迁入本仓）。
+    - **订正（2026-10-25，本行上一条 2026-10-24 的复核结论不成立）**：当时的判据是「**分支名**在不在」，而该问的是「**重构内容**进没进」。实测四条：
+      ① 旧仓 `quant-trading-ui` 的 main 里有一条合并提交 `cb01fcc Merge pull request #1 from ruoxizhnya/feat/design-tokens-v2-palette-sweep`；`git merge-base --is-ancestor feat/design-tokens-v2-palette-sweep main` **退出 0** ⇒ 分支**已合并**，不领先（`rev-list --left-right --count` = `18 0`，18 全在 main 侧）。
+      ② 旧仓 `origin` 今天**已不再有这个分支 ref**（`git ls-remote origin` 只有 `refs/heads/main` 与 `refs/pull/1/head`）——上一条记的「origin 也有」同样不实；本地那个 `remotes/origin/feat/...` 是合并后没清理的陈旧远程跟踪 ref。
+      ③ 内容已随迁移进本仓：旧仓 main 与本仓 HEAD 的 `web/src` **文件集完全相同**（120 vs 120，old-only 0、new-only 0），其中 **103 个 blob 逐字节相同**。17 个不同**逐条对上出处**、无悬空项：12 个是本仓五批后续改动——UI-01（`d12b07a`/`837207c`：`format.ts(+test)`、`DataQualityPanel.vue(+test)`、`MarketMetrics.test.ts`）、UI-02（`166c4b1`：`runStatus.ts(+test)`、`QuickBacktest.test.ts`）、API-01（`3d6e321`：`client.ts(+test)`、`apiMessage.ts`）、REV-01-A 注（`34c1cbe`：`runStatus.ts`）、QT-61（`d7a4ad5`/`1075c28`：`SchedulePanel.test.ts`）；**另 5 个只是注释里的旧仓名** `quant-trading:` → `tellurion:`（`api/sync.ts`、`api/sync.test.ts`、`types/sync.ts`、`utils/jobActions.ts`、`utils/jobActions.test.ts`——逐对 `wc -l` 相等、diff 各只有那一行）。**没有一处是重构回退。** 再抽查四个重构落地文件：`styles/palette.ts`、`styles/palette.test.ts`、`styles/variables.css` 的 blob 与旧仓 main **逐字节一致**，`utils/runStatus.ts` 是本仓 UI-02 改的。
+      ④ 重构产物在本仓仓内可用，但 16 条的**落点分三档**（逐个组件核过，不是一套姿势）：`web/src` 内 `data-testid` 共 288 处——**可直接换 testid**：`QuickBacktest.vue` 6 个（`quick-invalid`/`quick-failed`/`quick-unknown-status` 三对；登记表里 `.quick-bt-card` 那条确属死选择器，实际类是 `.quick-result`）、`ConsoleHistory.vue` 1 个（`console-history-status`）、同步族四块面板各有；**只有类锚、零 testid**：`NavTiles.vue`（`.nav-tiles` / `.nav-tile` 在，`:3`）、`MarketMetrics.vue`（`.metric-item` / `.metric-label` / `.metrics-row`；注意 `metric-card` 这个类只在 `BacktestCompare.vue`，dashboard 上没有）、`AppSidebar.vue`（`class="nav-item"`，`:18`）；**视觉基线 4 条**（`visual-regression`）不吃选择器——要动的是快照本身（重生成），与前三档姿势不同。⇒ 后一档若按 ③ 的纪律「选择器优先 `data-testid`，不靠文案/DOM 位置」做齐，**Dashboard 族 + 侧栏要补 testid，那是前端改动**，得写进 ① 批的边界，不能算"只对齐测试"。
+      ⚠️ 另记一条**本批的陷阱**（不是核对项）：视觉那 4 条用 `npx playwright test --update-snapshots` 重生成基线**等于用新截图当真相**，跑完必然绿，本身不构成验收。收口时要留下判据（对着 `docs/design/visual.md` / DESIGN.md v2.0 核对，或人工过目后在登记行写明"谁看过、看了什么"），否则那 4 条就是把 fixme 洗成不可信的绿。
+      ⇒ **AUD-61 ① 批的前置已解除**，「等合并」不再是理由；剩下 16 条 fixme 的阻塞换成了**运行环境**（见下行），不是设计系统未落地。登记表 16 行与 spec 里 `fixme("AUD-61` 的 16 处命中仍一一对应，本条未动任何断言/选择器/期望值。
+    - **① 批今天真正的阻塞（2026-10-25 实测）**：全量 e2e 起不来——`com.docker.service` 状态 **Stopped**（`docker version` 连不上 `dockerDesktopLinuxEngine` 命名管道），且 `5173 / 8081 / 8085 / 5432 / 6379` **无一个在监听**（`netstat -ano` grep 空）。本单 ③ 要求里对阶段二的规定是「按页重对齐选择器与期望值——每批一个 commit」，验收必须有实测与破坏验证，**在没有三服务的环境里盲改选择器＝把 16 条 fixme 洗成不可信的绿**，撞本单红线。⇒ 需要先把栈起起来（`docker-compose.e2e.yml`，含 `RATE_LIMIT_PER_MINUTE=100000` 那条覆盖层）再按批做。
 
 - **实测登记（2026-10-14，A-07 收口时顺手取的真实读数；阶段一的 fixme 转换仍未做）**：
   - **179 条用例 = 61 failed / 116 passed / 2 skipped**（`workers: 1`，本地栈齐全）。
