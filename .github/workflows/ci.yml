@@ -43,9 +43,16 @@ jobs:
   e2e:
     name: Playwright e2e (smoke)
     runs-on: ubuntu-latest
-    # 端到端用例打真实后端 API，需先起整栈。当前后端仍在 core 仓，本地/CI 起
-    # 栈见 core 仓 docs/TEST.md；此 job 先保留为手动触发（workflow_dispatch），
-    # 待后端服务的 CI 就绪后改为自动。
+    # ⚠️ 注释与触发器对不上，已按实测订正（2026-10-26）。原文写「此 job 先保留为手动触发
+    # （workflow_dispatch），待后端服务的 CI 就绪后改为自动」——两条都不成立：
+    #   ① 文件头的 `on:` 只有 `push: branches [main]` 与 `pull_request`，**没有 workflow_dispatch**，
+    #      所以这个 job 每次 push / PR 都会跑，不是手动；
+    #   ② 这个 job 今天**没有任何 playwright 步骤**——只有 checkout + setup-node + `npm ci`（见下面），
+    #      等于「e2e 依赖装得起来」这一条烟雾，不跑用例，因此也不会因为后端没起而红。
+    # 真实状态：端到端用例打真后端（:5173 / data :8081 / analysis :8085），CI 里没有栈，故**故意不启用**。
+    # 起栈见 `tellurion-docs:docs/TEST.md`（注意：core 仓没有 docs/TEST.md，文档拆仓后它在 docs 仓——原注释指错了地方）。
+    # 要真跑：加 services 或改 `workflow_dispatch` + 输入 API_BASE，且红必须先进 `docs/TASKS.md` AUD-61 的登记表，
+    # 不许靠放宽断言变绿。
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
