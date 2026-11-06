@@ -1,5 +1,5 @@
 <template>
-  <aside class="app-sidebar" :class="{ collapsed }">
+  <aside class="app-sidebar" :class="{ collapsed }" data-testid="app-sidebar">
     <div class="sidebar-brand">
       <n-icon size="22" class="brand-icon"><TrendingUpOutline /></n-icon>
       <span v-if="!collapsed" class="brand-text">Quant Lab</span>
@@ -8,6 +8,7 @@
     <nav
       class="sidebar-nav"
       aria-label="主导航"
+      data-testid="sidebar-nav"
     >
       <div v-for="group in navGroups" :key="group.title" class="nav-group">
         <div v-if="!collapsed" class="nav-group-title">{{ group.title }}</div>
@@ -16,6 +17,7 @@
           :key="item.path"
           :to="item.path"
           class="nav-item"
+          :data-testid="navTestId(item.path)"
           :data-nav-path="item.path"
           :class="{ active: item.path === activePath }"
           :aria-current="item.path === activePath ? 'page' : undefined"
@@ -100,6 +102,16 @@ const activePath = computed(() => {
   }
   return best
 })
+
+/**
+ * AUD-63：sidebar 每项的 e2e 锚点（命名规则见 ui:docs/TASKS.md AUD-63）。
+ * 根路径 `'/'` 映射为 `home`；其余去掉前导 `/`、内部 `/` 换成 `-`，
+ * 例：`/backtest/compare` → `nav-item-backtest-compare`。属性值里不留斜杠。
+ */
+function navTestId(path: string): string {
+  if (path === '/') return 'nav-item-home'
+  return `nav-item-${path.slice(1).replace(/\//g, '-')}`
+}
 </script>
 
 <style scoped>

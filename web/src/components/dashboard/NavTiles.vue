@@ -1,6 +1,13 @@
 <template>
-  <div class="nav-tiles">
-    <router-link v-for="tile in tiles" :key="tile.to" :to="tile.to" class="nav-tile" :style="{ '--accent': tile.color }">
+  <div class="nav-tiles" data-testid="nav-tiles">
+    <router-link
+      v-for="tile in tiles"
+      :key="tile.to"
+      :to="tile.to"
+      class="nav-tile"
+      :data-testid="tile.testid"
+      :style="{ '--accent': tile.color }"
+    >
       <component :is="tile.icon" class="tile-icon" />
       <div class="tile-text">
         <div class="tile-title">{{ tile.title }}</div>
@@ -30,16 +37,18 @@ interface NavTile {
   title: string
   desc: string
   color: string
+  /** AUD-63：e2e 锚点，命名规则见 ui:docs/TASKS.md AUD-63「testid 命名规则」 */
+  testid: string
 }
 
 // accent 是装饰性标识色：确定性磁贴从 §0.2 系列带取（系列带无状态语义，可借），
 // AI Copilot 必须走概率通道 --q-ai-text —— 这条不是配色偏好，是 DESIGN.md §3 双通道硬规则。
 const tiles: NavTile[] = [
-  { to: '/backtest', icon: h(NIcon, null, () => h(AnalyticsOutline)), title: '回测引擎', desc: '单股票/组合回测分析', color: 'var(--q-primary)' },
-  { to: '/screener', icon: h(NIcon, null, () => h(SearchOutline)), title: '选股与市场', desc: '多因子筛选与排名', color: 'var(--q-series-2)' },
-  { to: '/strategy-lab', icon: h(NIcon, null, () => h(SettingsOutline)), title: '策略库', desc: '策略管理与参数优化', color: 'var(--q-series-3)' },
-  { to: '/copilot', icon: h(NIcon, null, () => h(ChatbubblesOutline)), title: '策略 Copilot', desc: '智能策略生成助手', color: 'var(--q-ai-text)' },
-  { to: '/dashboard?tab=batch', icon: h(NIcon, null, () => h(FlashOutline)), title: '批量回测', desc: '多策略多标的对比', color: 'var(--q-series-5)' },
+  { to: '/backtest', icon: h(NIcon, null, () => h(AnalyticsOutline)), title: '回测引擎', desc: '单股票/组合回测分析', color: 'var(--q-primary)', testid: 'nav-tile-backtest' },
+  { to: '/screener', icon: h(NIcon, null, () => h(SearchOutline)), title: '选股与市场', desc: '多因子筛选与排名', color: 'var(--q-series-2)', testid: 'nav-tile-screener' },
+  { to: '/strategy-lab', icon: h(NIcon, null, () => h(SettingsOutline)), title: '策略库', desc: '策略管理与参数优化', color: 'var(--q-series-3)', testid: 'nav-tile-strategy-lab' },
+  { to: '/copilot', icon: h(NIcon, null, () => h(ChatbubblesOutline)), title: '策略 Copilot', desc: '智能策略生成助手', color: 'var(--q-ai-text)', testid: 'nav-tile-copilot' },
+  { to: '/dashboard?tab=batch', icon: h(NIcon, null, () => h(FlashOutline)), title: '批量回测', desc: '多策略多标的对比', color: 'var(--q-series-5)', testid: 'nav-tile-batch' },
 ]
 </script>
 

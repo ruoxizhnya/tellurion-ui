@@ -1,7 +1,7 @@
 ---
 status: active
-last-verified: 2026-10-25
-verified-by: 2026-10-25 只做 AUD-61 ① 批的**前置核对**（git 取证，未跑 e2e、未改任何断言）：重构合并这一条**已成立**，上一条记的「分支只在旧仓、origin 也有」两处皆不实。最近一次全量读数仍是 ③/④ 批收口时的 186 条 → 168 passed / 18 skipped / 0 failed（退出码 0，2026-10-23）；剩余 16 条 ① 待做，障碍是运行环境。
+last-verified: 2026-11-07
+verified-by: 2026-11-07 AUD-63 施工 —— 三个组件补窄 `data-testid`（纯增量属性），`web/` 下 `lint` / `typecheck` / `test` 三条 exit 0（38 文件 540 用例全绿）；e2e 断言对齐与真栈轨未执行（三服务未起），故 AUD-63 记 🔶。此前 2026-10-25 只做 AUD-61 ① 批前置核对（git 取证）；最近一次 e2e 全量读数仍是 2026-10-23 的 186 条 → 168 passed / 18 skipped / 0 failed。
 ---
 
 # tellurion-ui · 任务台账
@@ -168,7 +168,7 @@ verified-by: 2026-10-25 只做 AUD-61 ① 批的**前置核对**（git 取证，
 
 ---
 
-## AUD-63 · 三个组件的窄 `data-testid` 落地（裁决 ⑳ 的例外，AUD-61 ⑥ 不许改模板）[P2] ⬜（前置 = 三服务起齐）
+## AUD-63 · 三个组件的窄 `data-testid` 落地（裁决 ⑳ 的例外，AUD-61 ⑥ 不许改模板）[P2] 🔶（testid 与命名规则已落；断言对齐与真栈轨未执行）
 
 > **为什么要单独一张单**：AUD-61 的 ⑥ 边界原文「**只做 `e2e/` 目录 + 本登记表；前端生产代码缺陷…另立工单**」，而 ① 批要动的是 `.vue` 模板——AUD-61 自己 `:104` 就写了「Dashboard 族 + 侧栏要补 testid，**那是前端改动**，得写进 ① 批的边界，不能算“只对齐测试”」。第三轮裁决 ⑳ 于是裁了窄例外，但台账 `:30` 如实登记「⑳ 窄 `data-testid` ⛔：仅授权三件，**但无六字段单**——缺 testid 命名规则、断言清单与“是否允许改组件模板”的授权」。**本单补的就是这三样缺失**，补完即解除「无单」这一半阻塞；「真栈未起」那一半仍由裁决 ⑥ 的两轨制处理（见 ⑤）。
 
@@ -178,6 +178,25 @@ verified-by: 2026-10-25 只做 AUD-61 ① 批的**前置核对**（git 取证，
 - **④ 约束与非目标**：不改组件的类名/结构/样式/文案；不批量给其余 11 个文件铺 testid（超出三件即另立单）；不动 `e2e/playwright.config.ts` 与 `helpers/isolation.ts` 的隔离机制（`:162` 红线，AUD-62 同源教训）；不引新测试框架（vitest/playwright 之外不加）；不重生成视觉基线（裁决 ⑥ 的另一腿）；**禁止**把 34 条已知红改成跳过或放宽断言来变绿。
 - **⑤ 验收**：① 无栈轨现在可做：`npm run lint` + `npm run typecheck` + `npm test`（`lint:tests` + `vitest run`）三条绿，贴真实退出码；② 真栈轨需起齐 `:5173 / :8081 / :8085` 后 `npx playwright test` 跑到那几条被对齐的用例，**未跑就如实标注「本腿未执行」，不许用 skip 冒充通过**；③ 破坏验证（护栏必验）：删掉三个新 testid 中任一个 ⇒ 对应用例必须红（证明断言真指着它），还原复绿；④ 登记表里被对齐的条目其 fixme 与登记行已同批删除，`git grep -c fixme` 计数下降且下降数与对齐数一致；⑤ 命名规则成文且新增三处与规则逐字一致。
 - **⑥ 边界**：只这三个 `.vue` 的模板属性 + 对应 e2e 选择器 + 登记表行；其余 11 个 `data-testid` 文件的批量对齐、视觉基线重生成、真栈 CI 各归各单（裁决 ⑥ 两轨制）。
+
+- **testid 命名规则（2026-11-07 定，取自既有 110 处的主流风格，不自造第四种）**：
+  1. **全小写 kebab-case**，`<区块前缀>-<元素>[-<限定>]`；前缀取组件归属域（`nav` / `market-metric` / `nav-item`），不用组件文件名。
+  2. **禁止** camelCase、下划线、中文、空格；静态值里**不留 `/`**（路径段一律换成 `-`）。
+  3. 列表项用**显式字段或模板字符串**生成确定值，不靠数组下标（下标会随排序漂移）：
+     静态列表（如 `NavTiles` 的 5 块）在数据对象里写 `testid` 字段；动态列表（如侧栏）用 `:data-testid="navTestId(item.path)"`。
+  4. 与既有 110 处的写法逐字一致（`queue-*` / `schedule-*` / `readout-*` / `login-*` 等即此规则）。
+
+  | 组件 | 新增 testid |
+  |---|---|
+  | `NavTiles.vue` | 容器 `nav-tiles`；磁贴 `nav-tile-backtest` / `nav-tile-screener` / `nav-tile-strategy-lab` / `nav-tile-copilot` / `nav-tile-batch` |
+  | `MarketMetrics.vue` | 空态 `market-metrics-empty`；读数容器 `market-metrics`；四格 `market-metric-close` / `market-metric-pct` / `market-metric-volume` / `market-metric-amount` |
+  | `AppSidebar.vue` | 容器 `app-sidebar` / `sidebar-nav`；导航项 `nav-item-home` / `nav-item-explore` / `nav-item-evidence` / `nav-item-backtest` / `nav-item-backtest-compare` / `nav-item-strategy-lab` / `nav-item-strategy-builder` / `nav-item-copilot` / `nav-item-factors` / `nav-item-screener` / `nav-item-data-sync` / `nav-item-alerts` |
+
+- **施工记录（2026-11-07）**：
+  - **已落**（3 文件，纯增量属性）：`web/src/components/dashboard/NavTiles.vue`（容器 + 5 磁贴；`NavTile` 接口加 `testid` 字段）、`web/src/components/dashboard/MarketMetrics.vue`（空态 + 容器 + 四格）、`web/src/components/layout/AppSidebar.vue`（`aside` / `nav` 容器 + 每项 `navTestId(path)` 生成；未改类名、结构、样式、文案）。
+  - **无栈轨实测**（`web/` 下，2026-11-07）：`npm run lint` → **exit 0**（`✖ 945 problems (0 errors, 945 warnings)`，警告均为既有 `vue/max-attributes-per-line` 一类的格式提示，本单未新增 error）；`npm run typecheck` → **exit 0**；`npm test` → **exit 0**（`Test Files 38 passed / Tests 540 passed`）。
+  - **未执行腿（故记 🔶 非 ✅）**：③ 的 e2e 选择器改写**未做**——四行登记项（`dashboard: sidebar navigation renders with all items`、`dashboard: metrics cards render with labels`、`dashboard: navigation tiles are present and link to correct routes`、`cross-navigation: Dashboard nav tiles navigate to correct routes`）的期望值本身已过期（侧栏 5→12、磁贴 4→5 且 `因子分析` 已不在磁贴里、指标卡指向的是 `.metric-card` 族而非 `MarketMetrics`），改期望值属**内容裁决**而不是换选择器，且必须真栈跑到才能取证；`5173 / 8081 / 8085` 本轮未起 ⇒ ③ 与其 fixme/登记行删除、⑤③ 破坏验证、⑤④ 计数下降三条**一律未执行**，不标通过。
+  - **边界守住**：未动 `e2e/` 任何文件、未动 `playwright.config.ts` / `isolation.ts`、未给其余 11 个文件铺 testid、未重生成视觉基线。
 
 ---
 

@@ -33,6 +33,7 @@
       <div
         v-if="!metrics"
         class="metrics-empty"
+        data-testid="market-metrics-empty"
       >
         <n-space
           align="center"
@@ -58,20 +59,21 @@
       <div
         v-else
         class="metrics-row"
+        data-testid="market-metrics"
       >
-        <div class="metric-item">
+        <div class="metric-item" data-testid="market-metric-close">
           <span class="metric-label">收盘价</span>
           <span class="metric-val">{{ fmtNumber(metrics.close, 2) }}</span>
         </div>
-        <div class="metric-item">
+        <div class="metric-item" data-testid="market-metric-pct">
           <span class="metric-label">涨跌幅</span>
           <span class="metric-val" :class="pctClass(metrics)">{{ pctText(metrics) }}</span>
         </div>
-        <div class="metric-item">
+        <div class="metric-item" data-testid="market-metric-volume">
           <span class="metric-label">成交量</span>
           <span class="metric-val">{{ fmtVolume(metrics.volume) }}</span>
         </div>
-        <div class="metric-item">
+        <div class="metric-item" data-testid="market-metric-amount">
           <span class="metric-label">成交额</span>
           <span class="metric-val">{{ metrics.amount == null ? '未读取' : `${fmtAmount(metrics.amount)}亿` }}</span>
         </div>
