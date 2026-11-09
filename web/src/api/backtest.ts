@@ -4,7 +4,8 @@ import type { BacktestRequest, BacktestResult, BacktestJob } from '@/types/api'
 /**
  * CR-04 (ODR-012): The Go backend `POST /api/backtest` (handlers_backtest.go)
  * dispatches by sniffing the request body — it tries
- *   1) `backtest.CreateJobRequest` (strategy_id + universe)  → async job
+ *   1) async request (strategy_id + universe) → task face (orchestration
+ *      `POST /api/runs/jobs`); 503 when ORCHESTRATION_URL is not configured
  *   2) `backtest.BacktestRequest`  (strategy + stock_pool)   → sync run
  * To make the client-side contract explicit, both flavors below carry a
  * `mode` discriminator. The backend currently ignores it, but the field
