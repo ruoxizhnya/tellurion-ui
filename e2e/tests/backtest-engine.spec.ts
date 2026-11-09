@@ -263,10 +263,12 @@ test.describe('Backtest Engine — Complete Workflow Tests', () => {
   });
 
   test('backtest history shows completed jobs with correct data', async ({ page }) => {
-    test.fixme("AUD-61: 需真行情数据（600519.SH 的 OHLCV 行）；本机 PG 无行情行，回测只得 invalid，等不到 .metrics-grid");
     await navigateToBacktest(page);
 
     await page.fill('[placeholder="600000.SH,600036.SH"]', '600519.SH');
+    // 页面默认是异步模式（asyncMode = ref(true)），异步提交要求 ORCHESTRATION_URL；
+    // 本用例的目标是「跑完一次回测并核对历史」，显式切到同步模式，不依赖编排栈。
+    await page.click('.mode-toggle .n-button:has-text("同步")');
     await page.click('.n-button--primary-type:has-text("运行回测")');
 
     await page.waitForSelector('.metrics-grid', { timeout: 120000 });

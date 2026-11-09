@@ -1,7 +1,7 @@
 ---
 status: active
 last-verified: 2026-11-10
-verified-by: 2026-11-10 AUD-63 收口补充——core `/api/market/index` 改为本地供数（原生栈 + 真 PG 播 4 行指数日线）后，「有读数」支真栈跑通（`metrics cards render with labels` 1 passed），`market-metric-close` 破坏验证红→逐字节还原复绿，AUD-63 由 🔶 翻 ✅。此前：AUD-61 ① 批清 11 条 fixme（14 passed / EXIT=0）；AUD-63 真栈轨与两条破坏验证；全量 135 passed / 44 failed / 7 skipped，44 条红全部归因「库内零行情行 + 无 orchestration + 同步作业无外网」。
+verified-by: 2026-11-10 晚 AUD-61 ① 批数据腿收口——真 PG（库 `tellurion_e2e`）播 262 根 600519.SH 日线后，`POST /api/backtest` 真引擎 200 `completed`（13 笔交易），`backtest history` 用例删 fixme 后真栈 **1 passed**；同轮订正原归因（默认异步 + 无 ORCHESTRATION_URL 亦 503），e2e 现存 fixme 由 5 条降至 **4 条（全是视觉基线）**。此前：2026-11-10 AUD-63 收口补充——core `/api/market/index` 改为本地供数（原生栈 + 真 PG 播 4 行指数日线）后，「有读数」支真栈跑通（`metrics cards render with labels` 1 passed），`market-metric-close` 破坏验证红→逐字节还原复绿，AUD-63 由 🔶 翻 ✅。此前：AUD-61 ① 批清 11 条 fixme（14 passed / EXIT=0）；AUD-63 真栈轨与两条破坏验证；全量 135 passed / 44 failed / 7 skipped，44 条红全部归因「库内零行情行 + 无 orchestration + 同步作业无外网」。
 ---
 
 # tellurion-ui · 任务台账
@@ -22,9 +22,9 @@ verified-by: 2026-11-10 AUD-63 收口补充——core `/api/market/index` 改为
 |---|---|---|---|
 | AUD-61 阶段一（✅ 2026-10-23） | 起齐三服务跑 e2e，把已知红改 `test.fixme` 并登记 | `AUD-61` | 无 |
 | AUD-61 阶段二 ③/④（✅ 2026-10-23） | 先做不依赖 DOM 的 API 期望与共享限流两类，逐条清 fixme 与登记 | `AUD-61` | 阶段一 |
-| AUD-61 阶段二 ①（🔶 2026-11-10：11/16 已对齐清表，余 5 条列明阻塞） | 结构漂移/视觉基线 16 条；原「等 `feat/design-tokens-v2-palette-sweep` 合并」的阻塞已于 2026-10-25 解除；2026-11-10 用**无 Docker 的原生三服务栈**跑通并清 11 条，余 1 条缺真行情数据 + 4 条视觉基线待人工核对 | `AUD-61` | ③/④ ✅ + 重构合并 ✅ + 三服务与 PG 起齐 ✅（2026-11-10 原生栈） |
+| AUD-61 阶段二 ①（🔶 2026-11-10：12/16 已对齐清表，余 4 条视觉基线） | 结构漂移/视觉基线 16 条；原「等 `feat/design-tokens-v2-palette-sweep` 合并」的阻塞已于 2026-10-25 解除；2026-11-10 用**无 Docker 的原生三服务栈**跑通并清 12 条（含回测历史那条：真 PG 播 262 根 600519.SH 日线后真栈 1 passed），余 4 条视觉基线待人工核对 | `AUD-61` | ③/④ ✅ + 重构合并 ✅ + 三服务与 PG 起齐 ✅（2026-11-10 原生栈） |
 
-## AUD-61 · e2e 套件与前端结构脱节（测试债） 🔶（阶段一 ✅ 2026-10-23；阶段二 ③/④ 批 ✅ 2026-10-23；① 批 🔶 2026-11-10：清 11 / 余 5）
+## AUD-61 · e2e 套件与前端结构脱节（测试债） 🔶（阶段一 ✅ 2026-10-23；阶段二 ③/④ 批 ✅ 2026-10-23；① 批 🔶 2026-11-10：清 12 / 余 4）
 
 > **K 组取证（2026-10-26，决策材料；未实现）**：`rg -n 'data-testid' --glob '*.vue'` 基线 = **113 行 / 14 文件**（`web/src` 全部文件口径 = 288 行 / 25 文件，与下文 ③ 的 288 一致）。两条均 ⛔ 不可开工：
 > ① 批量断言 ⛔：派发单明确「不可执行（决策材料）」，且真栈未起。**订正上一版阻塞理由**：本轮 `docker version` / `docker ps` **可达**（daemon 已起，`dockerDesktopLinuxEngine` 连通），先前记的「daemon 不可达」已失效；仍缺的是前端栈本身——`5173 / 8081 / 8085 / 5432 / 6379` 未起、本仓无六字段的可执行单。⑳ 窄 `data-testid` ⛔：仅授权 `NavTiles.vue` / `MarketMetrics.vue` / `AppSidebar.vue`，但**无六字段单**——缺 testid 命名规则、断言清单与「是否允许改组件模板」的授权。
@@ -46,16 +46,15 @@ verified-by: 2026-11-10 AUD-63 收口补充——core `/api/market/index` 改为
 
   | spec 文件 | 用例名 | 红因归类 | fixme 日期 | 对齐批次 | 清除日期 |
   |---|---|---|---|---|---|
-  | backtest-engine.spec.ts | backtest history shows completed jobs with correct data | ① + 缺真行情数据 | 2026-10-23 | 阶段二 ①（数据阻塞） | |
   | visual-regression.spec.ts | dashboard renders correctly | ① 视觉基线待重生成 | 2026-10-23 | 阶段二 ①（视觉腿） | |
   | visual-regression.spec.ts | backtest page renders correctly | ① 视觉基线待重生成 | 2026-10-23 | 阶段二 ①（视觉腿） | |
   | visual-regression.spec.ts | dashboard responsive on mobile viewport | ① 视觉基线待重生成 | 2026-10-23 | 阶段二 ①（视觉腿） | |
   | visual-regression.spec.ts | backtest responsive on tablet viewport | ① 视觉基线待重生成 | 2026-10-23 | 阶段二 ①（视觉腿） | |
 
-- **阶段二 · ① 批（2026-11-10，无 Docker 起原生三服务栈；16 → 5 行）**：
+- **阶段二 · ① 批（2026-11-10，无 Docker 起原生三服务栈；16 → 4 行）**：
   - **栈怎么起的（本机无 Docker，全部原生进程）**：真 PostgreSQL 16.15 `127.0.0.1:5432`，新建库 `tellurion_ui_e2e`（analysis-service 启动自动迁移 core 面；data-service 启动自动迁移 `market`/`ingest` 面）；`data-service :8081`（`tellurion-data` 仓 `cmd/dataservice`）；`analysis-service :8085`（core 仓 `cmd/analysis`，`CONFIG_PATH=<core>/config/analysis-service.yaml`，env：`DATABASE_HOST/PORT/USER/PASSWORD/DATABASE`、`AUTH_INSECURE=true`、`AUTH_INSECURE_EXPOSURE=loopback-published`、`RATE_LIMIT_PER_MINUTE=100000`、`DATA_SERVICE_URL=http://127.0.0.1:8081`、`RISK_SERVICE_RESOLVE_ENABLED=false`、`SERVER_HOST=127.0.0.1`）；`vite :5173`（`web` 下 `npm run dev`）。
     - 坑（下一个人会踩）：vite 5 在 Windows 只监听 `::1`，`curl 127.0.0.1:5173` 连不上、`localhost:5173` 才行；`RISK_SERVICE_RESOLVE_ENABLED=false` 是必须的——analysis 出厂 `risk_service.resolve_enabled=true`，取不到 risk 快照会**拒绝启动**；`:8081`/`:8085` 的 `/health` 与经 vite 代理的 `GET /api/strategies` 均实测 200。
-  - **基线（临时去 16 条 fixme 的真栈复跑）**：**16 failed**，逐条读 Expected/Received 后分三档：11 条选择器/期望过期（本批清）、1 条缺真行情数据（留）、4 条视觉基线（留）。
+  - **基线（临时去 16 条 fixme 的真栈复跑）**：**16 failed**，逐条读 Expected/Received 后分三档：11 条选择器/期望过期（本批清）、1 条缺真行情数据（当日另起真库补齐后清除，见下）、4 条视觉基线（留）。
   - **清掉的 11 条**（逐条删 fixme + 删登记行；还原后合跑 **14 passed / EXIT=0**，11.9s）：
     - `dashboard: sidebar navigation renders with all items`：5 → 12；改 `[data-testid^="nav-item-"]` 计数 12 + 逐个 `nav-item-*` 可见（testid 属 AUD-63）。
     - `dashboard: navigation tiles are present and link to correct routes`：4 → 5；改 `[data-testid^="nav-tile-"]` 计数 5 + 五个 `href`（`nav-tile-batch` → `/dashboard?tab=batch`）。旧期望里的「因子分析」tile 已并入策略库，dashboard 上不存在。
@@ -68,9 +67,15 @@ verified-by: 2026-11-10 AUD-63 收口补充——core `/api/market/index` 改为
     - `critical-e2e: 访问不存在的报告ID显示友好错误提示`：**用例自身写错入口参数**——页面只读 `?id=`（`BacktestEngine.vue` 的 `route.query.id`），旧用例发 `?report=`，于是永远走空态、从不触发错误态。改 `?id=nonexistent-report-id-99999`，断言 `.n-alert`「报告加载失败」+ 正文 /加载失败|不存在|not found|404/。
     - `backtest-engine: form fields render correctly`：`.n-button--primary-type` 命中 2 枚（同步/异步切换默认也是 primary）⇒ strict violation；改 `getByRole('button', {name:/运行回测/})`。
     - `backtest-engine: responsive layout on different viewport sizes`：`.bt-form-card` 0 命中；改 `.bt-page .n-card` 中 title=回测引擎 的卡片 + `.form-grid`，768/1280 两个视口都验。
-  - **留下的 5 条（不洗绿）**：
-    - `backtest-engine: backtest history shows completed jobs with correct data`：需要 600519.SH 的真 OHLCV。本机 PG **零行情行**（`market.ohlcv_daily_qfq` / `public.ohlcv_daily_qfq` / `ingest.raw` 实测均 0），`POST /api/backtest` 只能得 invalid，等不到 `.metrics-grid`。fixme 理由已改写为这条。
+  - **留下的 4 条（不洗绿）**：
     - `visual-regression` 4 条：`--update-snapshots` 重生成 = 用新截图当真相（AUD-63 ⑥ 的另一腿，本单 ⑥ 亦不许），且当前库无行情数据，重生成只会把「空态页面」固化成基线。4 条 fixme 理由已改写为「须人工按 DESIGN.md 核对后重生成」。
+  - **回测历史那条当日清除（2026-11-10 晚，阶段二 ① 数据腿）**：
+    - **数据**：真 PostgreSQL 16.15 `127.0.0.1:5432` 新建库 `tellurion_e2e`；data-service 启动自动建 `market`/`ingest` 22 张表；播种 `600519.SH` **2024 全年 262 根日线**（确定性公式，非随机）+ 262 行交易日历 + 1 行 `market.stocks`。行数与可见性核对：`select count(*)` = 262。
+    - **真引擎**：`POST /api/backtest`（`momentum` / 600519.SH / 2024-01-01~2024-12-31 / 本金 100 万）→ **200 `status=completed`**，`total_return=0.0440`、`sharpe=1.646`、`total_trades=13`、`win_rate=0.846`（真行情 + 真引擎，不是桩）。
+    - **订正原 fixme 归因**：不只是「库内零行情行」。页面 `asyncMode = ref(true)`（`BacktestEngine.vue:157`）默认走异步，而异步要求 `ORCHESTRATION_URL`；本栈未起编排 ⇒ `POST /api/backtest` 得 **503「服务暂时不可用」**（实拍页面快照：`回测失败 / 服务暂时不可用，请稍后重试`）。即使播了行情，原用例也等不到 `.metrics-grid`。
+    - **用例改法**：显式点 `.mode-toggle .n-button:has-text("同步")` 切同步模式（用例目标是「跑完一次回测并核对历史」，不依赖编排栈），**未放宽任何断言**；`test.fixme(...)` 与登记行同笔删除。
+    - **真栈结果**：`npx playwright test -g "backtest history shows completed jobs with correct data"` → **1 passed (1.3s) / EXIT=0**；历史区块实拍到 `600519.SH · momentum | 夏普: 1.65 | 最大回撤: -0.98% | +4.40%`。
+    - **收尾**：`tellurion_e2e` 库用完即删；data/analysis/vite 进程已停；本笔只改 `e2e/tests/backtest-engine.spec.ts` 一处 + 本台账。
   - **AUD-63 真栈轨与破坏验证（⑤②③）**：
     - 四条 AUD-63 登记项（sidebar / nav tiles / cross-nav tiles / metrics）在真栈上**全绿**（含在上面 14 passed 里）。
     - 破坏验证一：把 `NavTiles.vue:49` 的 `testid: 'nav-tile-strategy-lab'` 改成 `-del` ⇒ `navigation tiles are present…` 与 `navigation from dashboard works` **双红**；逐字节还原，`SHA256=9FFFFBB044D2A51C97AE08F1B33BD93B7AD8C8A40CC5E1DAB75C745E32E13516` 与破坏前一致。
@@ -224,7 +229,7 @@ verified-by: 2026-11-10 AUD-63 收口补充——core `/api/market/index` 改为
     - DOM 探针（Playwright 直读）：`market-metrics`=1、`market-metrics-empty`=0；`market-metric-close` 文案「收盘价 3,825.50」、`market-metric-volume`「成交量 4.2亿」；默认选中 `000001.SH` 只有一期 bar ⇒ `pct`/`amount` 渲染「未读取」，与「missing≠0」契约一致（不是缺陷）。
     - **破坏验证三**：把 `MarketMetrics.vue` 的 `data-testid="market-metric-close"` 改成 `-del` ⇒ 该用例**红**；逐字节还原后 SHA256 `300F7037A37A02C889FAB33D71E7787BA9A4FC7C93F236D9A81173A92D28EF69` 与破坏前一致，复绿。
     - ⇒ ⑤③ 的「删三个组件任一新 testid 必红」今天对 `nav-item-*` / `nav-tile-*` / `market-metrics-empty` / `market-metric-close` 四类均成立；四条登记项与非空读数支都被真栈跑过。
-  - **⑤④ 计数**：四条登记项的 fixme 与登记行已随 AUD-61 ① 批同笔删除；`e2e/tests` 现存 fixme 5 条（1 条缺真行情数据 + 4 条视觉基线），与 ① 批清 11 条的口径一致。
+  - **⑤④ 计数**：四条登记项的 fixme 与登记行已随 AUD-61 ① 批同笔删除；`e2e/tests` 现存 fixme **4 条**（全部是视觉基线；原「1 条缺真行情数据」已于 2026-11-10 晚在真 PG + 真引擎下清除），与 ① 批清 12 条的口径一致。
   - **边界守住**：`web/src` 两文件仅破坏验证期间临时改动且已逐字节还原（SHA256 复核）；未给其余 11 个文件铺 testid、未动 `playwright.config.ts` / `isolation.ts`、未重生成视觉基线。
 
 ---
