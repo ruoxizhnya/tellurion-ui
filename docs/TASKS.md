@@ -1,7 +1,7 @@
 ---
 status: active
 last-verified: 2026-11-10
-verified-by: 2026-11-10 AUD-61 ① 批（无 Docker 起原生三服务栈：真 PG 16.15 + data `:8081` + analysis `:8085` + vite `:5173`）——16 条 fixme 中 **11 条对齐并清表**（真栈复跑 `14 passed / EXIT=0`，11.9s），留 5 条（1 条缺真行情数据、4 条视觉基线待人工核对）；同批对 AUD-63 的三块做真栈断言与破坏验证（改 `nav-tile-strategy-lab` / `market-metrics-empty` 锚点必红，逐字节还原 SHA256 一致后复绿）。全量套件在本机栈读数 **135 passed / 44 failed / 7 skipped**，44 条红全部可归因于「库内零行情行 + 无 orchestration + 同步作业无外网」，不是本批引入。此前 2026-11-07 AUD-63 施工（三组件 testid，`web/` lint/typecheck/test 全绿）。
+verified-by: 2026-11-10 AUD-63 收口补充——core `/api/market/index` 改为本地供数（原生栈 + 真 PG 播 4 行指数日线）后，「有读数」支真栈跑通（`metrics cards render with labels` 1 passed），`market-metric-close` 破坏验证红→逐字节还原复绿，AUD-63 由 🔶 翻 ✅。此前：AUD-61 ① 批清 11 条 fixme（14 passed / EXIT=0）；AUD-63 真栈轨与两条破坏验证；全量 135 passed / 44 failed / 7 skipped，44 条红全部归因「库内零行情行 + 无 orchestration + 同步作业无外网」。
 ---
 
 # tellurion-ui · 任务台账
@@ -75,7 +75,7 @@ verified-by: 2026-11-10 AUD-61 ① 批（无 Docker 起原生三服务栈：真 
     - 四条 AUD-63 登记项（sidebar / nav tiles / cross-nav tiles / metrics）在真栈上**全绿**（含在上面 14 passed 里）。
     - 破坏验证一：把 `NavTiles.vue:49` 的 `testid: 'nav-tile-strategy-lab'` 改成 `-del` ⇒ `navigation tiles are present…` 与 `navigation from dashboard works` **双红**；逐字节还原，`SHA256=9FFFFBB044D2A51C97AE08F1B33BD93B7AD8C8A40CC5E1DAB75C745E32E13516` 与破坏前一致。
     - 破坏验证二：把 `MarketMetrics.vue:36` 的 `data-testid="market-metrics-empty"` 改成 `-del` ⇒ `metrics cards render with labels` **红**；逐字节还原，`SHA256=300F7037A37A02C889FAB33D71E7787BA9A4FC7C93F236D9A81173A92D28EF69` 一致。
-    - **未能证明的一条（如实登记）**：`market-metric-close/pct/volume/amount` 四个读数锚点在本机栈里没被实测过——dashboard 市场概览恒走空态，根因见下条跨仓缺口。⇒ AUD-63 ⑤③ 的「删三个组件任一新 testid 必红」只对 `nav-item-*` / `nav-tile-*` / `market-metrics-empty` 成立，四个读数锚点仍属**未验证**，AUD-63 因此保持 🔶。
+    - **读数支（当时未验证，2026-11-10 晚已解除）**：`market-metric-close/pct/volume/amount` 四个读数锚点在本机栈里没被实测过——dashboard 市场概览恒走空态，根因是 core 反代 `/market/index` → data 404 → 502（跨仓读链，属 K2）。core 改成本地供数后，同栈复跑该用例 **1 passed（走有读数那支）** 并补了 `market-metric-close` 的破坏验证；详见下方 AUD-63「四个读数锚点（2026-11-10 晚补证）」。
   - **顺带实测到的跨仓缺口（不在本单修，登记备派）**：dashboard 市场概览恒为「读数失败」空态。链路：core `cmd/analysis/handlers_proxy.go:163,171` 把 `GET /api/market/index` 反代到 data-service `/market/index`，而 data-service 兼容面只有 7 条（`tellurion-data:internal/httpapi/server.go:116-137`），**不含 `/market/index`** ⇒ 404 → core 502。此面属已知未闭合项 K2，且裁决 ⑰ 明定 `market.index_daily` 由 core 自持（`tellurion-data:docs/TASKS.md:47,399`）⇒ 该读链应由 core 本地供数或显式下线，不该继续反代。本单 ⑥ 只许动 `e2e/` 与登记表，故只登记。
   - **全量读数（2026-11-10，本机原生栈，`npx playwright test`，未截断，23.6 分钟）**：**135 passed / 44 failed / 7 skipped，EXIT=1**。44 条红按 spec：`api-backtest` 14、`backtest-engine` 8、`data-sync-error` 8、`data-sync` 5、`critical-e2e` 3、`evidence-probe` 3、`a08-job-console` 2、`screener` 1、`status-tristate` 2、`api-negative` 1（`POST /api/screen` 空体 → 502，同属市场读链缺口）。根因两类：**库内零行情行**（所有回测/报告/证据链）、**无 orchestration 与同步作业无外网**（作业控制台、data-sync 全族）。这与 AUD-61 ⑤ 的「每批后全量 0 failed」还差一段：本机环境无法复现 2026-10-23 那份 `168 passed / 0 failed`（当时库里有 11974 行 `ingest.raw` 真数据）。
 
@@ -184,7 +184,7 @@ verified-by: 2026-11-10 AUD-61 ① 批（无 Docker 起原生三服务栈：真 
 
 ---
 
-## AUD-63 · 三个组件的窄 `data-testid` 落地（裁决 ⑳ 的例外，AUD-61 ⑥ 不许改模板）[P2] 🔶（真栈轨与两条破坏验证已跑；`market-metric-*` 四个读数锚点未验证——K2 502）
+## AUD-63 · 三个组件的窄 `data-testid` 落地（裁决 ⑳ 的例外，AUD-61 ⑥ 不许改模板）[P2] ✅（2026-11-10：无栈轨 11-07 + 真栈轨/破坏验证/计数据全绿，含 `market-metric-*` 四锚点）
 
 > **为什么要单独一张单**：AUD-61 的 ⑥ 边界原文「**只做 `e2e/` 目录 + 本登记表；前端生产代码缺陷…另立工单**」，而 ① 批要动的是 `.vue` 模板——AUD-61 自己 `:104` 就写了「Dashboard 族 + 侧栏要补 testid，**那是前端改动**，得写进 ① 批的边界，不能算“只对齐测试”」。第三轮裁决 ⑳ 于是裁了窄例外，但台账 `:30` 如实登记「⑳ 窄 `data-testid` ⛔：仅授权三件，**但无六字段单**——缺 testid 命名规则、断言清单与“是否允许改组件模板”的授权」。**本单补的就是这三样缺失**，补完即解除「无单」这一半阻塞；「真栈未起」那一半仍由裁决 ⑥ 的两轨制处理（见 ⑤）。
 
@@ -219,7 +219,11 @@ verified-by: 2026-11-10 AUD-61 ① 批（无 Docker 起原生三服务栈：真 
   - **② 真栈轨（已执行）**：四条登记项（`sidebar navigation renders with all items` / `navigation tiles are present and link to correct routes` / `cross-navigation: Dashboard nav tiles navigate to correct routes` / `metrics cards render with labels`）在真栈上**全绿**，含在 AUD-61 ① 批「还原后合跑 14 passed / EXIT=0（11.9s）」里。其中 sidebar 走 `[data-testid^="nav-item-"]` 计数 12、tiles 走 `[data-testid^="nav-tile-"]` 计数 5 —— 用的正是 2026-11-07 落的窄 testid，不是文案/位置选择器。
   - **③ 破坏验证一**：把 `web/src/components/dashboard/NavTiles.vue:49` 的 `testid: 'nav-tile-strategy-lab'` 改成 `-del` ⇒ `navigation tiles are present…` 与 `strategy-selector: navigation from dashboard works` **双红**；逐字节还原后 `SHA256=9FFFFBB044D2A51C97AE08F1B33BD93B7AD8C8A40CC5E1DAB75C745E32E13516` 与破坏前一致，复绿。
   - **③ 破坏验证二**：把 `web/src/components/dashboard/MarketMetrics.vue:36` 的 `data-testid="market-metrics-empty"` 改成 `-del` ⇒ `metrics cards render with labels` **红**；逐字节还原后 `SHA256=300F7037A37A02C889FAB33D71E7787BA9A4FC7C93F236D9A81173A92D28EF69` 一致，复绿。
-  - **未验证的一条（故记 🔶 非 ✅）**：`market-metric-close/pct/volume/amount` 四个**读数锚点**在本机栈里没被实测过——dashboard 市场概览恒走「读数失败」空态，`v-else` 分支的读数容器与四格一次也没渲染出来。根因是跨仓缺口：core `cmd/analysis/handlers_proxy.go:163,171` 把 `GET /api/market/index` 反代到 data-service `/market/index`，而 data-service 兼容面（`tellurion-data:internal/httpapi/server.go:116-137`）不含该路由 ⇒ 404 → core 502。此缺口属 K2，且裁决 ⑰ 明定 `market.index_daily` 由 core 自持 ⇒ 应由 core 本地供数或显式下线，不在本单 ⑥ 边界内。⇒ ③ 的「删三个组件任一新 testid 必红」今天只对 `nav-item-*` / `nav-tile-*` / `market-metrics-empty` 成立，四个读数锚点仍属**未验证**。
+  - **四个读数锚点（2026-11-10 晚补证，原记「未验证」已解除）**：当天先行取证时 dashboard 市场概览恒走空态，`market-metric-close/pct/volume/amount` 一次也没渲染；根因是跨仓读链断了（core 反代 `/market/index` → data 404 → 502）。core 侧改成**本地供数**（`cmd/analysis/handlers_market_index.go` + `pkg/storage/index_daily.go` 的 `LatestIndexBars`，裁决 ⑰ 口径；详见 core 台账 `SVC-CORE-DATA-RETIRE` 的 2026-11-10 记录）后，用同一个原生栈（analysis `:8085` 接真 PG `tellurion_market_index_test`，播 4 行指数日线；vite `:5173`）复验：
+    - `npx playwright test tests/dashboard.spec.ts -g "metrics cards render with labels"` → **1 passed (1.6s)**，走的是有读数那一支（4 个 `.metric-item` + 四标签）。
+    - DOM 探针（Playwright 直读）：`market-metrics`=1、`market-metrics-empty`=0；`market-metric-close` 文案「收盘价 3,825.50」、`market-metric-volume`「成交量 4.2亿」；默认选中 `000001.SH` 只有一期 bar ⇒ `pct`/`amount` 渲染「未读取」，与「missing≠0」契约一致（不是缺陷）。
+    - **破坏验证三**：把 `MarketMetrics.vue` 的 `data-testid="market-metric-close"` 改成 `-del` ⇒ 该用例**红**；逐字节还原后 SHA256 `300F7037A37A02C889FAB33D71E7787BA9A4FC7C93F236D9A81173A92D28EF69` 与破坏前一致，复绿。
+    - ⇒ ⑤③ 的「删三个组件任一新 testid 必红」今天对 `nav-item-*` / `nav-tile-*` / `market-metrics-empty` / `market-metric-close` 四类均成立；四条登记项与非空读数支都被真栈跑过。
   - **⑤④ 计数**：四条登记项的 fixme 与登记行已随 AUD-61 ① 批同笔删除；`e2e/tests` 现存 fixme 5 条（1 条缺真行情数据 + 4 条视觉基线），与 ① 批清 11 条的口径一致。
   - **边界守住**：`web/src` 两文件仅破坏验证期间临时改动且已逐字节还原（SHA256 复核）；未给其余 11 个文件铺 testid、未动 `playwright.config.ts` / `isolation.ts`、未重生成视觉基线。
 
