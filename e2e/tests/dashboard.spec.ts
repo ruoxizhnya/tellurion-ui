@@ -25,22 +25,32 @@ test.describe('Dashboard Page (Vue SPA)', () => {
   });
 
   test('sidebar navigation renders with all items', async ({ page }) => {
-    test.fixme("AUD-61: 侧边导航项数 5→12，结构漂移");
     await page.goto('/');
     await page.waitForLoadState('domcontentloaded');
     await page.waitForSelector('.dashboard-page', { timeout: 15000 });
-    await page.waitForSelector('.nav-item', { timeout: 10000 });
+    await page.waitForSelector('[data-testid="sidebar-nav"]', { timeout: 10000 });
 
-    const navItems = page.locator('.nav-item');
-    await expect(navItems.first()).toBeVisible({ timeout: 10000 });
-    const count = await navItems.count();
-    expect(count).toBe(5);
-
-    await expect(navItems.filter({ hasText: '控制台' })).toBeVisible();
-    await expect(navItems.filter({ hasText: '回测引擎' })).toBeVisible();
-    await expect(navItems.filter({ hasText: '选股与市场' })).toBeVisible();
-    await expect(navItems.filter({ hasText: '策略 Copilot' })).toBeVisible();
-    await expect(navItems.filter({ hasText: '策略库' })).toBeVisible();
+    // AUD-63：侧栏每项的锚点由 AppSidebar.vue 的 navTestId() 生成。
+    // 目标 IA（user-flows.md §3.2）共 12 项；差一项就说明导航少渲染了入口。
+    const expected = [
+      'nav-item-home',
+      'nav-item-explore',
+      'nav-item-evidence',
+      'nav-item-backtest',
+      'nav-item-backtest-compare',
+      'nav-item-strategy-lab',
+      'nav-item-strategy-builder',
+      'nav-item-copilot',
+      'nav-item-factors',
+      'nav-item-screener',
+      'nav-item-data-sync',
+      'nav-item-alerts',
+    ];
+    const navItems = page.locator('[data-testid^="nav-item-"]');
+    await expect(navItems).toHaveCount(expected.length);
+    for (const id of expected) {
+      await expect(page.getByTestId(id)).toBeVisible();
+    }
   });
 
   test('header shows logo, API status and clock', async ({ page }) => {
@@ -60,53 +70,73 @@ test.describe('Dashboard Page (Vue SPA)', () => {
   });
 
   test('metrics cards render with labels', async ({ page }) => {
-    test.fixme("AUD-61: 指标卡结构漂移（可见性失败）");
     await page.goto('/');
     await page.waitForLoadState('domcontentloaded');
-    await page.waitForSelector('.metric-card', { timeout: 15000 });
+    await page.waitForSelector('.dashboard-page', { timeout: 15000 });
 
-    const cards = page.locator('.metric-card');
-    const count = await cards.count();
-    expect(count).toBe(4);
+    // 市场概览 = MarketMetrics.vue（AUD-63 的 testid 面）。有读数时 4 格；
+    // 无读数时必须是 DATA-07 的显式空态，不得用 '-' / 0 伪造四格。
+    const metrics = page.getByTestId('market-metrics');
+    const empty = page.getByTestId('market-metrics-empty');
+    await expect(metrics.or(empty)).toBeVisible({ timeout: 15000 });
 
-    await expect(page.locator('.metric-label').filter({ hasText: '股票数' })).toBeVisible();
-    await expect(page.locator('.metric-label').filter({ hasText: '回测' })).toBeVisible();
-    await expect(page.locator('.metric-label').filter({ hasText: '策略' })).toBeVisible();
+    if (await metrics.isVisible()) {
+      await expect(metrics.locator('.metric-item')).toHaveCount(4);
+      const labels: Array<[string, string]> = [
+        ['market-metric-close', '收盘价'],
+        ['market-metric-pct', '涨跌幅'],
+        ['market-metric-volume', '成交量'],
+        ['market-metric-amount', '成交额'],
+      ];
+      for (const [id, label] of labels) {
+        await expect(page.getByTestId(id)).toContainText(label);
+      }
+    } else {
+      await expect(empty).toContainText(/无指数数据|读数失败/);
+      await expect(page.getByTestId('market-metric-close')).toHaveCount(0);
+    }
   });
 
   test('quick backtest form renders correctly', async ({ page }) => {
-    test.fixme("AUD-61: .quick-bt-card 全仓 0 命中（台账已核）");
     await page.goto('/');
     await page.waitForLoadState('domcontentloaded');
-    await page.waitForSelector('.quick-bt-card', { timeout: 15000 });
+    await page.waitForSelector('.dashboard-page', { timeout: 15000 });
 
-    const card = page.locator('.quick-bt-card');
+    // QuickBacktest.vue 是 n-card(title=快速回测)，没有 .quick-bt-card 外层类。
+    const card = page.locator('.n-card').filter({ hasText: '快速回测' }).first();
     await expect(card).toBeVisible();
     await expect(card).toContainText('快速回测');
 
-    await expect(page.locator('.n-select').first()).toBeVisible();
-    await expect(page.getByPlaceholder('600000.SH')).toBeVisible();
+    await expect(card.getByPlaceholder('600000.SH')).toBeVisible();
+    await expect(card.locator('.n-date-picker')).toHaveCount(2);
+    await expect(card.locator('.n-select')).toHaveCount(1);
 
-    const runBtn = page.locator('.n-button--primary-type');
-    await expect(runBtn.first()).toBeVisible();
-    await expect(runBtn).toContainText(/运行回测/);
+    // 表单里只有「运行」这一枚按钮；用 role 锚定，避免与页头/侧栏按钮串味。
+    const runBtn = card.getByRole('button', { name: /运行/ });
+    await expect(runBtn).toBeVisible();
   });
 
   test('navigation tiles are present and link to correct routes', async ({ page }) => {
-    test.fixme("AUD-61: 导航 tile 数 4→5，结构漂移");
     await page.goto('/');
     await page.waitForLoadState('domcontentloaded');
-    await page.waitForSelector('.nav-tile', { timeout: 15000 });
-    await expect(page.locator('.nav-tile').first()).toBeVisible({ timeout: 5000 });
+    await page.waitForSelector('[data-testid="nav-tiles"]', { timeout: 15000 });
 
-    const tiles = page.locator('.nav-tile');
-    const count = await tiles.count();
-    expect(count).toBe(4);
+    // NavTiles.vue 共 5 张 tile（AUD-63 的 testid 面）；href 必须指向各自路由。
+    const tiles = page.locator('[data-testid^="nav-tile-"]');
+    await expect(tiles).toHaveCount(5);
 
-    await expect(tiles.filter({ hasText: '回测引擎' })).toBeVisible();
-    await expect(tiles.filter({ hasText: '选股与市场' })).toBeVisible();
-    await expect(tiles.filter({ hasText: '策略 Copilot' })).toBeVisible();
-    await expect(tiles.filter({ hasText: '因子分析' })).toBeVisible();
+    const expected: Array<[string, string]> = [
+      ['nav-tile-backtest', '/backtest'],
+      ['nav-tile-screener', '/screener'],
+      ['nav-tile-strategy-lab', '/strategy-lab'],
+      ['nav-tile-copilot', '/copilot'],
+      ['nav-tile-batch', '/dashboard?tab=batch'],
+    ];
+    for (const [id, href] of expected) {
+      const tile = page.getByTestId(id);
+      await expect(tile).toBeVisible();
+      await expect(tile).toHaveAttribute('href', href);
+    }
   });
 
   test('greeting text shows time-appropriate message', async ({ page }) => {
@@ -121,13 +151,15 @@ test.describe('Dashboard Page (Vue SPA)', () => {
   });
 
   test('history card section renders', async ({ page }) => {
-    test.fixme("AUD-61: 历史卡片区结构漂移");
     await page.goto('/');
     await page.waitForLoadState('domcontentloaded');
-    await page.waitForSelector('.history-card', { timeout: 15000 });
+    await page.waitForSelector('.dashboard-page', { timeout: 15000 });
 
-    await expect(page.locator('.history-card')).toBeVisible();
-    await expect(page.locator('.history-card')).toContainText('控制台日志');
+    // ConsoleHistory.vue 是 n-card(title=控制台历史)；隔离环境（清空 localStorage）下给显式空态。
+    const card = page.locator('.n-card').filter({ hasText: '控制台历史' }).first();
+    await expect(card).toBeVisible();
+    await expect(card).toContainText('控制台历史');
+    await expect(card.getByText('暂无历史记录')).toBeVisible();
   });
 
   test('no naive-ui provider errors in console', async ({ page }) => {

@@ -66,12 +66,12 @@ test.describe('Strategy Lab Page (Vue SPA)', () => {
   });
 
   test('navigation from dashboard works', async ({ page }) => {
-    test.fixme("AUD-61: 导航点击选择器漂移（click 超时）");
     await page.goto('/');
     await page.waitForLoadState('domcontentloaded');
-    await page.waitForSelector('.nav-tile', { timeout: 15000 });
+    await page.waitForSelector('[data-testid="nav-tiles"]', { timeout: 15000 });
 
-    await page.locator('.nav-tile').filter({ hasText: '因子分析' }).click();
+    // 策略库 tile 的 testid（AUD-63）；原「因子分析」tile 已并入策略库（A-04 收敛）。
+    await page.getByTestId('nav-tile-strategy-lab').click();
     await page.waitForLoadState('domcontentloaded');
     await page.waitForSelector('.strategy-lab-page', { timeout: 15000 });
 

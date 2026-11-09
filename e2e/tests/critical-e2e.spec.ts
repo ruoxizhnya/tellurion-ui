@@ -105,17 +105,14 @@ test.describe('T-04: 错误状态处理', () => {
   });
 
   test('访问不存在的报告ID显示友好错误提示', async ({ page }) => {
-    test.fixme("AUD-61: 错误态提示结构漂移（页面无友好错误文案）");
-    await page.goto('/backtest?report=nonexistent-report-id-99999');
+    // 报告入口参数是 ?id=（Dashboard 历史「查看」与 QuickBacktest 都走 /backtest?id=...）；
+    // 旧用例写 ?report=，页面从不读取该键，因此永远走「空态」而不是错误态。
+    await page.goto('/backtest?id=nonexistent-report-id-99999');
     await page.waitForLoadState('domcontentloaded');
 
-    const errorEl = page.locator('.n-result, .error-state, .n-empty, [class*="error"], [class*="empty"]');
-    const visibleError = await errorEl.filter({ hasText: /不存在|找不到|失败|error/i }).first().isVisible().catch(() => false);
-
-    const pageContent = await page.content();
-    const hasFriendlyMessage = /不存在|找不到|无法加载|无效|no.*found|not.*available/i.test(pageContent);
-
-    expect(visibleError || hasFriendlyMessage).toBeTruthy();
+    const loadError = page.locator('.n-alert').filter({ hasText: '报告加载失败' });
+    await expect(loadError).toBeVisible({ timeout: 15000 });
+    await expect(loadError).toContainText(/加载失败|不存在|not found|404/i);
   });
 
   test('网络断开时显示离线提示而非白屏', async ({ page }) => {

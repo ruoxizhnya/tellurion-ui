@@ -37,7 +37,6 @@ test.describe('Backtest Engine Page (Vue SPA)', () => {
   });
 
   test('form fields render correctly', async ({ page }) => {
-    test.fixme("AUD-61: 表单字段选择器漂移（页面结构已变）");
     await navigateToBacktest(page);
 
     await expect(page.getByPlaceholder('600000.SH,600036.SH')).toBeVisible();
@@ -46,9 +45,10 @@ test.describe('Backtest Engine Page (Vue SPA)', () => {
     await expect(datePickers.first()).toBeVisible();
     await expect(datePickers.nth(1)).toBeVisible();
 
-    const runBtn = page.locator('.n-button--primary-type');
+    // 同步/异步切换按钮默认也是 primary-type，故 .n-button--primary-type 不是唯一锚点；
+    // 用可访问名定位真正的「运行回测」。
+    const runBtn = page.getByRole('button', { name: /运行回测/ });
     await expect(runBtn).toBeVisible();
-    await expect(runBtn).toContainText('运行回测');
   });
 
   test('run button exists and is interactive', async ({ page }) => {
@@ -263,7 +263,7 @@ test.describe('Backtest Engine — Complete Workflow Tests', () => {
   });
 
   test('backtest history shows completed jobs with correct data', async ({ page }) => {
-    test.fixme("AUD-61: 历史区块选择器漂移（页面结构已变）");
+    test.fixme("AUD-61: 需真行情数据（600519.SH 的 OHLCV 行）；本机 PG 无行情行，回测只得 invalid，等不到 .metrics-grid");
     await navigateToBacktest(page);
 
     await page.fill('[placeholder="600000.SH,600036.SH"]', '600519.SH');
@@ -401,15 +401,16 @@ test.describe('Backtest Engine — Complete Workflow Tests', () => {
   });
 
   test('responsive layout on different viewport sizes', async ({ page }) => {
-    test.fixme("AUD-61: 响应式布局结构漂移");
     await page.setViewportSize({ width: 768, height: 1024 });
     await navigateToBacktest(page);
 
     const btPage = page.locator('.bt-page');
     await expect(btPage).toBeVisible();
 
-    const formCard = page.locator('.bt-form-card');
+    // 表单卡 = BacktestForm.vue 根 n-card(title=回测引擎)；没有 .bt-form-card 外层类。
+    const formCard = page.locator('.bt-page .n-card').filter({ hasText: '回测引擎' }).first();
     await expect(formCard).toBeVisible();
+    await expect(formCard.locator('.form-grid')).toBeVisible();
 
     await page.setViewportSize({ width: 1280, height: 800 });
     await expect(btPage).toBeVisible();

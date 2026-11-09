@@ -42,7 +42,7 @@ test.describe('Visual Regression — Key Pages', () => {
   // ─── Dashboard ────────────────────────────────────────────
 
   test('dashboard renders correctly', async ({ page }) => {
-    test.fixme("AUD-61: dashboard 页面视觉与基线不符（结构漂移）");
+    test.fixme("AUD-61: 视觉基线未重生成（AUD-63 ⑥：重生成=给新截图盖章，须人工按 DESIGN.md 逐页核对；且本机库无行情数据）");
     await page.goto('/');
     await page.waitForLoadState('domcontentloaded');
     await page.waitForSelector('.dashboard-page', { timeout: 15000 });
@@ -73,7 +73,7 @@ test.describe('Visual Regression — Key Pages', () => {
   // ─── Backtest Engine ──────────────────────────────────────
 
   test('backtest page renders correctly', async ({ page }) => {
-    test.fixme("AUD-61: backtest 页面视觉与基线不符（结构漂移）");
+    test.fixme("AUD-61: 视觉基线未重生成（同 dashboard 条：须人工核对 DESIGN.md 后重生成；本机库无行情数据）");
     await page.goto('/');
     await page.waitForLoadState('domcontentloaded');
     await page.waitForSelector('.dashboard-page', { timeout: 15000 });
@@ -257,7 +257,7 @@ test.describe('Visual Regression — Key Pages', () => {
   // ─── Responsive Layout ────────────────────────────────────
 
   test('dashboard responsive on mobile viewport', async ({ browser }) => {
-    test.fixme("AUD-61: dashboard 移动端视觉与基线不符");
+    test.fixme("AUD-61: 移动端视觉基线未重生成（同 desktop 条：须人工核对后重生成）");
     const context = await browser.newContext({ viewport: { width: 375, height: 667 } });
     const page = await context.newPage();
     await freezeClock(page);
@@ -270,7 +270,7 @@ test.describe('Visual Regression — Key Pages', () => {
   });
 
   test('backtest responsive on tablet viewport', async ({ browser }) => {
-    test.fixme("AUD-61: backtest 平板端视觉与基线不符");
+    test.fixme("AUD-61: 平板端视觉基线未重生成（同 desktop 条：须人工核对后重生成）");
     const context = await browser.newContext({ viewport: { width: 768, height: 1024 } });
     const page = await context.newPage();
     await freezeClock(page);

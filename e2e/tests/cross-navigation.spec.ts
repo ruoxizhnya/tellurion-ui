@@ -28,14 +28,13 @@ test.describe('Cross-page Navigation & Integration (Vue SPA)', () => {
   });
 
   test('Dashboard nav tiles navigate to correct routes', async ({ page }) => {
-    test.fixme("AUD-61: Dashboard 导航 tile 数 4→5，结构漂移");
     await page.goto('/');
     await page.waitForLoadState('domcontentloaded');
-    await page.waitForSelector('.nav-tile', { timeout: 15000 });
+    await page.waitForSelector('[data-testid="nav-tiles"]', { timeout: 15000 });
 
-    const tiles = page.locator('.nav-tile');
-    const count = await tiles.count();
-    expect(count).toBe(4);
+    // NavTiles.vue 共 5 张 tile（回测/选股/策略库/Copilot/批量），testid 由 AUD-63 提供。
+    const tiles = page.locator('[data-testid^="nav-tile-"]');
+    await expect(tiles).toHaveCount(5);
   });
 
   test('root URL serves Dashboard (default route)', async ({ page }) => {

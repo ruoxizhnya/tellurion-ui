@@ -200,17 +200,17 @@ test.describe('D7-28: Data Sync — Full Workflow (Create → Execute → Comple
   });
 
   test('UI: Data source panel displays correctly', async ({ page }) => {
-    test.fixme("AUD-61: 数据源面板结构漂移（可见性失败）");
     await page.goto('/data-sync');
     await page.waitForLoadState('domcontentloaded');
 
-    // Verify data source panel
-    const dataSourcePanel = page.locator('text=数据源状态');
-    await expect(dataSourcePanel).toBeVisible();
+    // DataSourcePanel.vue 是 NCard(title=数据源管理, embedded)；标题文案不是「数据源状态」。
+    const panel = page.locator('.n-card').filter({ hasText: '数据源管理' }).first();
+    await expect(panel).toBeVisible({ timeout: 15000 });
 
-    // Verify data source status is shown
-    const statusText = await page.locator('.data-source-panel .status-text, .n-tag').first().textContent();
-    expect(statusText).toBeTruthy();
+    // 第一枚 NTag 是数据源启用状态（已启用/未启用/未知），必须在挂载后就绪。
+    const statusTag = panel.locator('.n-tag').first();
+    await expect(statusTag).toBeVisible();
+    expect((await statusTag.textContent())?.trim()).toMatch(/已启用|未启用|未知/);
   });
 
   test('SSE: Real-time progress updates', async () => {
