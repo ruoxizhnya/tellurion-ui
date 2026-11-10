@@ -8,6 +8,8 @@ verified-by: 2026-11-10 晚 AUD-61 收口——4 条视觉基线在原生三服�
 
 > 任务定义规范沿用 core 仓 `tellurion/AGENTS.md` §8.5（六字段：①目标 ②上下文 ③要求 ④约束与非目标 ⑤验收 ⑥边界）。
 > 状态标记：`⬜ 待做` / `🔶 进行中` / `⛔ 阻塞` / `✅ 完成（附日期）`
+>
+> **台账终扫（2026-11-10）**：任务标题带 `⬜` / `🔶` / `⛔` 的 = **0 条**；正文旧标记以标题与最新「收口」块为准。**无开放项**。
 
 > **第三轮裁决指针（2026-10-25）**：⑥ e2e 走两轨——无栈的 `typecheck/lint/vitest` 现在做；真栈 e2e 等 Docker Desktop / CI；**视觉基线在本机重生成**（playwright 无 `webServer`）。⑳ AUD-61 ④ 允许**窄例外**：只给 `NavTiles.vue` / `MarketMetrics.vue` / `AppSidebar.vue` 加 `data-testid`（纯增量属性，不改类/结构/文案），**单独 commit**。正文见 `tellurion:docs/design/qt-decoupling/cross-repo-decision-record-2026-10-25.md` §五。
 
