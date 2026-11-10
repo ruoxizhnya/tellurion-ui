@@ -1,7 +1,7 @@
 ---
 status: active
 last-verified: 2026-11-10
-verified-by: 2026-11-10 晚 AUD-61 ① 批数据腿收口——真 PG（库 `tellurion_e2e`）播 262 根 600519.SH 日线后，`POST /api/backtest` 真引擎 200 `completed`（13 笔交易），`backtest history` 用例删 fixme 后真栈 **1 passed**；同轮订正原归因（默认异步 + 无 ORCHESTRATION_URL 亦 503），e2e 现存 fixme 由 5 条降至 **4 条（全是视觉基线）**。此前：2026-11-10 AUD-63 收口补充——core `/api/market/index` 改为本地供数（原生栈 + 真 PG 播 4 行指数日线）后，「有读数」支真栈跑通（`metrics cards render with labels` 1 passed），`market-metric-close` 破坏验证红→逐字节还原复绿，AUD-63 由 🔶 翻 ✅。此前：AUD-61 ① 批清 11 条 fixme（14 passed / EXIT=0）；AUD-63 真栈轨与两条破坏验证；全量 135 passed / 44 failed / 7 skipped，44 条红全部归因「库内零行情行 + 无 orchestration + 同步作业无外网」。
+verified-by: 2026-11-10 晚 AUD-61 收口——4 条视觉基线在原生三服务栈（真 PG 16.15 `127.0.0.1:5433` 库 `tellurion_ui_e2e` + data `:8081` + analysis `:8085` + vite `:5173`）上先取「实际截图」逐张按 DESIGN.md v2.0 核对（画布 `#090a0c` / 表面阶梯 / 三档文字 / `#2563eb` 填充按钮 / 4-8px 圆角 / Inter），再 `--update-snapshots` 重生成、整份 `visual-regression.spec.ts` 复跑 **12 passed**、`show-trace` 无红；破坏验证（临时 `addStyleTag` 隐藏 `.nav-tiles`）→ 该条 10932 px（2%）红，逐字节还原后 **1 passed**；`e2e/tests` 现存 `test.fixme` = **0**，AUD-61 由 🔶 翻 ✅。此前：2026-11-10 晚 AUD-61 ① 批数据腿收口——真 PG（库 `tellurion_e2e`）播 262 根 600519.SH 日线后，`POST /api/backtest` 真引擎 200 `completed`（13 笔交易），`backtest history` 用例删 fixme 后真栈 **1 passed**。此前：2026-11-10 AUD-63 收口补充——core `/api/market/index` 改为本地供数后「有读数」支真栈跑通，AUD-63 由 🔶 翻 ✅。此前：AUD-61 ① 批清 11 条 fixme（14 passed / EXIT=0）。
 ---
 
 # tellurion-ui · 任务台账
@@ -22,9 +22,9 @@ verified-by: 2026-11-10 晚 AUD-61 ① 批数据腿收口——真 PG（库 `tel
 |---|---|---|---|
 | AUD-61 阶段一（✅ 2026-10-23） | 起齐三服务跑 e2e，把已知红改 `test.fixme` 并登记 | `AUD-61` | 无 |
 | AUD-61 阶段二 ③/④（✅ 2026-10-23） | 先做不依赖 DOM 的 API 期望与共享限流两类，逐条清 fixme 与登记 | `AUD-61` | 阶段一 |
-| AUD-61 阶段二 ①（🔶 2026-11-10：12/16 已对齐清表，余 4 条视觉基线） | 结构漂移/视觉基线 16 条；原「等 `feat/design-tokens-v2-palette-sweep` 合并」的阻塞已于 2026-10-25 解除；2026-11-10 用**无 Docker 的原生三服务栈**跑通并清 12 条（含回测历史那条：真 PG 播 262 根 600519.SH 日线后真栈 1 passed），余 4 条视觉基线待人工核对 | `AUD-61` | ③/④ ✅ + 重构合并 ✅ + 三服务与 PG 起齐 ✅（2026-11-10 原生栈） |
+| AUD-61 阶段二 ①（✅ 2026-11-10：16/16 清表，fixme 归零） | 结构漂移/视觉基线 16 条；原「等 `feat/design-tokens-v2-palette-sweep` 合并」的阻塞已于 2026-10-25 解除；2026-11-10 用**无 Docker 的原生三服务栈**分两批清完：结构类 12 条 + 视觉 4 条（先取实际截图对 DESIGN.md 核对，再重生成基线并复跑 12 passed） | `AUD-61` | ③/④ ✅ + 重构合并 ✅ + 三服务与 PG 起齐 ✅（2026-11-10 原生栈） |
 
-## AUD-61 · e2e 套件与前端结构脱节（测试债） 🔶（阶段一 ✅ 2026-10-23；阶段二 ③/④ 批 ✅ 2026-10-23；① 批 🔶 2026-11-10：清 12 / 余 4）
+## AUD-61 · e2e 套件与前端结构脱节（测试债） ✅ 完成（阶段一 2026-10-23；阶段二 ③/④ 2026-10-23；① 批 2026-11-10：清 12 + 视觉 4，台账 fixme 归零）
 
 > **K 组取证（2026-10-26，决策材料；未实现）**：`rg -n 'data-testid' --glob '*.vue'` 基线 = **113 行 / 14 文件**（`web/src` 全部文件口径 = 288 行 / 25 文件，与下文 ③ 的 288 一致）。两条均 ⛔ 不可开工：
 > ① 批量断言 ⛔：派发单明确「不可执行（决策材料）」，且真栈未起。**订正上一版阻塞理由**：本轮 `docker version` / `docker ps` **可达**（daemon 已起，`dockerDesktopLinuxEngine` 连通），先前记的「daemon 不可达」已失效；仍缺的是前端栈本身——`5173 / 8081 / 8085 / 5432 / 6379` 未起、本仓无六字段的可执行单。⑳ 窄 `data-testid` ⛔：仅授权 `NavTiles.vue` / `MarketMetrics.vue` / `AppSidebar.vue`，但**无六字段单**——缺 testid 命名规则、断言清单与「是否允许改组件模板」的授权。
@@ -46,10 +46,21 @@ verified-by: 2026-11-10 晚 AUD-61 ① 批数据腿收口——真 PG（库 `tel
 
   | spec 文件 | 用例名 | 红因归类 | fixme 日期 | 对齐批次 | 清除日期 |
   |---|---|---|---|---|---|
-  | visual-regression.spec.ts | dashboard renders correctly | ① 视觉基线待重生成 | 2026-10-23 | 阶段二 ①（视觉腿） | |
-  | visual-regression.spec.ts | backtest page renders correctly | ① 视觉基线待重生成 | 2026-10-23 | 阶段二 ①（视觉腿） | |
-  | visual-regression.spec.ts | dashboard responsive on mobile viewport | ① 视觉基线待重生成 | 2026-10-23 | 阶段二 ①（视觉腿） | |
-  | visual-regression.spec.ts | backtest responsive on tablet viewport | ① 视觉基线待重生成 | 2026-10-23 | 阶段二 ①（视觉腿） | |
+  | （空） | — | — | — | — | — |
+
+  > 2026-11-10：最后 4 行（视觉基线段）已随 ① 批视觉腿清除，本表归零。
+
+- **阶段二 · ① 批视觉腿（2026-11-10 晚，4 条基线：先核对、后重生成）**：
+  - **栈**：与 ① 批同构，唯一差异是 PG 用独立实例 `127.0.0.1:5433`（库 `tellurion_ui_e2e`，`initdb` 出来的临时集群，不碰系统 `:5432` 实例）；`/health`、`/readyz`、`/api/strategies` 均 200 后才开跑。
+  - **先取证再盖章**：临时去掉 4 条 `test.fixme` 跑一次（**不加** `--update-snapshots`），得 4 failed，`*-actual.png` 落在 `test-results/`；逐张读图对 DESIGN.md v2.0 核对：
+    - `dashboard-actual.png`（4420 px / 0.01 差异）：画布 `#090a0c`、面板 `#111620/#171E2C`、主按钮 `#2563eb`、侧栏 12 项 + 激活态浅底、5 块磁贴、快速回测表单、控制台历史空态——与 token 表一致；市场概览走 **DATA-07 显式空态**（「无指数数据」+ 补数说明），不是补零伪造，符合「missing≠0」。
+    - `backtest-actual.png`（2425 px）：同步/异步切换、6 个表单字段、`运行回测` 主按钮、两处空态图标与文案——与 DESIGN.md 的 4/8px 圆角、Inter、三档文字一致。
+    - `backtest-tablet-actual.png`（768 宽，5885 px）：侧栏占比 28%、表单两列换行正常。
+    - `dashboard-mobile-actual.png`（375 宽，1772 px）：**侧栏默认展开占 ~215px、正文列被压到一两个字宽**。与 `docs/design/visual.md` §5.2「≤768px 时 `.app-sidebar` display:none 或折叠」的建议不符。这是**既有布局行为**（旧基线同样如此，差异仅 1%），不是本次重生成引入；按本单 ⑥「前端生产代码缺陷另立工单」不在本批修，**已另立 `UI-03`**（见下）。
+  - **后重生成**：`--update-snapshots` 四条全部 `is re-generated, writing actual`，`4 passed`；随即整份 `visual-regression.spec.ts` 复跑 **12 passed (1.0m) EXIT=0**。
+  - **破坏验证（护栏必验）**：临时在 dashboard 用例截图前 `page.addStyleTag({content:'.nav-tiles{display:none!important}'})` ⇒ 该条 **10932 px（2%）红 / EXIT=1**；删掉该行逐字节还原后 **1 passed / EXIT=0**，基线未被写坏。
+  - **计数**：`e2e/tests` 现存 `test.fixme` = **0**（阶段一 78 → 阶段二 70 → 16 → 12 → 4 → 0）。
+  - **边界守住**：只动 `e2e/tests/visual-regression.spec.ts`（删 4 行 fixme）与 4 张快照 png；未改任何断言/选择器/期望值，未动 `web/src`、未动 `playwright.config.ts` / `isolation.ts`。
 
 - **阶段二 · ① 批（2026-11-10，无 Docker 起原生三服务栈；16 → 4 行）**：
   - **栈怎么起的（本机无 Docker，全部原生进程）**：真 PostgreSQL 16.15 `127.0.0.1:5432`，新建库 `tellurion_ui_e2e`（analysis-service 启动自动迁移 core 面；data-service 启动自动迁移 `market`/`ingest` 面）；`data-service :8081`（`tellurion-data` 仓 `cmd/dataservice`）；`analysis-service :8085`（core 仓 `cmd/analysis`，`CONFIG_PATH=<core>/config/analysis-service.yaml`，env：`DATABASE_HOST/PORT/USER/PASSWORD/DATABASE`、`AUTH_INSECURE=true`、`AUTH_INSECURE_EXPOSURE=loopback-published`、`RATE_LIMIT_PER_MINUTE=100000`、`DATA_SERVICE_URL=http://127.0.0.1:8081`、`RISK_SERVICE_RESOLVE_ENABLED=false`、`SERVER_HOST=127.0.0.1`）；`vite :5173`（`web` 下 `npm run dev`）。
@@ -229,8 +240,19 @@ verified-by: 2026-11-10 晚 AUD-61 ① 批数据腿收口——真 PG（库 `tel
     - DOM 探针（Playwright 直读）：`market-metrics`=1、`market-metrics-empty`=0；`market-metric-close` 文案「收盘价 3,825.50」、`market-metric-volume`「成交量 4.2亿」；默认选中 `000001.SH` 只有一期 bar ⇒ `pct`/`amount` 渲染「未读取」，与「missing≠0」契约一致（不是缺陷）。
     - **破坏验证三**：把 `MarketMetrics.vue` 的 `data-testid="market-metric-close"` 改成 `-del` ⇒ 该用例**红**；逐字节还原后 SHA256 `300F7037A37A02C889FAB33D71E7787BA9A4FC7C93F236D9A81173A92D28EF69` 与破坏前一致，复绿。
     - ⇒ ⑤③ 的「删三个组件任一新 testid 必红」今天对 `nav-item-*` / `nav-tile-*` / `market-metrics-empty` / `market-metric-close` 四类均成立；四条登记项与非空读数支都被真栈跑过。
-  - **⑤④ 计数**：四条登记项的 fixme 与登记行已随 AUD-61 ① 批同笔删除；`e2e/tests` 现存 fixme **4 条**（全部是视觉基线；原「1 条缺真行情数据」已于 2026-11-10 晚在真 PG + 真引擎下清除），与 ① 批清 12 条的口径一致。
+  - **⑤④ 计数**：四条登记项的 fixme 与登记行已随 AUD-61 ① 批同笔删除；`e2e/tests` 现存 fixme **0 条**（原 4 条视觉基线已于 2026-11-10 晚随 AUD-61 ① 批视觉腿核对并重生成、整份 spec 12 passed，原「1 条缺真行情数据」已于 2026-11-10 晚在真 PG + 真引擎下清除）。
   - **边界守住**：`web/src` 两文件仅破坏验证期间临时改动且已逐字节还原（SHA256 复核）；未给其余 11 个文件铺 testid、未动 `playwright.config.ts` / `isolation.ts`、未重生成视觉基线。
+
+---
+
+## UI-03 · 375 宽下侧栏不折叠，正文列被压到一两个字宽 [P2] ⬜
+
+- **① 目标**：≤768px 视口下侧栏默认收起（或按 visual.md §5.2 的 `display:none`），正文列拿到可读宽度；375 宽下不再出现「一行一两个字」的换行。
+- **② 上下文**：2026-11-10 AUD-61 ① 批视觉腿逐张核对实际截图时取证（`e2e/test-results/.../dashboard-mobile-actual.png`，375×667）：`.app-sidebar` 仍占 ~215px（视口的 57%），`.main` 只剩 ~160px，市场概览与磁贴标题被压成一字一行。规范依据：`docs/design/visual.md` §5.2「`@media (max-width: 768px)` 时 `.app-sidebar` 可 `display:none` 或折叠」，当前实现只有 header 的手动汉堡开关，没有断点级默认收起。既有基线（2026-10-23）同样如此，差异仅 1%，**不是 2026-11-10 重生成引入**。
+- **③ 要求**：① 在 `web/src` 的布局层加断点规则（≤768px 默认收起，≥769px 维持现状）；② 收起态要留 header 的展开入口，且展开后仍可用；③ 视觉基线随修复重生成（4 张里的 mobile 一张），并在 AUD-61 那节的偏差记录里回填撤除说明。
+- **④ 约束与非目标**：不改 DESIGN.md 的 token/字号/配色；不重排桌面端布局；不动 e2e 断言与 testid。
+- **⑤ 验收**：375×667 下 `dashboard-mobile.png` 更新后侧栏不再占位（正文列 ≥90% 视口宽）；`npx playwright test tests/visual-regression.spec.ts` 绿；**破坏验证**：把断点改回 0 宽 → mobile 基线必须红，还原绿。
+- **⑥ 边界**：只做侧栏断点行为 + 该一张基线；其余响应式页面（回测页平板/手机）另立。
 
 ---
 
