@@ -19,12 +19,12 @@ npm run typecheck
 npm test             # lint:tests + vitest run
 ```
 
-端到端（需要起齐服务：前端 :5173 / data-service :8081 / analysis :8085）：
+端到端（需要起齐服务：前端 :5173 / data-service :8081（由 `tellurion-data` 提供）/ analysis :8085）：
 
 ```bash
 cd e2e
 npm ci
-npx playwright test          # 已知红见 docs/TASKS.md 的 AUD-61
+npx playwright test          # AUD-61 已于 2026-11-10 收口，test.fixme 归零；用例应全绿
 ```
 
 ## 3. 边界（硬约束）
@@ -40,7 +40,7 @@ npx playwright test          # 已知红见 docs/TASKS.md 的 AUD-61
 - **直连数据库**（任何形态：驱动、连接串、绕过 `/api` 的直连）
 - **复制 `openapi.yaml`**：契约在 core（被 `//go:embed` 嵌进二进制，`GET /api/openapi.yaml` 直出），复制一份必然漂移
 - 在 `web/` 里做服务端逻辑（BFF 是 dev 期便利，不是生产路径）
-- 把 e2e 的已知红改成"跳过/放宽断言"来变绿（AUD-61 的红线）
+- 把 e2e 真失败改成"跳过/放宽断言"来变绿（AUD-61 的教训；`test.fixme` 只许用于**新发现的**已知红并带单号，不许用来消存量）
 
 ## 4. 依赖的契约版本
 
@@ -51,7 +51,7 @@ npx playwright test          # 已知红见 docs/TASKS.md 的 AUD-61
 
 ## 5. 活在哪、文档在哪
 
-- **本仓台账**：`docs/TASKS.md`（唯一；AUD-61 在册）。**没有单号别开工。**
+- **本仓台账**：`docs/TASKS.md`（唯一；截至 2026-11-11 无开放项，结案条目在 `docs/archive/`）。**没有单号别开工。**
 - 文档导航：`docs/README.md`；边界与依赖：`docs/ARCHITECTURE.md`；决策：`docs/adr/`。
 - **前端设计系统**：`docs/design/index.md`（入口）；`docs/design/stitch_quantlab_ux_redesign/` 是重构子项台账（主台账仍是 `docs/TASKS.md`）。
 - 跨仓背景（只读）：`tellurion:docs/TASKS.md`。

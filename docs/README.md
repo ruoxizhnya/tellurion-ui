@@ -1,7 +1,7 @@
 ---
 status: active
-last-verified: 2026-10-20
-verified-by: 功能边界固化（三份契约：db / api / dataflow）
+last-verified: 2026-11-11
+verified-by: 代码-文档对齐审计（2026-11-11）：导航与文档地图复核；本仓无开放任务，AUD-61/AUD-63 已归档。此前：功能边界固化（三份契约：db / api / dataflow，2026-10-20）
 ---
 
 # 文档导航 — tellurion-ui

@@ -103,8 +103,8 @@
 4. **干预四缺三**：只有"叫停"（`/api/explore/runs/{id}/stop`）；指方向/追问/标记无 UI 也无 API。
 5. **成功指标不可测**：PRODUCT 的"月度可用策略数 / 校准误差"依赖**采纳记录**——UI 必须提供拍板动作与理由记录（F7）。
 6. **后端能力超前 UI**：risk / execution / compliance / industry / macro / signals 共约 40 个 endpoint 无任何 UI 承载（场景见 F13–F18）。
-7. **状态语义未收口**：回测结果 `status` 三值（`completed` / `invalid` / `failed`）UI 仍按"有 result.id = 成功"渲染（TASKS K9 待办）；`invalid` 必须显式警示并展示 `invalid_reasons`。
-8. **测试债**：e2e 套件与前端结构脱节（TASKS AUD-61），重构需按页面同步重对齐，不得静默放宽断言。
+7. **状态语义已收口（K9）**：`web/src/utils/runStatus.ts` 按 `completed` / `invalid` / `failed` 三值渲染，`invalid` 显式警示并展示 `invalid_reasons`；**禁止以 `result.id` 存在判成功**。
+8. **测试债已清（AUD-61，2026-11-10）**：e2e 与前端结构已重对齐、`test.fixme` = 0；后续重构仍须按页面同步重对齐，不得静默放宽断言。
 
 ---
 

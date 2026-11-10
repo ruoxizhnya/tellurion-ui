@@ -63,7 +63,7 @@ export function syncJobProgressStreamPath(jobId: string): string {
 // ---------------------------------------------------------------------------
 // Schedules (A-08 断言 2) — seven legs, all served by the data service and
 // reached through the analysis gateway's catch-all proxy
-// (tellurion: cmd/analysis/handlers_proxy.go:43 `router.Any("/api/sync/*path")`).
+// (tellurion: cmd/analysis/handlers_proxy.go 的 `router.Any("/api/sync/*path")`).
 //
 // `id` is a plain integer here (sync_schedules.id is a bigserial), unlike job
 // ids which are strings — do not "unify" the two.

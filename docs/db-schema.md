@@ -1,7 +1,7 @@
 ---
 status: active
-last-verified: 2026-10-20
-verified-by: 功能边界固化（三份契约：db / api / dataflow）
+last-verified: 2026-11-11
+verified-by: 代码-文档对齐审计（2026-11-11）：复核「本仓零表」仍成立（`web/` 无数据库驱动/连接串，e2e 只经 HTTP）；AUD-61 已收口，红线 4 改为通用纪律。此前：功能边界固化（三份契约：db / api / dataflow，2026-10-20）
 ---
 
 # DB Schema — tellurion-ui
@@ -34,7 +34,7 @@ verified-by: 功能边界固化（三份契约：db / api / dataflow）
 1. **不直连 DB**（任何形态：驱动、连接串、绕过 `/api`）。
 2. **不复制 `openapi.yaml`**：契约在 core，复制必漂移。
 3. **不做服务端逻辑**：`web/` 里没有 BFF 生产路径。
-4. **e2e 红就是红**：已知失败用 `test.fixme("AUD-61: 归因")` 显式登记，**不改断言消红**。
+4. **e2e 红就是红**：新发现的已知失败用 `test.fixme("<单号>: …")` 显式登记（**必须带单号**），**不改断言消红**；存量已归零（AUD-61，2026-11-10）。
 5. **设计系统单一基准**：`docs/design/` 是 v2.0 的唯一基准，页面向它对齐。
 
 ## 4. 数据治理（前端无表）

@@ -1,7 +1,7 @@
 ---
 status: active
-last-verified: 2026-10-22
-verified-by: 功能边界固化（三份契约：db / api / dataflow）
+last-verified: 2026-11-11
+verified-by: 代码-文档对齐审计（2026-11-11）：逐模块复核 `web/src/api/*.ts` 的实际 URL；`/api/backtest`、`/api/ohlcv`、`/api/datasource/*`、`/api/sync/*`、`/api/explore`、`/api/copilot` 均在 core `openapi.yaml` 有条目；`/api/runs` 仍无消费代码。此前：功能边界固化（三份契约：db / api / dataflow，2026-10-22）
 ---
 
 # API Schema — tellurion-ui

@@ -1,7 +1,7 @@
 ---
 status: active
-last-verified: 2026-10-20
-verified-by: 功能边界固化（三份契约：db / api / dataflow）
+last-verified: 2026-11-11
+verified-by: 代码-文档对齐审计（2026-11-11）：复核探索页仍走 REST 轮询（`api/explore.ts` / `pages/Explore.vue`），`EventSource` 构造点仍只在 `stores/sync.ts`；把会漂移的行号改为符号引用；AUD-61 已收口，不变量 3 改为「新红必须带单号」。此前：功能边界固化（三份契约：db / api / dataflow，2026-10-20）
 ---
 
 # Dataflow — tellurion-ui
@@ -33,15 +33,16 @@ verified-by: 功能边界固化（三份契约：db / api / dataflow）
 
 ### 探索页（**今天是 REST 轮询**，不是 SSE）
 
-1. `POST /api/explore/runs` → `runID`（`web/src/api/explore.ts:132`）
-2. `window.setInterval` 每轮调 `GET /api/explore/runs/{id}`（`explore.ts:136` 的 `getExploreStatus`，循环在 `pages/Explore.vue:99-127`）
-3. 连续失败到 `MAX_POLL_FAILS` ⇒ 停止刷新并把屏上内容标为「可能已过期」（`Explore.vue:135-139`）；停作用 `POST /api/explore/runs/{id}/stop`（`explore.ts:141`）
+1. `POST /api/explore/runs` → `runID`（`web/src/api/explore.ts` 的 `startExplore`）
+2. `window.setInterval` 每轮调 `GET /api/explore/runs/{id}`（`explore.ts` 的 `getExploreStatus`，循环在 `pages/Explore.vue`）
+3. 连续失败到 `MAX_POLL_FAILS` ⇒ 停止刷新并把屏上内容标为「可能已过期」（`Explore.vue` 的轮询循环）；停作用 `POST /api/explore/runs/{id}/stop`（`explore.ts` 的 `stopExplore`）
 
-> ⚠️ **后端那条 SSE 确实存在，但前端零消费**：`tellurion-agent:cmd/ai/handlers_explore.go:188` 注册
-> `GET /explore/runs/:runID/stream`，`:443` 出 `text/event-stream`，`:385` 的注释写「前端 EventSource 和 poll
-> 能复用同一套类型」。本仓**唯一**构造 `EventSource` 的文件是 `stores/sync.ts`（打 `/api/sync/jobs/{id}/progress`），
-> 由守卫 `web/src/a08-boundaries.test.ts:49-58` 用「构造点集合 == 登记集」钉死；`api-schema.md` §「关键的跨仓语义」
-> 同批写的也是「explore 侧无 SSE 消费」。**以前本节写「探索页走 EventSource」，与本仓自己的 api-schema 和守卫互相矛盾。**
+> ⚠️ **后端那条 SSE 确实存在，但前端零消费**：`tellurion-agent:cmd/ai/handlers_explore.go` 注册
+> `GET /runs/:runID/stream`（`g.GET(..., h.Stream)`），`h.Stream` 出 `text/event-stream`，注释写
+> 「前端 EventSource 和 poll 能复用同一套类型」。本仓**唯一**构造 `EventSource` 的文件是
+> `stores/sync.ts`（打 `/api/sync/jobs/{id}/progress`），由守卫 `web/src/a08-boundaries.test.ts`
+> 用「构造点集合 == 登记集」钉死；`api-schema.md` §「关键的跨仓语义」同批写的也是
+> 「explore 侧无 SSE 消费」。**以前本节写「探索页走 EventSource」，与本仓自己的 api-schema 和守卫互相矛盾。**
 > 要接那条流是另一个动作：得先改 `a08-boundaries.test.ts` 的登记集，不能在探索页悄悄开第二条腿。
 
 ## 3. 失败模式（每一处 fail-closed 都要能指名）
@@ -50,7 +51,7 @@ verified-by: 功能边界固化（三份契约：db / api / dataflow）
 |---|---|---|
 | 轮询把 429 当失败 | 误报"后端挂了" | 区分 429 与 5xx（AUD-61） |
 | SSE 断线（**只指 `/api/sync/jobs/{id}/progress` 这一条腿**，`stores/sync.ts`） | 同步进度停住 | 重连 + 拉一次快照；探索页与此无关（它没有 SSE） |
-| 探索页轮询连续失败 | 进展停在最后一次成功拿到的状态 | `MAX_POLL_FAILS` 后停止刷新并在屏上标「可能已过期」，不静默回退（`Explore.vue:135-139`） |
+| 探索页轮询连续失败 | 进展停在最后一次成功拿到的状态 | `MAX_POLL_FAILS` 后停止刷新并在屏上标「可能已过期」，不静默回退（`Explore.vue` 轮询循环） |
 | 契约漂移 | 页面字段空 | e2e + openapi 生成类型（若引入） |
 | 直连 DB 的诱惑 | 鉴权/兼容失控 | 红线：只走 /api |
 
@@ -58,7 +59,7 @@ verified-by: 功能边界固化（三份契约：db / api / dataflow）
 
 1. `web/` 内不出现数据库驱动或连接串。
 2. 不出现第二份 `openapi.yaml`。
-3. e2e 的已知红全部以 `test.fixme("AUD-61: …")` 显式登记（数量可查）。
+3. e2e 的新已知红必须以 `test.fixme("<单号>: …")` 显式登记（必须带单号，数量可查）；存量 0（AUD-61 已收口）。
 4. 生产路径只经 `/api`。
 
 ## 5. 与契约文档的关系

@@ -1,7 +1,7 @@
 ---
 status: active
-last-verified: 2026-10-20
-verified-by: 功能边界固化（三份契约：db / api / dataflow）
+last-verified: 2026-11-11
+verified-by: 代码-文档对齐审计（2026-11-11）：AUD-61（e2e 与结构脱节）与 AUD-63（票池读数）均已收口，`test.fixme` 归零；本仓台账无开放项。此前：功能边界固化（三份契约：db / api / dataflow，2026-10-20）
 ---
 
 # 架构 — tellurion-ui
@@ -65,6 +65,7 @@ tellurion-ui ──(HTTP/SSE)──► analysis-service ──► data / ai / co
 
 | 阶段 | 内容 | 状态 |
 |---|---|---|
-| — | 设计系统 v2.0 重构 | 进行中 |
-| AUD-61 | e2e 与结构脱节（已知红登记 → 重构后重对齐） | ⬜ |
+| — | 设计系统 v2.0 重构 | 进行中（子项 2/5/8 待拍板，见 `docs/design/stitch_quantlab_ux_redesign/TASKS.md`） |
+| AUD-61 | e2e 与结构脱节 | ✅ 2026-11-10（`test.fixme` = 0，视觉基线 12 passed） |
+| AUD-63 | 票池读数口径 | ✅ 2026-11-10 |
 | — | 契约变更时同步前端类型 | 持续 |
