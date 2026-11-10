@@ -56,7 +56,7 @@ verified-by: 2026-11-10 晚 AUD-61 收口——4 条视觉基线在原生三服�
     - `dashboard-actual.png`（4420 px / 0.01 差异）：画布 `#090a0c`、面板 `#111620/#171E2C`、主按钮 `#2563eb`、侧栏 12 项 + 激活态浅底、5 块磁贴、快速回测表单、控制台历史空态——与 token 表一致；市场概览走 **DATA-07 显式空态**（「无指数数据」+ 补数说明），不是补零伪造，符合「missing≠0」。
     - `backtest-actual.png`（2425 px）：同步/异步切换、6 个表单字段、`运行回测` 主按钮、两处空态图标与文案——与 DESIGN.md 的 4/8px 圆角、Inter、三档文字一致。
     - `backtest-tablet-actual.png`（768 宽，5885 px）：侧栏占比 28%、表单两列换行正常。
-    - `dashboard-mobile-actual.png`（375 宽，1772 px）：**侧栏默认展开占 ~215px、正文列被压到一两个字宽**。与 `docs/design/visual.md` §5.2「≤768px 时 `.app-sidebar` display:none 或折叠」的建议不符。这是**既有布局行为**（旧基线同样如此，差异仅 1%），不是本次重生成引入；按本单 ⑥「前端生产代码缺陷另立工单」不在本批修，**已另立 `UI-03`**（见下）。
+    - `dashboard-mobile-actual.png`（375 宽，1772 px）：**侧栏默认展开占 ~215px、正文列被压到一两个字宽**。与 `docs/design/visual.md` §5.2「≤768px 时 `.app-sidebar` display:none 或折叠」的建议不符。这是**既有布局行为**（旧基线同样如此，差异仅 1%），不是本次重生成引入；按本单 ⑥「前端生产代码缺陷另立工单」不在本批修，**已另立 `UI-03` 并当日修掉**（侧栏 ≤768px 默认收起 60px，mobile/tablet 两张基线随之重生成，12 passed）。
   - **后重生成**：`--update-snapshots` 四条全部 `is re-generated, writing actual`，`4 passed`；随即整份 `visual-regression.spec.ts` 复跑 **12 passed (1.0m) EXIT=0**。
   - **破坏验证（护栏必验）**：临时在 dashboard 用例截图前 `page.addStyleTag({content:'.nav-tiles{display:none!important}'})` ⇒ 该条 **10932 px（2%）红 / EXIT=1**；删掉该行逐字节还原后 **1 passed / EXIT=0**，基线未被写坏。
   - **计数**：`e2e/tests` 现存 `test.fixme` = **0**（阶段一 78 → 阶段二 70 → 16 → 12 → 4 → 0）。
@@ -245,7 +245,7 @@ verified-by: 2026-11-10 晚 AUD-61 收口——4 条视觉基线在原生三服�
 
 ---
 
-## UI-03 · 375 宽下侧栏不折叠，正文列被压到一两个字宽 [P2] ⬜
+## UI-03 · 375 宽下侧栏不折叠，正文列被压到一两个字宽 [P2] ✅ 完成（2026-11-10）
 
 - **① 目标**：≤768px 视口下侧栏默认收起（或按 visual.md §5.2 的 `display:none`），正文列拿到可读宽度；375 宽下不再出现「一行一两个字」的换行。
 - **② 上下文**：2026-11-10 AUD-61 ① 批视觉腿逐张核对实际截图时取证（`e2e/test-results/.../dashboard-mobile-actual.png`，375×667）：`.app-sidebar` 仍占 ~215px（视口的 57%），`.main` 只剩 ~160px，市场概览与磁贴标题被压成一字一行。规范依据：`docs/design/visual.md` §5.2「`@media (max-width: 768px)` 时 `.app-sidebar` 可 `display:none` 或折叠」，当前实现只有 header 的手动汉堡开关，没有断点级默认收起。既有基线（2026-10-23）同样如此，差异仅 1%，**不是 2026-11-10 重生成引入**。
@@ -253,6 +253,13 @@ verified-by: 2026-11-10 晚 AUD-61 收口——4 条视觉基线在原生三服�
 - **④ 约束与非目标**：不改 DESIGN.md 的 token/字号/配色；不重排桌面端布局；不动 e2e 断言与 testid。
 - **⑤ 验收**：375×667 下 `dashboard-mobile.png` 更新后侧栏不再占位（正文列 ≥90% 视口宽）；`npx playwright test tests/visual-regression.spec.ts` 绿；**破坏验证**：把断点改回 0 宽 → mobile 基线必须红，还原绿。
 - **⑥ 边界**：只做侧栏断点行为 + 该一张基线；其余响应式页面（回测页平板/手机）另立。
+
+> **结案记录（2026-11-10）**：
+> - **改动**：`web/src/components/layout/AppLayout.vue:22-24` —— `collapsed` 初值从 `ref(false)` 改为 `ref(window.matchMedia('(max-width: 768px)').matches)`（新增常量 `SMALL_VIEWPORT`），桌面端行为逐字节不变；`AppHeader` 的 `@toggle-sidebar` 接线未动，收起态下点汉堡仍可展开（`collapsed = !collapsed`）。
+> - **取证（先看实际渲染再盖章）**：改后在 375×667 取实际截图，侧栏由 ~215px 变为 60px 图标栏，市场概览/快速回测正文列可读（不再一字一行），`运行` 按钮完整可见；768×1024 平板同样收到 60px 图标栏，回测表单两列正常。
+> - **基线**：`--update-snapshots` 只重生成 `dashboard-mobile-chromium-win32.png` 与 `backtest-tablet-chromium-win32.png`（桌面两张 0 差异、未重写）；整份 `visual-regression.spec.ts` 复跑 **12 passed EXIT=0**；`npx vue-tsc --noEmit` **EXIT=0**。
+> - **破坏验证**：把 `SMALL_VIEWPORT` 临时改成 `'(max-width: 0px)'` ⇒ `dashboard responsive on mobile viewport` **17052 px（7%）红 / EXIT=1**；改回 `768px` 后复跑 **2 passed / EXIT=0**。首次改回后跑红一次是 vite HMR 未及时热更（17k px 全等破坏态），隔一次复跑即绿，已如实记录。
+> - **观察到但未在本单修**（不在 ⑥ 边界内，留档）：375 宽下 header 的站点名「Quant Lab」会折成两行（`AppHeader` 的标题未设 `nowrap`），以及右侧 `API: 在线` 徽标与时钟偏挤；如需处理另立单。
 
 ---
 

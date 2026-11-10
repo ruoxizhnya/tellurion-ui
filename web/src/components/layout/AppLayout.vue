@@ -19,7 +19,9 @@ import { ref } from 'vue'
 import AppHeader from './AppHeader.vue'
 import AppSidebar from './AppSidebar.vue'
 
-const collapsed = ref(false)
+// UI-03：≤768px 视口默认收起侧栏（visual.md §5.2），桌面端维持展开；header 的汉堡开关仍可手动切换。
+const SMALL_VIEWPORT = '(max-width: 768px)'
+const collapsed = ref(window.matchMedia(SMALL_VIEWPORT).matches)
 </script>
 
 <style scoped>
