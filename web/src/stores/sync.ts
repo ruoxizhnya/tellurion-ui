@@ -172,11 +172,12 @@ export const useSyncStore = defineStore('sync', () => {
     error.value = null
     try {
       const resp = await createSyncJob(request)
+      // 202 直接回 job 对象（键是 `id`，不是 `job_id`）。
       // 动作只回读那一条作业（见 refreshJob 的注释）。整张列表由队列面板 own：
       // 这里若重读，用户选的筛选与页宽会被静默冲掉。
-      await refreshJob(resp.job_id).catch(() => undefined)
-      watchJob(resp.job_id)
-      return resp.job_id
+      await refreshJob(resp.id).catch(() => undefined)
+      watchJob(resp.id)
+      return resp.id
     } catch (err) {
       error.value = apiMessage(err, 'Failed to create sync job')
       throw err
@@ -192,13 +193,15 @@ export const useSyncStore = defineStore('sync', () => {
     const params: Record<string, unknown> = { symbols: request.symbols }
     if (request.start_date) params.start_date = request.start_date
     if (request.end_date) params.end_date = request.end_date
+    // job_type 的取值 = connector 声明的 data_type：日线是 `ohlcv_daily`，
+    // 财报是 `fundamental`（不是 ui 表单里的 ohlcv / fundamentals）。
     const jobTypes =
       request.data_type === 'all'
-        ? ['ohlcv', 'fundamentals']
-        : [request.data_type === 'fundamental' ? 'fundamentals' : 'ohlcv']
+        ? ['ohlcv_daily', 'fundamental']
+        : [request.data_type === 'fundamental' ? 'fundamental' : 'ohlcv_daily']
     const ids: string[] = []
-    for (const type of jobTypes) {
-      ids.push(await createJob({ type, params }))
+    for (const jobType of jobTypes) {
+      ids.push(await createJob({ job_type: jobType, params }))
     }
     return ids
   }

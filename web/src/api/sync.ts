@@ -45,12 +45,14 @@ export async function getSyncJob(jobId: string): Promise<SyncJob> {
   return api.get<SyncJob>(`/api/sync/jobs/${encodeURIComponent(jobId)}`)
 }
 
-export async function cancelSyncJob(jobId: string): Promise<{ message: string; job_id: string }> {
-  return api.post(`/api/sync/jobs/${encodeURIComponent(jobId)}/cancel`)
+// 200 回更新后的 job 对象（cancel 只允许 pending；已领走是 409）。
+export async function cancelSyncJob(jobId: string): Promise<SyncJob> {
+  return api.post<SyncJob>(`/api/sync/jobs/${encodeURIComponent(jobId)}/cancel`)
 }
 
-export async function retrySyncJob(jobId: string): Promise<{ message: string; job_id: string; status: SyncJobStatus }> {
-  return api.post(`/api/sync/jobs/${encodeURIComponent(jobId)}/retry`)
+// 200 回重新排队后的 job 对象（非 failed/cancelled 或超重试上限是 409）。
+export async function retrySyncJob(jobId: string): Promise<SyncJob> {
+  return api.post<SyncJob>(`/api/sync/jobs/${encodeURIComponent(jobId)}/retry`)
 }
 
 // SSE progress stream for one job — EventSource is constructed by the sync

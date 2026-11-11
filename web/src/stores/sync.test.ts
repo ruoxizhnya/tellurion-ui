@@ -152,16 +152,13 @@ describe('sync store', () => {
 
   it('creates a job and puts that job in the queue without clobbering the list', async () => {
     const store = useSyncStore()
-    api.createSyncJob.mockResolvedValue({
-      message: 'stocks sync job created',
-      job_id: 'job-9',
-      status: 'pending',
-    })
+    // 202 回的是 job 对象本身（键 `id`），不是 {message, job_id} 包裹。
+    api.createSyncJob.mockResolvedValue(makeJob({ id: 'job-9' }))
     api.getSyncJob.mockResolvedValue(makeJob({ id: 'job-9' }))
     api.listSyncJobs.mockResolvedValue({ jobs: [makeJob({ id: 'job-9' })], count: 1 })
-    const id = await store.createJob({ type: 'stocks' })
+    const id = await store.createJob({ job_type: 'stocks' })
     expect(id).toBe('job-9')
-    expect(api.createSyncJob).toHaveBeenCalledWith({ type: 'stocks' })
+    expect(api.createSyncJob).toHaveBeenCalledWith({ job_type: 'stocks' })
     expect(store.jobs[0].id).toBe('job-9')
     // A-08 审查修正：动作只回读那一条。重读整张列表会静默冲掉队列面板的筛选与页宽
     // （run-now 那条先被抓到，create/cancel/retry 是同一个病，一起收）。
@@ -170,11 +167,7 @@ describe('sync store', () => {
 
   it('maps the import form onto L0 job types', async () => {
     const store = useSyncStore()
-    api.createSyncJob.mockResolvedValue({
-      message: 'ok',
-      job_id: 'job-x',
-      status: 'pending',
-    })
+    api.createSyncJob.mockResolvedValue(makeJob({ id: 'job-x' }))
     api.getSyncJob.mockResolvedValue(makeJob({ id: 'job-x' }))
     api.listSyncJobs.mockResolvedValue({ jobs: [], count: 0 })
 
@@ -185,7 +178,7 @@ describe('sync store', () => {
       data_type: 'ohlcv',
     })
     expect(api.createSyncJob).toHaveBeenCalledWith({
-      type: 'ohlcv',
+      job_type: 'ohlcv_daily',
       params: { symbols: ['600519'], start_date: '2024-01-01' },
     })
 
@@ -197,7 +190,7 @@ describe('sync store', () => {
       data_type: 'fundamental',
     })
     expect(api.createSyncJob).toHaveBeenCalledWith({
-      type: 'fundamentals',
+      job_type: 'fundamental',
       params: { symbols: ['600519'] },
     })
 
@@ -209,8 +202,8 @@ describe('sync store', () => {
       data_type: 'all',
     })
     expect(api.createSyncJob).toHaveBeenCalledTimes(2)
-    expect(api.createSyncJob.mock.calls[0][0].type).toBe('ohlcv')
-    expect(api.createSyncJob.mock.calls[1][0].type).toBe('fundamentals')
+    expect(api.createSyncJob.mock.calls[0][0].job_type).toBe('ohlcv_daily')
+    expect(api.createSyncJob.mock.calls[1][0].job_type).toBe('fundamental')
   })
 
   it('clears errors', async () => {

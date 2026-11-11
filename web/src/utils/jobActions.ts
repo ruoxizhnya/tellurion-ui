@@ -24,6 +24,8 @@ const STATUS_LABELS: Record<SyncJobStatus, string> = {
   pending: '排队中',
   running: '同步中',
   retrying: '重试中',
+  succeeded: '已完成',
+  // 历史行兼容：data 迁移前的终态字面值是 completed。
   completed: '已完成',
   failed: '失败',
   cancelled: '已取消',
@@ -33,6 +35,7 @@ const STATUS_TAGS: Record<SyncJobStatus, SeverityType> = {
   pending: 'warning',
   running: 'warning',
   retrying: 'warning',
+  succeeded: 'success',
   completed: 'success',
   failed: 'error',
   cancelled: 'error',

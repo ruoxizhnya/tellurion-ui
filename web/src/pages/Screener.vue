@@ -51,9 +51,9 @@
       </n-form>
     </n-card>
 
-    <n-card v-if="results.symbols?.length" title="选股结果" class="results-card">
+    <n-card v-if="results.results.length" title="选股结果" class="results-card">
       <template #header-extra>
-        <n-tag type="success" round :bordered="false">找到 {{ results.total }} 只股票</n-tag>
+        <n-tag type="success" round :bordered="false">找到 {{ results.count }} 只股票</n-tag>
       </template>
       <n-data-table
         :columns="columns"
@@ -78,6 +78,7 @@ import {
   NDataTable, NEmpty, NTag, NSpace, NGrid, NGridItem, useMessage,
 } from 'naive-ui'
 import { screenStocks } from '@/api/market'
+import type { ScreenResultItem } from '@/types/api'
 
 const message = useMessage()
 const loading = ref(false)
@@ -94,7 +95,7 @@ const form = reactive({
   limit: 50,
 })
 
-const results = ref<{ symbols: string[]; total: number; factors?: Record<string, number>[] }>({ symbols: [], total: 0 })
+const results = ref<{ count: number; results: ScreenResultItem[] }>({ count: 0, results: [] })
 
 const limitOptions = [
   { label: '10 只', value: 10 },
@@ -105,8 +106,8 @@ const limitOptions = [
 
 const columns = [
   { title: '#', key: 'index', width: 50, render: (_row: unknown, i: number) => i + 1 },
-  { title: '股票代码', key: 'symbol', width: 120 },
-  { title: 'PE (TTM)', key: 'pe_ttm', width: 90 },
+  { title: '股票代码', key: 'ts_code', width: 120 },
+  { title: 'PE (TTM)', key: 'pe', width: 90 },
   { title: 'PB', key: 'pb', width: 80 },
   { title: 'ROE (%)', key: 'roe', width: 90 },
   { title: 'ROA (%)', key: 'roa', width: 90 },
@@ -116,11 +117,7 @@ const columns = [
 ]
 
 const tableData = computed(() =>
-  results.value.symbols.map((sym, i) => ({
-    index: i + 1,
-    symbol: sym,
-    ...(results.value.factors?.[i] || {}),
-  }))
+  results.value.results.map((row, i) => ({ index: i + 1, ...row }))
 )
 
 async function runScreen() {
@@ -139,7 +136,7 @@ async function runScreen() {
 
     const res = await screenStocks(params)
     results.value = res
-    message.success(`找到 ${res.total} 只股票`)
+    message.success(`找到 ${res.count} 只股票`)
   } catch (e: unknown) {
     message.error('选股失败: ' + (e instanceof Error ? e.message : String(e)))
   } finally {
@@ -149,7 +146,7 @@ async function runScreen() {
 
 function resetForm() {
   Object.assign(form, { peMax: null, pbMax: null, roeMin: null, roaMin: null, grossMarginMin: null, netMarginMin: null, marketCapMin: null, limit: 50 })
-  results.value = { symbols: [], total: 0 }
+  results.value = { count: 0, results: [] }
   hasSearched.value = false
 }
 </script>

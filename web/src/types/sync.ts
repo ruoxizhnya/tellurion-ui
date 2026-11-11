@@ -17,9 +17,12 @@ export interface DataSourceHealth {
 export type SyncJobStatus =
   | 'pending'
   | 'running'
-  | 'completed'
+  | 'succeeded'
   | 'failed'
   | 'cancelled'
+  // 历史行（data 迁到 succeeded 之前的库）仍可能回读成 completed；
+  // 只作展示兼容，不参与任何判定。
+  | 'completed'
   | 'retrying'
 
 // Mirrors pkg/sync/types/types.go Job JSON tags (single source of truth:
@@ -44,17 +47,16 @@ export interface SyncJob {
   worker_id?: string
 }
 
-// POST /api/sync/jobs request body.
+// POST /api/sync/jobs request body. data 用 DisallowUnknownFields 解码，
+// 键名是 `job_type`（发 `type` 会 400 unknown field）。
 export interface CreateSyncJobRequest {
-  type: string
+  job_type: string
   params?: Record<string, unknown>
+  max_retries?: number
 }
 
-export interface CreateSyncJobResponse {
-  message: string
-  job_id: string
-  status: SyncJobStatus
-}
+// 202 直接回 job 对象（不是 {message, job_id} 包裹）。
+export type CreateSyncJobResponse = SyncJob
 
 // GET /api/sync/jobs response.
 export interface SyncJobListResponse {
@@ -154,6 +156,7 @@ export interface RunScheduleNowResponse {
 // GET /api/sync/workers — mirrors pkg/sync/worker.go WorkerStats.
 export interface WorkerStats {
   num_workers: number
+  worker_ids?: string[]
   registered_types: string[]
   is_running: boolean
 }

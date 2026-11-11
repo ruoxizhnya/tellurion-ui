@@ -156,10 +156,29 @@ export interface HealthStatus {
   uptime_seconds: number
 }
 
+/**
+ * `POST /api/screen` 的单行结果（后端 `domain.ScreenResult`）。
+ *
+ * 2026-11-12 裁：该端点从「反代 data（那条路由从不存在）」改为 **core
+ * 本地供数**，形状按 openapi 冻为 `{count, results}`，与 e2e api-negative
+ * 的契约一致。旧的 `{symbols,total,factors}` 从未有后端实现过。
+ */
+export interface ScreenResultItem {
+  ts_code: string
+  pe: number | null
+  pb: number | null
+  ps: number | null
+  roe: number | null
+  roa: number | null
+  debt_to_equity: number | null
+  gross_margin: number | null
+  net_margin: number | null
+  market_cap: number | null
+}
+
 export interface ScreenResult {
-  symbols: string[]
-  total: number
-  factors: Record<string, number>[]
+  count: number
+  results: ScreenResultItem[]
 }
 
 // ── Copilot（OBS-12：对齐后端异步 job 契约，cmd/analysis/handlers_copilot.go）──

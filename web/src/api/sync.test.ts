@@ -138,7 +138,7 @@ describe('sync read-out API (A-08 断言 3)', () => {
 describe('既有作业腿不退化（A-08 断言 1 的 API 层）', () => {
   it('四个作业端点各自的 URL/方法保持原样', async () => {
     const calls = captureFetch({ jobs: [], count: 0 })
-    await createSyncJob({ type: 'ohlcv', params: {} })
+    await createSyncJob({ job_type: 'ohlcv_daily', params: {} })
     await listSyncJobs('failed', 20)
     await getSyncJob('aud49_1')
     await cancelSyncJob('aud49_1')
