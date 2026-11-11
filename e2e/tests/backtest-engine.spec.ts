@@ -1,6 +1,21 @@
-import { test, expect } from '@playwright/test';
+import { test, expect, Page } from '@playwright/test';
 import { waitForBackendReady } from '../helpers/api';
 import { isolateTestEnvironment } from '../helpers/isolation';
+
+/**
+ * 历史卡有两条来源：localStorage（beforeEach 的隔离已清空）与
+ * `GET /api/backtest?limit=`（库里真实回测作业）。把「库里回读」钉成一次
+ * 可等待的事件，清除/断言才不会与回读互相穿插 —— 否则「清空后是空态」
+ * 就变成了「库里恰好没有历史记录」的赌注。
+ */
+function waitForHistoryFetch(page: Page) {
+  return page
+    .waitForResponse(
+      (r) => r.request().method() === 'GET' && r.url().includes('/api/backtest?limit='),
+      { timeout: 15000 },
+    )
+    .catch(() => null)
+}
 
 async function navigateToBacktest(page: any) {
   await page.goto('/');
@@ -184,16 +199,19 @@ test.describe('Backtest Engine — Interaction Tests', () => {
     }
   });
 
-  test('history list view-report button navigates with query param', async ({ page }) => {
+  test('history list view-report button is present on history rows', async ({ page }) => {
+    // 历史卡早已从 n-list 换成 n-collapse（BacktestHistory.vue）；旧选择器
+    // `.n-list-item` 永远 count=0，这条用例就成了空跑。改为钉真实行 + 真实按钮。
+    const historyLoaded = waitForHistoryFetch(page);
     await navigateToBacktest(page);
-    await page.waitForSelector('.history-section .n-list-item', { timeout: 10000 }).catch(() => {});
+    await page.waitForSelector('.history-section', { timeout: 10000 });
+    await historyLoaded;
 
-    const historyItems = page.locator('.history-section .n-list-item');
+    const historyItems = page.locator('.history-section .n-collapse-item');
     const count = await historyItems.count();
-    if (count === 0) return;
+    if (count === 0) return; // 空库 + 本次未跑回测：没有行可点，不编造行
 
-    const firstItem = historyItems.first();
-    const viewBtn = firstItem.locator('.n-button:has-text("查看")');
+    const viewBtn = historyItems.first().locator('.n-button:has-text("查看报告")');
     await expect(viewBtn).toBeVisible();
   });
 
@@ -263,7 +281,9 @@ test.describe('Backtest Engine — Complete Workflow Tests', () => {
   });
 
   test('backtest history shows completed jobs with correct data', async ({ page }) => {
+    const historyLoaded = waitForHistoryFetch(page);
     await navigateToBacktest(page);
+    await historyLoaded;
 
     await page.fill('[placeholder="600000.SH,600036.SH"]', '600519.SH');
     // 页面默认是异步模式（asyncMode = ref(true)），异步提交要求 ORCHESTRATION_URL；
@@ -276,15 +296,13 @@ test.describe('Backtest Engine — Complete Workflow Tests', () => {
     const historySection = page.locator('.history-section');
     await expect(historySection).toBeVisible({ timeout: 10000 });
 
-    const historyItems = historySection.locator('.n-collapse-item');
-    const itemCount = await historyItems.count();
-    if (itemCount === 0) return;
+    // 库里可能已有其它作业的历史（e2e 库跨 run 累积）。判据锚定「本次跑的
+    // 600519.SH」这一行，而不是「排在第一的那一行」——后者取决于库里的历史分布。
+    const item = historySection.locator('.n-collapse-item').filter({ hasText: '600519.SH' }).first();
+    await expect(item).toBeVisible({ timeout: 10000 });
+    await expect(item).toContainText(/momentum|策略/);
 
-    const firstItem = historyItems.first();
-    await expect(firstItem).toBeVisible();
-    await expect(firstItem).toContainText(/momentum|策略/);
-
-    const totalReturnTag = firstItem.locator('.n-tag[type="success"], .n-tag[type="error"]');
+    const totalReturnTag = item.locator('.n-tag[type="success"], .n-tag[type="error"]');
     if (await totalReturnTag.count() > 0) {
       const text = await totalReturnTag.first().textContent();
       expect(text).toMatch(/[+-]?\d+\.?\d*%/);
@@ -311,13 +329,27 @@ test.describe('Backtest Engine — Complete Workflow Tests', () => {
   });
 
   test('view report button loads historical result', async ({ page }) => {
+    const historyLoaded = waitForHistoryFetch(page);
     await navigateToBacktest(page);
     await page.waitForSelector('.history-section', { timeout: 10000 });
-    const historySection = page.locator('.history-section');
-    const viewBtns = historySection.locator('.n-button:has-text("查看报告")');
-    const btnCount = await viewBtns.count();
-    if (btnCount === 0) return;
+    await historyLoaded;
 
+    const historySection = page.locator('.history-section');
+
+    // 不赌「库里第一条历史一定带报告」：先清掉继承来的行（等库回读落地后再清，
+    // 避免回读把旧作业补回来），再用本次运行产生的那一行点「查看报告」。
+    const clearBtn = historySection.locator('.n-button:has-text("清除")');
+    if (await clearBtn.count() > 0) {
+      await clearBtn.click();
+    }
+
+    await page.fill('[placeholder="600000.SH,600036.SH"]', '600000.SH');
+    await page.click('.mode-toggle .n-button:has-text("同步")');
+    await page.click('.n-button--primary-type:has-text("运行回测")');
+    await page.waitForSelector('.metrics-grid', { timeout: 120000 });
+
+    const viewBtns = historySection.locator('.n-button:has-text("查看报告")');
+    await expect(viewBtns).toHaveCount(1, { timeout: 10000 });
     await viewBtns.first().click();
 
     // 当前实现是「就地把报告装进本页」（loadReport → result 赋值），不改 URL；
@@ -327,8 +359,13 @@ test.describe('Backtest Engine — Complete Workflow Tests', () => {
   });
 
   test('clear history removes all items', async ({ page }) => {
+    const historyLoaded = waitForHistoryFetch(page);
     await navigateToBacktest(page);
     await page.waitForSelector('.history-section', { timeout: 10000 });
+
+    // 必须等 `GET /api/backtest?limit=` 的回读落定再清除：清除发生在回读之前时，
+    // 回读会把库里的旧作业重新补进列表，空态断言就变成「库里恰好没有历史记录」的赌注。
+    await historyLoaded;
 
     const clearBtn = page.locator('.history-section .n-button:has-text("清除")');
     const btnCount = await clearBtn.count();
