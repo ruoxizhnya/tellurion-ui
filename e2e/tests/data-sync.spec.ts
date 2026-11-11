@@ -17,12 +17,13 @@ test.describe('D7-28: Data Sync — Full Workflow (Create → Execute → Comple
     const ctx = await apiRequest();
 
     // Step 1: Create a sync job
-    // 用 ohlcv 单票作业而不是 stocks：progress 的 total/processed 由逐 symbol
-    // 执行器调用 ReportProgress 写出；stocks 批量作业只回 result.count，
-    // total_items 恒 0（实测）。
+    // 契约（data docs/api-schema.md §4）：请求键是 `job_type`（不是 `type`），
+    // 响应直接是 job 对象（`id` 不是 `job_id`），终态是 `succeeded`
+    // （不是 `completed`）。job_type 的取值 = connector 声明的 data_type，
+    // 日线是 `ohlcv_daily`（`ohlcv` / `ohlcv_daily_qfq` 都接不了单）。
     const createRes = await ctx.post('/api/sync/jobs', {
       data: {
-        type: 'ohlcv',
+        job_type: 'ohlcv_daily',
         params: {
           symbols: ['600000.SH'],
           start_date: '2024-01-01',
@@ -33,40 +34,54 @@ test.describe('D7-28: Data Sync — Full Workflow (Create → Execute → Comple
 
     expect(createRes.status()).toBe(202);
     const createBody = await createRes.json();
-    expect(createBody.job_id).toBeDefined();
-    expect(typeof createBody.job_id).toBe('string');
-    const jobId = createBody.job_id;
+    expect(typeof createBody.id).toBe('string');
+    const jobId = createBody.id;
 
     // Step 2: Verify job is queued or running
     const statusRes = await ctx.get(`/api/sync/jobs/${jobId}`);
     expect(statusRes.status()).toBe(200);
     const statusBody = await statusRes.json();
     expect(statusBody.id).toBe(jobId);
-    expect(['pending', 'running', 'completed']).toContain(statusBody.status);
+    expect(['pending', 'running', 'succeeded']).toContain(statusBody.status);
 
-    // Step 3: Poll until job completes (with timeout)
-    let completed = false;
+    // Step 3: Poll until job reaches a terminal state (with timeout)
+    let terminal = false;
     const deadline = Date.now() + 30000;
     while (Date.now() < deadline) {
       const pollRes = await ctx.get(`/api/sync/jobs/${jobId}`);
       const pollBody = await pollRes.json();
-      if (pollBody.status === 'completed' || pollBody.status === 'failed') {
-        completed = true;
+      if (pollBody.status === 'succeeded' || pollBody.status === 'failed') {
+        terminal = true;
         break;
       }
       await new Promise(r => setTimeout(r, 1000));
     }
-    expect(completed).toBe(true);
+    expect(terminal).toBe(true);
 
     // Step 4: Verify final state
     const finalRes = await ctx.get(`/api/sync/jobs/${jobId}`);
     expect(finalRes.status()).toBe(200);
     const finalBody = await finalRes.json();
-    expect(finalBody.status).toBe('completed');
+    expect(finalBody.status).toBe('succeeded');
     expect(finalBody.progress_percent).toBe(100);
     expect(finalBody.total_items).toBeGreaterThan(0);
     expect(finalBody.processed_items).toBe(finalBody.total_items);
 
+    await ctx.dispose();
+  });
+
+  test('API: 旧契约键 type 必须被 400 拒（负面）', async () => {
+    // 钉住 2026-11-12 的契约迁移：data 用 DisallowUnknownFields 解码，
+    // 发 `type` 会得到 400 + invalid_parameter，而不是被静默忽略后建一个
+    // job_type 为空的作业。
+    const ctx = await apiRequest();
+    const res = await ctx.post('/api/sync/jobs', {
+      data: { type: 'ohlcv_daily', params: { symbols: ['600000.SH'] } },
+    });
+    expect(res.status()).toBe(400);
+    const body = await res.json();
+    expect(body.error.code).toBe('invalid_parameter');
+    expect(String(body.error.message)).toContain('type');
     await ctx.dispose();
   });
 
@@ -79,15 +94,15 @@ test.describe('D7-28: Data Sync — Full Workflow (Create → Execute → Comple
     const allBody = await allRes.json();
     expect(Array.isArray(allBody.jobs)).toBe(true);
 
-    // Get completed jobs
-    const completedRes = await ctx.get('/api/sync/jobs?status=completed');
-    expect(completedRes.status()).toBe(200);
-    const completedBody = await completedRes.json();
-    expect(Array.isArray(completedBody.jobs)).toBe(true);
+    // Get succeeded jobs（终态字面值是 succeeded，不是 completed）
+    const succeededRes = await ctx.get('/api/sync/jobs?status=succeeded');
+    expect(succeededRes.status()).toBe(200);
+    const succeededBody = await succeededRes.json();
+    expect(Array.isArray(succeededBody.jobs)).toBe(true);
 
-    // Verify all completed jobs have status 'completed'
-    for (const job of completedBody.jobs) {
-      expect(job.status).toBe('completed');
+    // Verify all filtered jobs have status 'succeeded'
+    for (const job of succeededBody.jobs) {
+      expect(job.status).toBe('succeeded');
     }
 
     await ctx.dispose();
@@ -99,29 +114,30 @@ test.describe('D7-28: Data Sync — Full Workflow (Create → Execute → Comple
     // Create a job that takes some time
     const createRes = await ctx.post('/api/sync/jobs', {
       data: {
-        type: 'ohlcv',
+        job_type: 'ohlcv_daily',
         params: {
           symbols: ['000001.SZ', '000002.SZ'],
           start_date: '2024-01-01',
           end_date: '2024-12-31',
-          source: 'tushare',
         },
       },
     });
 
     expect(createRes.status()).toBe(202);
     const createBody = await createRes.json();
-    const jobId = createBody.job_id;
+    const jobId = createBody.id;
 
-    // Cancel the job
+    // Cancel：pending 的作业可取消（200）；worker 已经领走则是 409
+    // `job_not_cancellable`——只有 pending 能取消是队列的既定语义，不是
+    // 偶发失败，所以两者都算对齐契约。
     const cancelRes = await ctx.post(`/api/sync/jobs/${jobId}/cancel`);
-    expect([202, 200, 404]).toContain(cancelRes.status());
+    expect([200, 409]).toContain(cancelRes.status());
 
-    // Verify job is cancelled or completed
+    // Verify job is cancelled or reached another terminal state
     const statusRes = await ctx.get(`/api/sync/jobs/${jobId}`);
     if (statusRes.status() === 200) {
       const statusBody = await statusRes.json();
-      expect(['cancelled', 'completed', 'failed']).toContain(statusBody.status);
+      expect(['cancelled', 'succeeded', 'failed', 'pending', 'running']).toContain(statusBody.status);
     }
 
     await ctx.dispose();
@@ -131,12 +147,13 @@ test.describe('D7-28: Data Sync — Full Workflow (Create → Execute → Comple
     test.setTimeout(60000);
     const ctx = await apiRequest();
 
-    // 造一个**异步失败**的作业：calendar 的日期只校验格式、不校验先后，
-    // 执行器在窗口解析时才报 "end_date ... is before start_date"（实测）。
-    // 旧版用 ohlcv + invalid 日期，现在在受理门就 400，根本拿不到 job_id。
+    // 造一个**异步失败**的作业：参考数据腿 `trading_calendar` 的日期只校验
+    // 格式、不校验先后，执行器在窗口解析时才报 "end_date ... is before
+    // start_date"（实测）。旧版用 ohlcv + invalid 日期，现在在受理门就 400，
+    // 根本拿不到 id。
     const createRes = await ctx.post('/api/sync/jobs', {
       data: {
-        type: 'calendar',
+        job_type: 'trading_calendar',
         params: {
           exchange: 'SSE',
           start_date: '2099-12-31',
@@ -147,7 +164,7 @@ test.describe('D7-28: Data Sync — Full Workflow (Create → Execute → Comple
 
     expect(createRes.status()).toBe(202);
     const createBody = await createRes.json();
-    const jobId = createBody.job_id;
+    const jobId = createBody.id;
 
     // Wait for job to fail
     let failed = false;
@@ -217,10 +234,10 @@ test.describe('D7-28: Data Sync — Full Workflow (Create → Execute → Comple
     test.setTimeout(60000);
     const ctx = await apiRequest();
 
-    // 用 ohlcv 单票作业：它真的会 ReportProgress（stocks 批量作业不报进度）。
+    // 用 ohlcv_daily 单票作业：它真的会 ReportProgress（stocks 批量作业不报进度）。
     const createRes = await ctx.post('/api/sync/jobs', {
       data: {
-        type: 'ohlcv',
+        job_type: 'ohlcv_daily',
         params: {
           symbols: ['600000.SH'],
           start_date: '2024-01-01',
@@ -231,7 +248,7 @@ test.describe('D7-28: Data Sync — Full Workflow (Create → Execute → Comple
 
     expect(createRes.status()).toBe(202);
     const createBody = await createRes.json();
-    const jobId = createBody.job_id;
+    const jobId = createBody.id;
 
     // 旧版在 Node 测试体里 new EventSource(...) —— Node 没有这个浏览器全局，
     // 连接建立前就 ReferenceError（不是后端缺陷）。改用 fetch 读 SSE 流。
@@ -261,7 +278,7 @@ test.describe('D7-28: Data Sync — Full Workflow (Create → Execute → Comple
           if (!line.startsWith('data:')) continue;
           try {
             const data = JSON.parse(line.slice(5).trim());
-            if (data.id === jobId && data.status === 'completed') {
+            if (data.id === jobId && data.status === 'succeeded') {
               completedPayload = data;
             }
           } catch {
@@ -274,7 +291,7 @@ test.describe('D7-28: Data Sync — Full Workflow (Create → Execute → Comple
       clearTimeout(timer);
     }
 
-    expect(completedPayload, '未在 20s 内收到该作业的 completed 进度事件').toBeTruthy();
+    expect(completedPayload, '未在 20s 内收到该作业的 succeeded 进度事件').toBeTruthy();
     expect(completedPayload.total_items).toBe(1);
     expect(completedPayload.processed_items).toBe(1);
 

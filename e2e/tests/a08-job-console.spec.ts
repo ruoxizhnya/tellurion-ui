@@ -25,6 +25,8 @@ const STATUS_TEXT: Record<string, string> = {
   pending: '排队中',
   running: '同步中',
   retrying: '重试中',
+  succeeded: '已完成',
+  // 历史行兼容（data 迁移前终态字面值是 completed）。
   completed: '已完成',
   failed: '失败',
   cancelled: '已取消',
@@ -34,7 +36,7 @@ function scheduleRow(over: Record<string, unknown> = {}) {
   return {
     id: 7101,
     name: 'a08-e2e-row',
-    job_type: 'ohlcv',
+    job_type: 'ohlcv_daily',
     cron_expression: '0 9 * * *',
     params: { symbols: ['600000.SH'] },
     is_active: true,
@@ -48,8 +50,8 @@ function scheduleRow(over: Record<string, unknown> = {}) {
 function jobRow(over: Record<string, unknown> = {}) {
   return {
     id: 'a08_fixture_0',
-    job_type: 'ohlcv_all',
-    status: 'completed',
+    job_type: 'ohlcv_daily',
+    status: 'succeeded',
     params: { symbols: ['600000.SH'] },
     progress_percent: 100,
     total_items: 1,
@@ -91,14 +93,18 @@ async function mockConsoleApis(
       return hit ? json(hit) : json({ error: 'job not found' });
     }
     const cancel = /^\/api\/sync\/jobs\/([^/]+)\/cancel$/.exec(path);
+    // 真契约：cancel/retry 都回**更新后的 job 对象**（不是 {message,job_id}）；
+    // retry 把行重新排成 pending，不是自造的 retrying 状态。
     if (method === 'POST' && cancel) {
       state.jobs = state.jobs.map((j) => (j.id === cancel[1] ? { ...j, status: 'cancelled' } : j));
-      return json({ message: 'job cancelled', job_id: cancel[1] });
+      return json(state.jobs.find((j) => j.id === cancel[1]));
     }
     const retry = /^\/api\/sync\/jobs\/([^/]+)\/retry$/.exec(path);
     if (method === 'POST' && retry) {
-      state.jobs = state.jobs.map((j) => (j.id === retry[1] ? { ...j, status: 'retrying' } : j));
-      return json({ message: 'job retried', job_id: retry[1], status: 'retrying' });
+      state.jobs = state.jobs.map((j) =>
+        (j.id === retry[1] ? { ...j, status: 'pending', retry_count: Number(j.retry_count) + 1 } : j),
+      );
+      return json(state.jobs.find((j) => j.id === retry[1]));
     }
     if (isStream) {
       // 进度流在测试里不必真的流：断言 4 只关心"开了几条、开在谁身上"。
@@ -149,7 +155,7 @@ async function mockConsoleApis(
       // 真后端这条是 202 + job_id，且**作业行此时已存在**（实测 2026-10-14）
       const jobId = `scheduled-${run[1]}`;
       state.jobs = [
-        jobRow({ id: jobId, job_type: 'ohlcv', status: 'pending', progress_percent: 0, processed_items: 0, total_items: 1 }),
+        jobRow({ id: jobId, job_type: 'ohlcv_daily', status: 'pending', progress_percent: 0, processed_items: 0, total_items: 1 }),
         ...state.jobs,
       ];
       return route.fulfill({
@@ -169,7 +175,12 @@ async function mockConsoleApis(
     calls.push('GET /api/sync/workers');
     return route.fulfill({
       contentType: 'application/json',
-      body: JSON.stringify({ num_workers: 3, registered_types: ['ohlcv', 'stocks'], is_running: true }),
+      body: JSON.stringify({
+        num_workers: 3,
+        worker_ids: ['data-1', 'data-2', 'data-3'],
+        registered_types: ['ohlcv_daily', 'stocks', 'trading_calendar'],
+        is_running: true,
+      }),
     });
   });
   await page.route('**/api/sync/scheduler/stats', (route) => {
@@ -334,13 +345,13 @@ test.describe('A-08 作业控制台', () => {
        */
       const ctx = await apiRequest();
       const res = await postJsonWithBackoff(ctx, '/api/sync/jobs', {
-        type: 'stocks',
+        job_type: 'stocks',
         params: { source: 'tushare' },
       });
       const text = await res.text();
       await ctx.dispose();
       expect(res.ok(), `POST /api/sync/jobs 造真作业失败（${res.status()}）：${text}`).toBe(true);
-      target = JSON.parse(text).job_id;
+      target = JSON.parse(text).id;
       await page.reload();
       await expect(page.locator(`[data-testid="queue-cancel-${target}"]`)).toBeVisible({
         timeout: 20000,

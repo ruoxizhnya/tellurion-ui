@@ -13,37 +13,55 @@ test.describe('D7-30: Data Sync — Failure Retry & Error Handling', () => {
     await isolateTestEnvironment(page);
   });
 
-  test('API: Invalid job type returns error', async () => {
+  test('API: Unknown job type is accepted then fails loudly in the runner', async () => {
+    // 契约：受理门只校验参数语法，**不**校验 job_type 是否存在——未知类型
+    // 会作为作业失败响亮暴露（connector 未声明该 data_type），而不是 400。
     const ctx = await apiRequest();
 
     const res = await ctx.post('/api/sync/jobs', {
       data: {
-        type: 'invalid_type',
+        job_type: 'invalid_type',
         params: {},
       },
     });
 
-    expect(res.status()).toBeGreaterThanOrEqual(400);
-    const body = await res.json();
-    expect(body.error).toBeDefined();
+    expect(res.status()).toBe(202);
+    const created = await res.json();
+    const jobId = created.id;
+    expect(typeof jobId).toBe('string');
+
+    let failedJob: any = null;
+    const deadline = Date.now() + 30000;
+    while (Date.now() < deadline) {
+      const pollRes = await ctx.get(`/api/sync/jobs/${jobId}`);
+      if (pollRes.status() === 200) {
+        const pollBody = await pollRes.json();
+        if (pollBody.status === 'failed') {
+          failedJob = pollBody;
+          break;
+        }
+      }
+      await new Promise(r => setTimeout(r, 1000));
+    }
+    expect(failedJob, '未知 job_type 的作业未在 30s 内 failed').toBeTruthy();
+    expect(failedJob.error_message.length).toBeGreaterThan(0);
 
     await ctx.dispose();
   });
 
-  test('API: Missing required params returns error', async () => {
+  test('API: Missing job_type returns 400', async () => {
     const ctx = await apiRequest();
 
     const res = await ctx.post('/api/sync/jobs', {
       data: {
-        type: 'ohlcv',
-        // Missing required params: symbols, start_date, end_date
+        // job_type 是必填；params 合法也救不回来
         params: {},
       },
     });
 
-    expect(res.status()).toBeGreaterThanOrEqual(400);
+    expect(res.status()).toBe(400);
     const body = await res.json();
-    expect(body.error).toBeDefined();
+    expect(body.error.code).toBe('invalid_parameter');
 
     await ctx.dispose();
   });
@@ -53,7 +71,7 @@ test.describe('D7-30: Data Sync — Failure Retry & Error Handling', () => {
 
     const res = await ctx.post('/api/sync/jobs', {
       data: {
-        type: 'ohlcv',
+        job_type: 'ohlcv_daily',
         params: {
           symbols: ['000001.SZ'],
           start_date: 'not-a-date',
@@ -78,12 +96,15 @@ test.describe('D7-30: Data Sync — Failure Retry & Error Handling', () => {
     await ctx.dispose();
   });
 
-  test('API: Job with empty symbol list fails gracefully', async () => {
+  test('API: Empty symbol list is syntactically valid and cancelled cleanly', async () => {
+    // `symbols: []` 不是参数错误（受理门只看类型/日期），它意味着「默认票池」。
+    // 这里**不**让它真跑全市场：受理后立刻取消，钉住的是「受理 + 取消」两条
+    // 契约，不依赖库内容量。
     const ctx = await apiRequest();
 
     const createRes = await ctx.post('/api/sync/jobs', {
       data: {
-        type: 'ohlcv',
+        job_type: 'ohlcv_daily',
         params: {
           symbols: [],
           start_date: '2024-01-01',
@@ -92,29 +113,12 @@ test.describe('D7-30: Data Sync — Failure Retry & Error Handling', () => {
       },
     });
 
-    // Should accept the job but fail during execution
-    expect([202, 400]).toContain(createRes.status());
+    expect(createRes.status()).toBe(202);
+    const createBody = await createRes.json();
+    const jobId = createBody.id;
 
-    if (createRes.status() === 202) {
-      const createBody = await createRes.json();
-      const jobId = createBody.job_id;
-
-      // Wait for job to fail
-      let failed = false;
-      const deadline = Date.now() + 30000;
-      while (Date.now() < deadline) {
-        const pollRes = await ctx.get(`/api/sync/jobs/${jobId}`);
-        if (pollRes.status() === 200) {
-          const pollBody = await pollRes.json();
-          if (pollBody.status === 'failed' || pollBody.status === 'completed') {
-            failed = true;
-            break;
-          }
-        }
-        await new Promise(r => setTimeout(r, 1000));
-      }
-      expect(failed).toBe(true);
-    }
+    const cancelRes = await ctx.post(`/api/sync/jobs/${jobId}/cancel`);
+    expect([200, 409]).toContain(cancelRes.status());
 
     await ctx.dispose();
   });
@@ -129,7 +133,7 @@ test.describe('D7-30: Data Sync — Failure Retry & Error Handling', () => {
     // 永远等不到 failed。
     const createRes = await ctx.post('/api/sync/jobs', {
       data: {
-        type: 'calendar',
+        job_type: 'trading_calendar',
         params: {
           exchange: 'SSE',
           start_date: '2099-12-31',
@@ -140,7 +144,7 @@ test.describe('D7-30: Data Sync — Failure Retry & Error Handling', () => {
 
     expect(createRes.status()).toBe(202);
     const createBody = await createRes.json();
-    const jobId = createBody.job_id;
+    const jobId = createBody.id;
 
     // Wait for job to fail (may take multiple retries)
     let finalJob: any = null;
@@ -182,14 +186,14 @@ test.describe('D7-30: Data Sync — Failure Retry & Error Handling', () => {
     // Create a job that should succeed
     const createRes = await ctx.post('/api/sync/jobs', {
       data: {
-        type: 'stocks',
+        job_type: 'stocks',
         params: {},
       },
     });
 
     expect(createRes.status()).toBe(202);
     const createBody = await createRes.json();
-    const jobId = createBody.job_id;
+    const jobId = createBody.id;
 
     // Wait for job to complete
     let completed = false;
@@ -198,7 +202,7 @@ test.describe('D7-30: Data Sync — Failure Retry & Error Handling', () => {
       const pollRes = await ctx.get(`/api/sync/jobs/${jobId}`);
       if (pollRes.status() === 200) {
         const pollBody = await pollRes.json();
-        if (pollBody.status === 'completed') {
+        if (pollBody.status === 'succeeded') {
           completed = true;
           break;
         }
@@ -222,10 +226,10 @@ test.describe('D7-30: Data Sync — Failure Retry & Error Handling', () => {
     const res = await ctx.post('/api/sync/schedules', {
       data: {
         name: 'Invalid Cron',
-        job_type: 'ohlcv',
+        job_type: 'ohlcv_daily',
         cron_expression: 'invalid cron',
         params: {},
-        enabled: true,
+        is_active: true,
       },
     });
 
@@ -245,7 +249,7 @@ test.describe('D7-30: Data Sync — Failure Retry & Error Handling', () => {
       promises.push(
         ctx.post('/api/sync/jobs', {
           data: {
-            type: 'stocks',
+            job_type: 'stocks',
             params: { index: i },
           },
         })
@@ -262,8 +266,8 @@ test.describe('D7-30: Data Sync — Failure Retry & Error Handling', () => {
     // Clean up
     for (const res of results) {
       const body = await res.json();
-      if (body.job_id) {
-        await ctx.post(`/api/sync/jobs/${body.job_id}/cancel`).catch(() => {});
+      if (body.id) {
+        await ctx.post(`/api/sync/jobs/${body.id}/cancel`).catch(() => {});
       }
     }
 

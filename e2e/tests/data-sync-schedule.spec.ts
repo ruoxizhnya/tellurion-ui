@@ -26,7 +26,7 @@ test.describe('D7-29: Data Sync — Schedule Configuration & Trigger Verificatio
     const createRes = await ctx.post('/api/sync/schedules', {
       data: {
         name: scheduleName,
-        job_type: 'ohlcv',
+        job_type: 'ohlcv_daily',
         cron_expression: '0 9 * * *',
         params: {
           symbols: ['000001.SZ'],
@@ -134,8 +134,8 @@ test.describe('D7-29: Data Sync — Schedule Configuration & Trigger Verificatio
       const createBody = await createRes.json();
       const scheduleId = createBody.id;
 
-      // Trigger manually
-      const triggerRes = await ctx.post(`/api/sync/schedules/${scheduleId}/trigger`);
+      // Trigger manually（data 的路由名是 /run，不是 /trigger）
+      const triggerRes = await ctx.post(`/api/sync/schedules/${scheduleId}/run`);
       expect([202, 200, 404]).toContain(triggerRes.status());
 
       if (triggerRes.status() === 202 || triggerRes.status() === 200) {
@@ -150,7 +150,7 @@ test.describe('D7-29: Data Sync — Schedule Configuration & Trigger Verificatio
           const pollRes = await ctx.get(`/api/sync/jobs/${jobId}`);
           if (pollRes.status() === 200) {
             const pollBody = await pollRes.json();
-            if (pollBody.status === 'completed' || pollBody.status === 'failed') {
+            if (pollBody.status === 'succeeded' || pollBody.status === 'failed') {
               completed = true;
               break;
             }
@@ -174,7 +174,7 @@ test.describe('D7-29: Data Sync — Schedule Configuration & Trigger Verificatio
     const scheduleName = uniqueScheduleName('Update Cron Test');
     const base = {
       name: scheduleName,
-      job_type: 'ohlcv',
+      job_type: 'ohlcv_daily',
       cron_expression: '0 9 * * *',
       params: {},
       is_active: true,
@@ -213,7 +213,7 @@ test.describe('D7-29: Data Sync — Schedule Configuration & Trigger Verificatio
     const createRes = await ctx.post('/api/sync/schedules', {
       data: {
         name: scheduleName,
-        job_type: 'fundamentals',
+        job_type: 'fundamental',
         cron_expression: '0 0 1 * *',
         params: {},
         is_active: false,

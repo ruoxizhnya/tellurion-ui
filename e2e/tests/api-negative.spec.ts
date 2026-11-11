@@ -53,8 +53,9 @@ test.describe('API Negative Tests', () => {
 
   test('POST /api/screen with empty body applies no filters (200)', async () => {
     const res = await ctx.post('/api/screen', { data: {} });
-    // /api/screen 是数据服务代理：空 body = 无筛选条件，不是非法输入。
-    // 契约见 core:docs/openapi.yaml 的 /api/screen（200 = Screen results）。
+    // /api/screen 由 core 本地供数（2026-11-12 裁，不再反代 data）：
+    // 空 body = 无筛选条件，不是非法输入；形状恒为 {count, results}。
+    // 契约见 core:docs/openapi.yaml 的 /api/screen。
     expect(res.status()).toBe(200);
     const body = await res.json();
     expect(typeof body.count).toBe('number');
