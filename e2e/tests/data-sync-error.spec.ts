@@ -124,21 +124,16 @@ test.describe('D7-30: Data Sync — Failure Retry & Error Handling', () => {
   });
 
   test('API: Retry count increments on failure', async () => {
-    test.setTimeout(60000);
+    test.setTimeout(90000);
     const ctx = await apiRequest();
 
-    // 造一个**异步失败**的作业：calendar 只校验日期格式、不校验先后，
-    // 执行器窗口解析时才报错（实测）。旧的 ohlcv + INVALID_SYMBOL 会被
-    // 执行器当作「已处理」而成功完成（per-symbol 错误被 continue 吞掉），
-    // 永远等不到 failed。
+    // 失败源与上一条同源：`invalid_type` 受理门放行、执行器以
+    // "connector declaration missing" 失败——不碰配额、确定性。旧的
+    // calendar 反序窗口在受理门就 400，会先红在 `createRes.status()`。
     const createRes = await ctx.post('/api/sync/jobs', {
       data: {
-        job_type: 'trading_calendar',
-        params: {
-          exchange: 'SSE',
-          start_date: '2099-12-31',
-          end_date: '2020-01-01',
-        },
+        job_type: 'invalid_type',
+        params: {},
       },
     });
 
@@ -146,27 +141,43 @@ test.describe('D7-30: Data Sync — Failure Retry & Error Handling', () => {
     const createBody = await createRes.json();
     const jobId = createBody.id;
 
-    // Wait for job to fail (may take multiple retries)
-    let finalJob: any = null;
-    const deadline = Date.now() + 40000;
-    while (Date.now() < deadline) {
-      const pollRes = await ctx.get(`/api/sync/jobs/${jobId}`);
-      if (pollRes.status() === 200) {
-        const pollBody = await pollRes.json();
-        if (pollBody.status === 'failed') {
-          finalJob = pollBody;
-          break;
+    const waitFailedWithRetry = async (wantRetry: number) => {
+      const deadline = Date.now() + 30000;
+      while (Date.now() < deadline) {
+        const pollRes = await ctx.get(`/api/sync/jobs/${jobId}`);
+        if (pollRes.status() === 200) {
+          const pollBody = await pollRes.json();
+          if (pollBody.status === 'failed' && pollBody.retry_count === wantRetry) {
+            return pollBody;
+          }
         }
+        await new Promise(r => setTimeout(r, 1000));
       }
-      await new Promise(r => setTimeout(r, 1000));
-    }
+      return null;
+    };
 
-    expect(finalJob, '作业未在 40s 内进入 failed 终态').toBeTruthy();
-    // failed 是自动重试预算耗尽后的终态：retry_count 必须真的涨过，
-    // 且错误原话非空（旧断言 >= 0 是恒真，等于没测）。
-    expect(finalJob.retry_count).toBeGreaterThan(0);
+    const finalJob: any = await waitFailedWithRetry(0);
+    expect(finalJob, '作业未在 30s 内进入 failed 终态').toBeTruthy();
     expect(typeof finalJob.error_message).toBe('string');
     expect(finalJob.error_message).not.toBe('');
+
+    // worker 不做自动重试（retry_count 只在 `RetryJob` 里 +1），所以这里
+    // 逐次走手动 retry：每次 200 + retry_count 涨 1 + 重跑后仍 failed。
+    // max_retries（DDL 默认 3）用完之后，再 retry 必须被 409 拒。
+    for (let n = 1; n <= finalJob.max_retries; n++) {
+      const retryRes = await ctx.post(`/api/sync/jobs/${jobId}/retry`);
+      expect(retryRes.status(), `第 ${n} 次 retry`).toBe(200);
+      const retried = await retryRes.json();
+      expect(retried.retry_count).toBe(n);
+
+      const again = await waitFailedWithRetry(n);
+      expect(again, `第 ${n} 次重跑未回到 failed`).toBeTruthy();
+    }
+
+    const rejected = await ctx.post(`/api/sync/jobs/${jobId}/retry`);
+    expect(rejected.status()).toBe(409);
+    const rejectedBody = await rejected.json();
+    expect(rejectedBody.error.code).toBe('job_not_retryable');
 
     await ctx.dispose();
   });

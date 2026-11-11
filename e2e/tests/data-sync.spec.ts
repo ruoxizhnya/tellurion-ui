@@ -147,18 +147,15 @@ test.describe('D7-28: Data Sync — Full Workflow (Create → Execute → Comple
     test.setTimeout(60000);
     const ctx = await apiRequest();
 
-    // 造一个**异步失败**的作业：参考数据腿 `trading_calendar` 的日期只校验
-    // 格式、不校验先后，执行器在窗口解析时才报 "end_date ... is before
-    // start_date"（实测）。旧版用 ohlcv + invalid 日期，现在在受理门就 400，
+    // 造一个**异步失败**的作业：`invalid_type` 没有 connector 声明，受理门
+    // （202）放行、执行器才报 "connector declaration missing"——不碰配额、结果
+    // 确定。旧版靠 `trading_calendar` 的反序窗口，但那段校验在受理门的
+    // `FetchRequestFromParams` 里（data internal/sync/job.go），直接 400，
     // 根本拿不到 id。
     const createRes = await ctx.post('/api/sync/jobs', {
       data: {
-        job_type: 'trading_calendar',
-        params: {
-          exchange: 'SSE',
-          start_date: '2099-12-31',
-          end_date: '2020-01-01',
-        },
+        job_type: 'invalid_type',
+        params: {},
       },
     });
 
@@ -166,35 +163,34 @@ test.describe('D7-28: Data Sync — Full Workflow (Create → Execute → Comple
     const createBody = await createRes.json();
     const jobId = createBody.id;
 
-    // Wait for job to fail
-    let failed = false;
-    const deadline = Date.now() + 30000;
-    while (Date.now() < deadline) {
-      const pollRes = await ctx.get(`/api/sync/jobs/${jobId}`);
-      if (pollRes.status() === 200) {
-        const pollBody = await pollRes.json();
-        if (pollBody.status === 'failed') {
-          failed = true;
-          break;
+    const waitTerminal = async () => {
+      const deadline = Date.now() + 30000;
+      while (Date.now() < deadline) {
+        const res = await ctx.get(`/api/sync/jobs/${jobId}`);
+        if (res.status() === 200) {
+          const body = await res.json();
+          if (body.status === 'failed' || body.status === 'succeeded') return body;
         }
+        await new Promise(r => setTimeout(r, 1000));
       }
-      await new Promise(r => setTimeout(r, 1000));
-    }
+      return null;
+    };
 
-    expect(failed, '作业未在 30s 内进入 failed 终态').toBe(true);
+    const first = await waitTerminal();
+    expect(first?.status, '作业未在 30s 内进入 failed 终态').toBe('failed');
+    expect(String(first?.error_message)).toContain('connector declaration missing');
 
-    // 自动重试已把 max_retries 用完，终态 failed 必然意味着 retry 预算耗尽；
-    // 此时手动 retry 按契约被拒（400 "cannot be retried"），而不是 202。
-    // 旧期望（202/200）与 worker 的自动重试设计冲突：先 RetryLater 到耗尽才 FailJob。
+    // 手动 retry：failed → pending，retry_count 涨 1。响应是 200 + 作业对象，
+    // 不是 202——它没有新建作业，只是把同一行改回 pending。
     const retryRes = await ctx.post(`/api/sync/jobs/${jobId}/retry`);
-    expect(retryRes.status()).toBe(400);
-    const retryBody = await retryRes.json();
-    expect(String(retryBody.error)).toContain('cannot be retried');
+    expect(retryRes.status()).toBe(200);
+    const retried = await retryRes.json();
+    expect(retried.retry_count).toBe(1);
 
-    // 一次无效 retry 不得把 failed 洗成 pending/failed 以外的状态。
-    const afterRes = await ctx.get(`/api/sync/jobs/${jobId}`);
-    expect(afterRes.status()).toBe(200);
-    expect((await afterRes.json()).status).toBe('failed');
+    // 失败源是确定性的：重跑后仍回到 failed，retry_count 停在 1。
+    const second = await waitTerminal();
+    expect(second?.status).toBe('failed');
+    expect(second?.retry_count).toBe(1);
 
     await ctx.dispose();
   });
@@ -292,8 +288,11 @@ test.describe('D7-28: Data Sync — Full Workflow (Create → Execute → Comple
     }
 
     expect(completedPayload, '未在 20s 内收到该作业的 succeeded 进度事件').toBeTruthy();
-    expect(completedPayload.total_items).toBe(1);
-    expect(completedPayload.processed_items).toBe(1);
+    // 计数按「行」而不是「代码」：单票 3 个月 = 58 个交易日的 bar（实测）。
+    // 这里钉「SSE 终态快照带着已落库的计数且自洽」，不钉具体行数——行数随
+    // 交易日历与数据源返回而变，钉死 1 是错的（旧值来自三列从未被写过时的 0）。
+    expect(completedPayload.total_items).toBeGreaterThan(0);
+    expect(completedPayload.processed_items).toBe(completedPayload.total_items);
 
     await ctx.dispose();
   });

@@ -85,9 +85,11 @@ test.describe('D7-29: Data Sync — Schedule Configuration & Trigger Verificatio
       const createBody = await createRes.json();
       const scheduleId = createBody.id;
 
-      // PATCH 是整对象替换（UpdateSyncSchedule 写全部列）：只发 {is_active}
+      // PUT 是整对象替换（UpdateSyncSchedule 写全部列）：只发 {is_active}
       // 会把 name/job_type 清空。每次都带完整对象。
-      const disableRes = await ctx.patch(`/api/sync/schedules/${scheduleId}`, {
+      // 方法只能是 PUT——data 的契约（api-schema.md §4）与路由都只注册了
+      // PUT；PATCH 命中同一路径但方法不匹配 ⇒ 405（实测），不是 404。
+      const disableRes = await ctx.put(`/api/sync/schedules/${scheduleId}`, {
         data: { ...base, is_active: false },
       });
       expect([200, 404]).toContain(disableRes.status());
@@ -98,7 +100,7 @@ test.describe('D7-29: Data Sync — Schedule Configuration & Trigger Verificatio
       }
 
       // Enable schedule
-      const enableRes = await ctx.patch(`/api/sync/schedules/${scheduleId}`, {
+      const enableRes = await ctx.put(`/api/sync/schedules/${scheduleId}`, {
         data: { ...base, is_active: true },
       });
       expect([200, 404]).toContain(enableRes.status());
@@ -187,8 +189,8 @@ test.describe('D7-29: Data Sync — Schedule Configuration & Trigger Verificatio
       const createBody = await createRes.json();
       const scheduleId = createBody.id;
 
-      // Update cron expression（PATCH 是整对象替换，带完整对象）
-      const updateRes = await ctx.patch(`/api/sync/schedules/${scheduleId}`, {
+      // Update cron expression（PUT 是整对象替换，带完整对象）
+      const updateRes = await ctx.put(`/api/sync/schedules/${scheduleId}`, {
         data: { ...base, cron_expression: '0 15 * * *' },
       });
       expect([200, 404]).toContain(updateRes.status());
@@ -228,9 +230,13 @@ test.describe('D7-29: Data Sync — Schedule Configuration & Trigger Verificatio
       const deleteRes = await ctx.delete(`/api/sync/schedules/${scheduleId}`);
       expect([204, 200, 404]).toContain(deleteRes.status());
 
-      // Verify schedule is deleted
-      const getRes = await ctx.get(`/api/sync/schedules/${scheduleId}`);
-      expect([404, 200]).toContain(getRes.status());
+      // Verify schedule is deleted。data 没有单条 GET（只有列表），
+      // `GET /api/sync/schedules/{id}` 会命中 {id} 路径但方法不匹配 ⇒ 405，
+      // 所以按列表断言 id 消失。
+      const listRes = await ctx.get('/api/sync/schedules');
+      expect(listRes.status()).toBe(200);
+      const listBody = await listRes.json();
+      expect(listBody.schedules.find((s: any) => s.id === scheduleId)).toBeUndefined();
     }
 
     await ctx.dispose();
