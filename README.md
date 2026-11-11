@@ -1,5 +1,7 @@
 # tellurion-ui
 
+> 5 分钟了解本服务：[SERVICE.md](SERVICE.md)
+
 Quant Lab 的**前端**（Vue 3 + Vite + Naive UI）。从 monorepo `tellurion` 拆出（2026-10-09）。
 
 ## 定位与边界
