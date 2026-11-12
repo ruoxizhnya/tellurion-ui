@@ -58,8 +58,10 @@ export const API = {
     return ctx.get(`/api/backtest/${id}/equity`);
   },
 
-  async copilotGenerate(ctx: APIRequestContext, prompt: string) {
-    return ctx.post('/api/copilot/generate', { data: { prompt } });
+  // 契约字段是 description（tellurion-agent pkg/copilot.GenerateParams），
+  // 不是 prompt；旧写法会被绑成空描述，用例测的就不是「无 key 时怎么报错」。
+  async copilotGenerate(ctx: APIRequestContext, description: string) {
+    return ctx.post('/api/copilot/generate', { data: { description } });
   },
 
   async screen(ctx: APIRequestContext, params: Record<string, number>) {
