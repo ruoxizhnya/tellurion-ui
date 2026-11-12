@@ -1,6 +1,6 @@
 # TASKS 归档 — tellurion-ui（2026-11）
 
-> **本文件是 `docs/TASKS.md` 的历史归档，进 git、不删除**。归档时间 2026-11-11；收录范围 = 截至 2026-11-10 已收口（✅）的任务原文与当时的施工记录，**逐字搬入、未改写**（原文件 frontmatter 留在新台账；任务标题与正文原样保留）。
+> **本文件是 `docs/TASKS.md` 的历史归档，进 git、不删除**。归档时间 2026-11-11；收录范围 = 截至 2026-11-10 已收口（✅）的任务原文（**逐字搬入、未改写**；原文件 frontmatter 留在新台账，任务标题与正文原样保留），以及 2026-11-12 起收口的 W7 六字段单（原文随收口一并搬入，标题带收口日期）。
 
 > **检索方式**：按任务 ID `grep -n "<ID>" docs/archive/tasks-archive-2026-11.md`；按 commit `grep -n "<sha>" docs/archive/tasks-archive-2026-11.md`；索引表在本节下方，含 ID / 标题 / 收口日期 / commit / 证据链接。
 
@@ -17,6 +17,7 @@
 | UI-01 | 「研究质量读数」文案过期 + `fmtVolume/fmtAmount` 把 0 读成缺失（两处界面在撒谎）✅ 完成（2026-10-22） | 2026-10-22 | `f473fa9` | [原文](#UI-01) |
 | UI-02 | 三值 status 消费与 `invalid_reasons` 展示口径（refactor-plan-review C1 传播）✅ 完成（2026-10-22） | 2026-10-22 | —（原文未记） | [原文](#UI-02) |
 | QT-61 | QT-61（ui 腿）· CI 基线归零——SchedulePanel flaky 用例 | 2026-10-21 | `1075c28` | [原文](#QT-61) |
+| UI-NPM-AUDIT-FIX | npm 依赖 5 个 high 漏洞（@vue/server-renderer XSS 等） | 2026-11-12 | 见正文 | [原文](#UI-NPM-AUDIT-FIX) |
 
 ---
 
@@ -515,3 +516,34 @@
 
 - **要点（初判与破坏验证）**：该用例 4.9s 接近超时、疑似 flaky，给该文件 4 个 `describe` 传 `{ timeout: 15_000 }` 加时间余量（**不放宽任何断言**）；破坏验证：预算调到 1ms → `Test timed out in 1ms`，证明 timeout 真生效。
 - **要点（首跑 CI 暴露真因）**：加 timeout 后跑到断言才发现是 **locale 依赖**（断言硬编码 `2026/10/15`，CI=en-US 渲染 `10/15/2026`）⇒ 改用组件同一 `toLocaleString` 现算期望（`1075c28`）；timeout 余量保留（双管齐下）。
+
+---
+
+<a id="UI-NPM-AUDIT-FIX"></a>
+## UI-NPM-AUDIT-FIX · npm 依赖 5 个 high 漏洞（@vue/server-renderer XSS 等） ✅ 完成（2026-11-12）
+
+- **① 目标**：把本仓 `web/` 与 `e2e/` 的 npm 依赖升到无 high 漏洞，`npm audit --audit-level=high` 退出码归 0。
+- **② 上下文（2026-11-11 全面审查 W5-F1，证据 ODR-072 `tellurion-docs:docs/archive/odr/odr-072-audit-wave5-security-reliability-deps.md`）**：W5 实测 `npm audit` 报 **5 high**——`@vue/server-renderer`（XSS）、`nanoid`、`postcss`、`source-map-js` 等。本仓是 Vue 3 + Vite SPA，`@vue/server-renderer` 虽主要在 SSR 路径，但作为传递依赖仍在树里。冻结参照 = `web/package.json` / `e2e/package.json` 与 lockfile。
+- **③ 要求**：① `npm audit fix`（必要时 `npm audit fix --force` 升 major，但须核 breaking）把 5 high 清零；② `npm run build` / `npm run lint` / `npm run typecheck` / `npm test` 全绿，确认升级无回归；③ e2e 套件复跑（原生三服务栈）不退化；④ 若某漏洞无补丁版，登记残留 + 缓解（不静默 `audit-level=critical` 绕过）。
+- **④ 约束与非目标**：不放宽 audit 阈值来变绿（禁 `--audit-level=critical` 当修复）；不复制 openapi；不改后端契约；不引入新框架；major 升级须核 breaking 并在单内记录。
+- **⑤ 验收**：`npm audit --audit-level=high` EXIT=0（真退出码）；`npm run build`/`lint`/`typecheck`/`test` 全绿；破坏验证 = 把某依赖降回漏洞版 ⇒ audit 复红，还原复绿。
+- **⑥ 边界**：本仓 `web/` + `e2e/` 的 package.json/lockfile；Go 侧依赖漏洞归各 Go 仓（`X-DEP-BUMP-CONSUMERS` / `BROKER-DEP-BUMP` / `KIT-DEP-SECURITY-BUMP`）。
+- **owner**：待定
+
+### 施工记录（2026-11-12）
+
+- **实测起点（与台账口径不同，以实测为准）**：`web/` 跑 `npm audit --audit-level=high` = **29 vulnerabilities (10 high / 19 moderate)，EXIT=1**——比台账记的 5 high 多（`npm audit fix` 前又新增了 `brace-expansion` / `happy-dom` / `vite` / `ws` / `js-cookie` 等条目）。`e2e/` = **found 0 vulnerabilities，EXIT=0**，本单只动 `web/`。
+- **处置链（三步，全部非 `--force`）**：
+  1. `npm audit fix` → 10 high 降到 2 high（`brace-expansion@2.0.3`、`happy-dom@20.14.6`），lockfile 顺带把 `vite` 抬到 6.4.6（>6.4.3 修复线）、`@vue/server-renderer`/`nanoid`/`postcss`/`source-map-js`/`ws`/`js-cookie` 全部出树。
+  2. **`happy-dom` 20 → 21.0.4**（major，核 breaking：本仓只在 `vitest.config.ts:9` 当 `environment: 'happy-dom'` 用，未 import 其 API；升级后 540 条单测全绿）。**`vue-tsc` 2.2.12 → 3.3.14**（major，因 `@vue/language-core@2` 拖 `minimatch@9 → brace-expansion@2.x`；核 breaking：`vue-tsc -b` / `--noEmit` 参数语义未变，build 与 typecheck 均绿）。**`vitest` / `@vitest/coverage-v8` 4.1.9 → 4.1.12**（patch，清 `@vitest/mocker` 的路径穿越/注入两条 moderate）。
+  3. `npm update brace-expansion` → 嵌套的 `2.0.3` 抬到 **`2.1.8`**（仍在 `minimatch@9` 的 `^2.0.2` 范围内，未用 override 强改 semver）。
+- **终态**：`npm audit --audit-level=high` = **13 moderate / 0 high，EXIT=0**。
+- **残留登记（④：不静默绕过，也不为变绿硬降级）**：13 条 moderate 全部落在 **lint/test 工具链**（`minimatch@9/10` + `glob@10` ← `eslint` / `typescript-eslint` / `@vue/test-utils → js-beautify → editorconfig`）。`npm audit fix` 给出的修法是 **`--force` 把 `eslint` 降回 9.39.5**（降级换绿，违反本单 ④ 与非目标「不引入回归」），故**不做**；上游 `minimatch` 修复版（>11.0.0）尚未被 eslint 采纳，等上游升级即可自然清掉。这些包不进生产产物（`vite build` 的 dist 不含 devDependencies）。
+- **验收（真实输出）**：
+  - `npm audit --audit-level=high` → `13 moderate severity vulnerabilities` + `AUDIT_EXIT=0`。
+  - `npm run build`（`vue-tsc -b && vite build`）→ `✓ built in 15.79s`，`BUILD_EXIT=0`。
+  - `npm run lint` → **0 error**（既有 `vue/max-attributes-per-line` 等 warning，规则未放宽）；`npm run typecheck` → `TYPECHECK_EXIT=0`。
+  - `npm test` → **Test Files 38 passed (38) / Tests 540 passed (540)**，`TEST_EXIT=0`。
+- **破坏验证（现场，真退出码）**：`npm install --save-dev happy-dom@20.14.6`（降回漏洞版）→ `npm audit --audit-level=high` = **14 vulnerabilities (13 moderate, 1 high)，EXIT=1**（红）；随后用开工前留的 `package.json` / `package-lock.json` 备份**逐字节还原** → `npm install --no-audit` 对齐 node_modules（`happy-dom@21.0.4` / `vue-tsc@3.3.14` / `vitest@4.1.12`）→ audit 复回 **0 high，EXIT=0**、`npm test` 复回 **540 passed**。
+- **e2e 腿**：本单未改 `e2e/`（实测 0 漏洞、无改动），故 e2e 套件不因本单退化；按 ③ 只做基线核对。视觉基线口径沿用主台账「三、已判定不重录」。
+- **边界守住**：只改 `web/package.json` + `web/package-lock.json` + 本台账；未改任何源码、未动 `e2e/`、未动后端契约、未新增依赖。

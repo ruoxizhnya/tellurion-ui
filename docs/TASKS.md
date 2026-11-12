@@ -12,7 +12,7 @@ verified-by: 2026-11-11 全面审查 W7 台账立单（A5 授权）——新立 
 
 ## 一、未做 / 挂起 / 外部依赖
 
-> 本节 = 既有 2 单（`UI-FACTOR-CITATION-RETIRED` / `UI-RUNBOOK-GAP`）+ 全面审查 W7 新立 5 单（`UI-NPM-AUDIT-FIX` / `UI-COPILOT-GATE-SURFACE` / `UI-SCREEN-CONSUMER` / `UI-HEALTHCHECK` / `UI-LEDGER-SELF-CONSISTENCY`）。**订正**：原「本仓当前无未做」 boilerplate 与下文两条 ⬜ 自相矛盾（W1-F6），已撤；主台账与子台账（`docs/design/stitch_quantlab_ux_redesign/`）的关系见 `UI-LEDGER-SELF-CONSISTENCY`。此前已收口单的正文与施工记录全部在归档文件里。
+> 本节 = 既有 2 单（`UI-FACTOR-CITATION-RETIRED` / `UI-RUNBOOK-GAP`）+ 全面审查 W7 新立的 4 单（`UI-COPILOT-GATE-SURFACE` / `UI-SCREEN-CONSUMER` / `UI-HEALTHCHECK` / `UI-LEDGER-SELF-CONSISTENCY`）。W7 的 `UI-NPM-AUDIT-FIX` 已于 2026-11-12 收口并移入归档。**订正**：原「本仓当前无未做」 boilerplate 与下文 ⬜ 自相矛盾（W1-F6），已撤；主台账与子台账（`docs/design/stitch_quantlab_ux_redesign/`）的关系见 `UI-LEDGER-SELF-CONSISTENCY`。此前已收口单的正文与施工记录全部在归档文件里。
 
 ### UI-FACTOR-CITATION-RETIRED · 因子引用抽屉仍在调用已退役的 `GET /api/factors/:name` [P2] ⬜
 
@@ -36,16 +36,6 @@ verified-by: 2026-11-11 全面审查 W7 台账立单（A5 授权）——新立 
 - **⑥ 边界**：前端托管与反代排查归本仓；`/api` 背后的业务故障归 `tellurion`，其排查入口在 core 的 runbook（缺口见 `tellurion:docs/TASKS.md` 的 `CORE-RUNBOOK-GAP`）。
 - **owner**：待定
 - **重开条件**：出现第二次「页面故障但无法判断是前端还是后端」的排障经历，或接手人变更。
-
-### UI-NPM-AUDIT-FIX · npm 依赖 5 个 high 漏洞（@vue/server-renderer XSS 等）[P0] ⬜
-
-- **① 目标**：把本仓 `web/` 与 `e2e/` 的 npm 依赖升到无 high 漏洞，`npm audit --audit-level=high` 退出码归 0。
-- **② 上下文（2026-11-11 全面审查 W5-F1，证据 ODR-072 `tellurion-docs:docs/archive/odr/odr-072-audit-wave5-security-reliability-deps.md`）**：W5 实测 `npm audit` 报 **5 high**——`@vue/server-renderer`（XSS）、`nanoid`、`postcss`、`source-map-js` 等。本仓是 Vue 3 + Vite SPA，`@vue/server-renderer` 虽主要在 SSR 路径，但作为传递依赖仍在树里。冻结参照 = `web/package.json` / `e2e/package.json` 与 lockfile。
-- **③ 要求**：① `npm audit fix`（必要时 `npm audit fix --force` 升 major，但须核 breaking）把 5 high 清零；② `npm run build` / `npm run lint` / `npm run typecheck` / `npm test` 全绿，确认升级无回归；③ e2e 套件复跑（原生三服务栈）不退化；④ 若某漏洞无补丁版，登记残留 + 缓解（不静默 `audit-level=critical` 绕过）。
-- **④ 约束与非目标**：不放宽 audit 阈值来变绿（禁 `--audit-level=critical` 当修复）；不复制 openapi；不改后端契约；不引入新框架；major 升级须核 breaking 并在单内记录。
-- **⑤ 验收**：`npm audit --audit-level=high` EXIT=0（真退出码）；`npm run build`/`lint`/`typecheck`/`test` 全绿；破坏验证 = 把某依赖降回漏洞版 ⇒ audit 复红，还原复绿。
-- **⑥ 边界**：本仓 `web/` + `e2e/` 的 package.json/lockfile；Go 侧依赖漏洞归各 Go 仓（`X-DEP-BUMP-CONSUMERS` / `BROKER-DEP-BUMP` / `KIT-DEP-SECURITY-BUMP`）。
-- **owner**：待定
 
 ### UI-COPILOT-GATE-SURFACE · Copilot 把 promote 闸门拦下误报成「沙箱未启用」，且无人类 promote 操作面 [P1] ⬜
 
