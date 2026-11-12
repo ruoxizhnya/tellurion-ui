@@ -23,6 +23,7 @@
 | UI-SCREEN-CONSUMER | 核验 `/api/screen` `/api/stocks/count` 修复后 ui 消费面真可用 | 2026-11-12 | 见正文 | [原文](#UI-SCREEN-CONSUMER) |
 | UI-LEDGER-SELF-CONSISTENCY | 主台账「无开放项」自相矛盾 + 子台账过期项 + broker frontmatter 漂移 | 2026-11-12 | 见正文 | [原文](#UI-LEDGER-SELF-CONSISTENCY) |
 | UI-SCREENER-ERROR-STATE | 选股请求失败被渲染成「未找到符合条件的股票」（失败冒充空结果） | 2026-11-12 | 见正文 | [原文](#UI-SCREENER-ERROR-STATE) |
+| UI-E2E-A08-HARDCODE | a08 用例把票池总数写死 5908（真库 5580），数据一变就假绿 | 2026-11-12 | 见正文 | [原文](#UI-E2E-A08-HARDCODE) |
 
 ---
 
@@ -705,3 +706,38 @@
   逐字节还原后（`Screener.vue` SHA256 回到 `A907B003…7F8475`）⇒ `Tests 5 passed (5)`。
 - **⑤ 其它门禁**：`npx vue-tsc -b` = `TSC_EXIT=0`；`npx eslint src/pages/Screener.vue src/pages/Screener.test.ts` = `0 errors`（47 条 warning 全是该文件存量的 `vue/max-attributes-per-line` 风格项，非本次新增行）。
 - **⑥ 边界守住**：只改 `web/src/pages/Screener.vue` 并新增其测试；未动 `market.ts`、未动 core、未伪造条数。
+
+---
+
+<a id="UI-E2E-A08-HARDCODE"></a>
+## UI-E2E-A08-HARDCODE · a08 用例把票池总数写死 5908，真库 5580 [P2] ✅ 完成（2026-11-12）
+
+- **① 目标**：让「PIT 与幸存者」这条 e2e 判的是**结构不变量**（屏上显示的就是回包里的读数），而不是一组背下来的数字。
+- **② 上下文（2026-11-11 全面审查连带发现，2026-11-12 复核）**：`e2e/tests/a08-job-console.spec.ts` 拦截 `**/api/stocks/count` 后把回包与期望值都写成 `count:5908 / active:5569 / delisted:339 / latest_date:2026-10-14`。真库实测已不是这组数（`GET /api/stocks/count` = `count:5580, by_status:{active:5580}, latest_date:2025-12-31`）。写死数字的两种失败方式都很难看：数字变大就假绿（断言与实现无关地通过）、变小就假红；而且它**根本没检验「屏上是不是回包里的数」**——组件若把 5908 写进模板，这条用例照样绿。
+- **③ 要求**：① 期望值不再散落成字面量，全部从**同一个回包常量**派生（含退市占比用该常量现算）；② 加一条回包常量自洽校验（`active + delisted === total`，否则占比期望值本身就来自矛盾回包）；③ 新增一条「换一组读数」用例，用数量级完全不同的回包证明屏上跟着回包走、模板里没有常量；④ 拦截串改成能匹配带 query 的形式。
+- **④ 约束与非目标**：不改 `GET /api/stocks/count` 契约、不改组件、不放宽任何既有断言（`含已退市` / `DATA-02` / `无通道` / 显式空态那几条逐字保留）。
+- **⑤ 验收**：a08 三条用例在同一条 dev 栈（vite `:5173` + core `:8085` + data `:8081`）上全绿；破坏验证 = 把组件里的 `poolCount` 换成字面量 `5580` ⇒「换一组读数」红，逐字节还原 ⇒ 绿。
+- **⑥ 边界**：`e2e/tests/a08-job-console.spec.ts`。
+- **owner**：待定
+
+### 施工记录（2026-11-12）
+
+- **改动**：抽出 `COUNT_READING = { total: 5580, active: 5241, delisted: 339, latest: '2025-12-31' }`（注释写明这是**拦截回包**，不是真库读数），所有 `toContainText` 改为 `String(COUNT_READING.x)` / 现算的 `share`；`latest_date` 断言同样改为常量派生。拦截串从 `'**/api/stocks/count'` 改为 `/\/api\/stocks\/count(\?.*)?$/`（旧 glob 匹配不到带 query 的请求，那是另一条假绿的路）。原第二条用例（拆分读数缺席）里的 `5908` 也改为引用同一常量。
+- **新增用例**：`换一组读数：屏上跟着回包走，不是模板里的常量` —— 回包换成 `{ total: 902, active: 900, delisted: 2, latest: '2020-01-02' }`，断言屏上逐字跟随、且**不得**出现 `5580`、占比 `0.2%` 由该组现算。这条是防「模板写死常量」的唯一有效判据。
+- **验收（真实输出）**：
+  ```
+  Running 3 tests using 1 worker
+  [1/3] … PIT 与幸存者两块：拆分读数与行情最新日接上屏，PIT 三时刻仍明写无通道
+  [2/3] … 换一组读数：屏上跟着回包走，不是模板里的常量
+  [3/3] … 拆分读数缺席时走显式空态：不编占比，也不拿总数反推在市数
+    3 passed (3.8s)
+  ```
+- **破坏验证（真实输出）**：把 `DataQualityPanel.vue` 的 `{{ poolCount }}` 改成字面量 `{{ 5580 }}` ⇒
+  ```
+  Error: expect(locator).toContainText(expected) failed
+  Expected substring: "902"
+  Received string: "幸存者偏差票池记录（含已退市）5580在市（active）900退市（delisted）2退市占比0.2%…"
+    > 518 |     await expect(block).toContainText(String(OTHER.total));
+  ```
+  （破坏态只定向跑这一条：EXPECTED 是 902，屏上却是写死的 5580 —— 判据命中的正是「模板里有常量」。）逐字节还原后 `DataQualityPanel.vue` SHA256 回到 `EFA765DE…B6D58C5`，复跑 `3 passed (3.7s)`。
+- **⑥ 边界守住**：只改这一份 spec；组件与契约未动。

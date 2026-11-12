@@ -447,44 +447,90 @@ test.describe('A-08 作业控制台', () => {
    *
    * 拦截面说明：这一条拦 `stocks/count` 是为了把读数钉成已知值（真后端的值随库变），
    * 形状与 core 的实测一致（count 含已退市、by_status 各档、latest_date 键恒在）。
+   *
+   * 2026-11-12 订正：原来把总数写死成 5908，真库早已不是这个数（`GET /api/stocks/count`
+   * 实测 5580 / active 5580 / latest_date 2025-12-31）。写死数字的两种失败方式都很难看：
+   * 数字变大就假绿、数字变小就假红，而且它压根不检验「屏上是回包里的数」这件事。
+   * 现在所有期望值都从**同一个回包常量**派生，另加一条换读数的用例专门证明前端没有
+   * 把任何数字写死进模板。
    */
+  const COUNT_READING = {
+    total: 5580,
+    active: 5241,
+    delisted: 339,
+    latest: '2025-12-31',
+  };
+
   test('PIT 与幸存者两块：拆分读数与行情最新日接上屏，PIT 三时刻仍明写无通道', async ({ page }) => {
-    await page.route('**/api/stocks/count', (route) =>
+    // 回包常量必须自洽（count 是 by_status 的同一条 GROUP BY 产物），否则下面的
+    // 「占比」断言等于在拿一个矛盾的回包做期望值。
+    expect(COUNT_READING.active + COUNT_READING.delisted).toBe(COUNT_READING.total);
+    const share = ((COUNT_READING.delisted / COUNT_READING.total) * 100).toFixed(1);
+
+    await page.route(/\/api\/stocks\/count(\?.*)?$/, (route) =>
       route.fulfill({
         contentType: 'application/json',
         body: JSON.stringify({
-          count: 5908,
-          by_status: { active: 5569, delisted: 339 },
-          latest_date: '2026-10-14',
+          count: COUNT_READING.total,
+          by_status: { active: COUNT_READING.active, delisted: COUNT_READING.delisted },
+          latest_date: COUNT_READING.latest,
         }),
       }),
     );
     await page.goto('/data-sync');
     const survivorship = page.locator('[data-testid="survivorship-block"]');
-    await expect(survivorship).toContainText('5908');
-    // 标签必须写"含已退市"：把 5908 叫"在市股票数"就是假数字。
+    await expect(survivorship).toContainText(String(COUNT_READING.total));
+    // 标签必须写"含已退市"：把总数叫"在市股票数"就是假数字。
     await expect(survivorship).toContainText('含已退市');
     // 在市 / 退市两档与退市占比是后端给的读数（前端只做一次除法，不拿总数反推）
-    await expect(page.locator('[data-testid="surv-active"]')).toContainText('5569');
-    await expect(page.locator('[data-testid="surv-delisted"]')).toContainText('339');
-    await expect(page.locator('[data-testid="surv-delisted-share"]')).toContainText('5.7%');
+    await expect(page.locator('[data-testid="surv-active"]')).toContainText(String(COUNT_READING.active));
+    await expect(page.locator('[data-testid="surv-delisted"]')).toContainText(String(COUNT_READING.delisted));
+    await expect(page.locator('[data-testid="surv-delisted-share"]')).toContainText(`${share}%`);
     await expect(page.locator('[data-testid="surv-gap"]')).toContainText('DATA-02');
     for (const id of ['pit-financial-end', 'pit-ann-date', 'pit-tradeable']) {
       await expect(page.locator(`[data-testid="${id}"]`)).toContainText('无通道');
     }
     await expect(page.locator('[data-testid="pit-gap"]')).toContainText('DATA-03');
     // 行情最新日也是真读数（DATA-03：键恒在，库里没行情时是显式 null）
-    await expect(page.locator('[data-testid="pit-latest-date"]')).toContainText('2026-10-14');
+    await expect(page.locator('[data-testid="pit-latest-date"]')).toContainText(COUNT_READING.latest);
+  });
+
+  test('换一组读数：屏上跟着回包走，不是模板里的常量', async ({ page }) => {
+    // 这一条是给上一条兜底的：如果组件把 5580 / 5241 / 339 写进模板（或从总数反推
+    // 在市数），上一条在回包恰好等于常量时仍然全绿。换一组数量级完全不同的读数，
+    // 屏上必须逐字跟随。
+    const OTHER = { total: 902, active: 900, delisted: 2, latest: '2020-01-02' };
+    const share = ((OTHER.delisted / OTHER.total) * 100).toFixed(1);
+
+    await page.route(/\/api\/stocks\/count(\?.*)?$/, (route) =>
+      route.fulfill({
+        contentType: 'application/json',
+        body: JSON.stringify({
+          count: OTHER.total,
+          by_status: { active: OTHER.active, delisted: OTHER.delisted },
+          latest_date: OTHER.latest,
+        }),
+      }),
+    );
+    await page.goto('/data-sync');
+
+    const block = page.locator('[data-testid="survivorship-block"]');
+    await expect(block).toContainText(String(OTHER.total));
+    await expect(block).not.toContainText(String(COUNT_READING.total));
+    await expect(page.locator('[data-testid="surv-active"]')).toContainText(String(OTHER.active));
+    await expect(page.locator('[data-testid="surv-delisted"]')).toContainText(String(OTHER.delisted));
+    await expect(page.locator('[data-testid="surv-delisted-share"]')).toContainText(`${share}%`);
+    await expect(page.locator('[data-testid="pit-latest-date"]')).toContainText(OTHER.latest);
   });
 
   test('拆分读数缺席时走显式空态：不编占比，也不拿总数反推在市数', async ({ page }) => {
-    // 总数 5908 而 by_status 是 {} 只可能是契约违约（两者是同一条 GROUP BY 的产物）：
+    // 有总数而 by_status 是 {} 只可能是契约违约（两者是同一条 GROUP BY 的产物）：
     // 这一帧判的是"缺档时不编数"。latest_date 用 null 是另一种情形（后端明确说库里没行情），
     // 它该说「库里暂无行情」而不是「未读取」—— 两条腿在同一次回包里分开钉住。
-    await page.route('**/api/stocks/count', (route) =>
+    await page.route(/\/api\/stocks\/count(\?.*)?$/, (route) =>
       route.fulfill({
         contentType: 'application/json',
-        body: JSON.stringify({ count: 5908, by_status: {}, latest_date: null }),
+        body: JSON.stringify({ count: COUNT_READING.total, by_status: {}, latest_date: null }),
       }),
     );
     await page.goto('/data-sync');
