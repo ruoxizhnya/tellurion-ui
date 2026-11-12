@@ -294,35 +294,54 @@ test.describe('A-08 作业控制台', () => {
   });
 
   test('取消走真后端：点下去之后界面显示的是后端写回的那条状态', async ({ page }) => {
+    test.setTimeout(90000);
     /**
      * 判据不是"界面显示已取消"，而是**界面那一格 == 后端回包里的状态**。
      * 后端拒绝取消（那行刚好跑完了）时，乐观更新会把"被拒绝"显示成"已取消"，
      * 那正是要防的形状。
      *
-     * 全程不额外打 GET：非终态那条从**页面自己那条列表响应**里挑，回读的状态从
-     * **页面点完之后自己发的那条单条 GET** 里取。原因不是省事 —— 网关限流是每
-     * ClientIP 每分钟 100 的共享桶，测试再打一条就是在挤页面的预算；上一版就是
-     * 这么在 429 上红的（2026-10-14），而 429 红会把人训练成忽略红灯。
+     * 2026-11-13 修（W5-1）：旧写法只认「点完之后页面自己发的那条单条 GET」，
+     * 可取消本身是有竞态的——从看到取消按钮到点下去之间作业可能已经跑完，
+     * 后端会拒掉这次取消（1860 次重试里三条重试全红）。那不是产品缺陷，是
+     * 用例把「取消一定被受理」当成了前提。
+     *
+     * 现在的等法是等**确定终态**，不是拉长等待：
+     *   - 取消被受理 ⇒ 页面 refreshJob 的单条 GET 给出终态；
+     *   - 输给竞态（已跑完）⇒ 页面 8s 轮询（QUEUE_POLL_MS）的列表回包给出终态。
+     * 两条路任一落地即可，但必须来自后端回包；然后断言界面那一格 == 该终态。
+     *
+     * 全程不额外打 GET：状态一律从**页面自己的响应**里取。原因不是省事 ——
+     * 网关限流是每 ClientIP 每分钟 100 的共享桶，测试再打一条就是在挤页面的预算；
+     * 上一版就是这么在 429 上红的（2026-10-14），而 429 红会把人训练成忽略红灯。
      */
+    const TERMINAL = new Set(['completed', 'succeeded', 'failed', 'cancelled']);
+    const backendStatus = new Map<string, string>();
     let listJobs: { id: string; status: string }[] | null = null;
-    let readBackId = '';
-    let readBackStatus = '';
+    let cancelPostStatus = 0;
     page.on('response', (r) => {
       const u = new URL(r.url());
-      if (u.pathname === '/api/sync/jobs' && r.status() === 200 && !listJobs) {
-        void r
-          .json()
-          .then((b) => (listJobs = b.jobs ?? []))
-          .catch(() => undefined);
+      const cancel = /^\/api\/sync\/jobs\/([^/]+)\/cancel$/.exec(u.pathname);
+      if (cancel) {
+        // 取消被拒（409）也要记，它解释了「为什么没有单条回读」
+        cancelPostStatus = r.status();
+        return;
       }
-      const one = /^\/api\/sync\/jobs\/([^/]+)$/.exec(u.pathname);
-      if (one && r.status() === 200 && !readBackStatus) {
+      if (r.status() !== 200) return;
+      if (u.pathname === '/api/sync/jobs') {
         void r
           .json()
           .then((b) => {
-            readBackId = decodeURIComponent(one[1]);
-            readBackStatus = String(b.status ?? '');
+            listJobs = b.jobs ?? [];
+            for (const job of listJobs) backendStatus.set(job.id, String(job.status ?? ''));
           })
+          .catch(() => undefined);
+        return;
+      }
+      const one = /^\/api\/sync\/jobs\/([^/]+)$/.exec(u.pathname);
+      if (one) {
+        void r
+          .json()
+          .then((b) => backendStatus.set(decodeURIComponent(one[1]), String(b.status ?? '')))
           .catch(() => undefined);
       }
     });
@@ -361,20 +380,25 @@ test.describe('A-08 作业控制台', () => {
 
     await page.locator(`[data-testid="queue-cancel-${target}"]`).click();
 
-    // 点完之后 store 回读那一条（refreshJob）—— 等**页面自己那条 GET** 落地
+    // 等**确定终态**：取消被受理走单条回读；输给竞态由 8s 轮询的列表回包给真相。
+    // 两者都是后端回包，不是乐观更新；25s 覆盖一轮轮询 + 渲染，不靠 sleep。
     await expect
-      .poll(() => (readBackId === target ? readBackStatus : ''), {
-        timeout: 15000,
-        message: `点取消后没等到 /api/sync/jobs/${target} 的回读：不靠乐观更新那条腿没跑`,
+      .poll(() => {
+        const s = backendStatus.get(target) ?? '';
+        return TERMINAL.has(s) ? s : '';
+      }, {
+        timeout: 25000,
+        message: `点取消后没等到 job ${target} 的终态回包（取消 POST ${cancelPostStatus || '未发出'}）：单条回读与列表轮询都没落地`,
       })
       .toBeTruthy();
 
+    const truth = backendStatus.get(target)!;
     await expect(page.locator(`[data-testid="queue-status-${target}"]`)).toHaveText(
-      STATUS_TEXT[readBackStatus] ?? readBackStatus,
+      STATUS_TEXT[truth] ?? truth,
     );
     test.info().annotations.push({
       type: 'a08-cancel-leg',
-      description: `真 cancel 已执行：job ${target} 后端回读 ${readBackStatus}`,
+      description: `真 cancel 已执行：job ${target} 后端终态 ${truth}（取消 POST ${cancelPostStatus}）`,
     });
   });
 
