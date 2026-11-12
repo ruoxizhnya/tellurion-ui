@@ -27,6 +27,70 @@ async function freezeClock(page: Page): Promise<void> {
   await page.clock.setFixedTime(FROZEN_CLOCK);
 }
 
+/**
+ * 回测历史（控制台历史 / 回测页「回测历史」）走**固定 fixture**。
+ *
+ * 来历（F5，2026-11-13）：这两块在基线里读真库（store.loadHistoryFromDB →
+ * GET /api/backtest）。同一份代码，库里历史多一条少一条、或者被清空，全页截图就
+ * 变一次——2026-11-13 全量跑基线里有一条 value_screening、实跑却是空态。这不是
+ * 视觉回归，是基线把库内容烙进了像素，直接重录只会让下一次数据一变又红。
+ *
+ * 与 data-sync 同一套纪律：真数据不进基线，用 fixture 保住这一块的像素覆盖；
+ * 真数据的正确性由 api-backtest.spec.ts 与组件单测兜。只钉 GET 列表读面，
+ * POST /api/backtest 与 /api/backtest/:id/* 一律 fallback，避免假绿扩散到别的断言。
+ */
+const BACKTEST_HISTORY_FIXTURE = {
+  jobs: [
+    {
+      id: 'vs-bt-momentum', status: 'completed', strategy_id: 'momentum',
+      universe: '600000.SH,600519.SH', start_date: '2024-01-02', end_date: '2024-03-29',
+      created_at: '2026-05-06T09:30:00Z',
+      result: {
+        status: 'completed', total_return: 0.0421, sharpe_ratio: 1.37,
+        max_drawdown: -0.0218, trades: [],
+      },
+    },
+    {
+      id: 'vs-bt-value', status: 'completed', strategy_id: 'value',
+      universe: '600000.SH', start_date: '2023-11-01', end_date: '2024-02-29',
+      created_at: '2026-05-06T08:15:00Z',
+      result: {
+        status: 'completed', total_return: -0.0132, sharpe_ratio: -0.21,
+        max_drawdown: -0.045, trades: [],
+      },
+    },
+  ],
+};
+
+/**
+ * 页头的「待审阅 N」角标同样读真库（AppHeader → GET /api/review/pending）。
+ * review-desk 的 e2e 会往库里写待审阅项，这个数字随套件执行顺序变化 ——
+ * 不钉住的话，任何含页头的基线都会在不同跑次之间红。给一个确定值，
+ * 「—（未知）/ 0 / N」三态的像素覆盖仍在（另两条由单测与 review-desk 兜）。
+ */
+const REVIEW_PENDING_FIXTURE = {
+  pending: 2,
+  as_of: '2026-05-06T10:30:00Z',
+  sources: [{ name: 'review', status: 'available', pending: 2 }],
+};
+
+async function fixVolatileApis(page: Page): Promise<void> {
+  await page.route('**/api/backtest**', (route) => {
+    const req = route.request();
+    const path = new URL(req.url()).pathname;
+    if (req.method() === 'GET' && (path === '/api/backtest' || path === '/api/backtest/')) {
+      return route.fulfill({
+        contentType: 'application/json',
+        body: JSON.stringify(BACKTEST_HISTORY_FIXTURE),
+      });
+    }
+    return route.fallback();
+  });
+  await page.route('**/api/review/pending**', (route) =>
+    route.fulfill({ contentType: 'application/json', body: JSON.stringify(REVIEW_PENDING_FIXTURE) }),
+  );
+}
+
 test.describe('Visual Regression — Key Pages', () => {
 
   test.beforeAll(async () => {
@@ -37,6 +101,7 @@ test.describe('Visual Regression — Key Pages', () => {
   test.beforeEach(async ({ page }) => {
     await freezeClock(page);
     await isolateTestEnvironment(page);
+    await fixVolatileApis(page);
   });
 
   // ─── Dashboard ────────────────────────────────────────────
@@ -258,6 +323,7 @@ test.describe('Visual Regression — Key Pages', () => {
     const context = await browser.newContext({ viewport: { width: 375, height: 667 } });
     const page = await context.newPage();
     await freezeClock(page);
+    await fixVolatileApis(page);
     await page.goto('/');
     await page.waitForLoadState('domcontentloaded');
     await page.waitForSelector('.dashboard-page', { timeout: 15000 }).catch(() => {});
@@ -270,6 +336,7 @@ test.describe('Visual Regression — Key Pages', () => {
     const context = await browser.newContext({ viewport: { width: 768, height: 1024 } });
     const page = await context.newPage();
     await freezeClock(page);
+    await fixVolatileApis(page);
     await page.goto('/');
     await page.waitForLoadState('domcontentloaded');
     await page.waitForSelector('.dashboard-page', { timeout: 15000 });
