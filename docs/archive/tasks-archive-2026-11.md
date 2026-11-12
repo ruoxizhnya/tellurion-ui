@@ -28,6 +28,7 @@
 | UI-FACTOR-CITATION-RETIRED | 因子引用抽屉死调已退役的 `GET /api/factors/:name`，现改为退役说明页 | 2026-11-12 | 见正文 | [原文](#UI-FACTOR-CITATION-RETIRED) |
 | UI-COPILOT-GATE-SURFACE | Copilot 把 promote 闸门拦下误报成「沙箱未启用」，且无人类 promote 操作面（b 腿文案 + a 腿放行按钮） | 2026-11-12 | 见正文 | [原文](#UI-COPILOT-GATE-SURFACE) |
 | X-CI-RACE-STATICCHECK（ui 腿） | CI 在前端 job 补生产构建门 `npm run build` | 2026-11-12 | 见本条 | [施工记录](#X-CI-RACE-STATICCHECK-ui) |
+| X-LOW-CLEANUP（ui 腿） | `scripts/check-no-openapi.mjs`：openapi 不复制守卫 + CI 门 | 2026-11-12 | 见本条 | [施工记录](#X-LOW-CLEANUP-ui) |
 
 ---
 
@@ -876,3 +877,15 @@
 > - **为什么不靠 `typecheck`**：`typecheck` 是 `vue-tsc --noEmit`，`build` 是 `vue-tsc -b && vite build`，不是同一条路径。前者挡不住打包期才会暴露的问题（入口/别名解析、静态资源缺失、chunk 输出异常等）。
 > - **验收（真实执行）**：`npm run build` 在 `web/` 下退出码 0，`vite build` 6.96s 完成，产物正常输出到 `dist/`（最大 chunk `index` 368.77 kB / gzip 115.42 kB）。
 > - **边界**：只加一步构建门；不动 lint/typecheck/test 现有口径，不动 e2e job（其「无后端栈故不跑用例」的现状与注释保持原样）。
+
+---
+
+<a id="X-LOW-CLEANUP-ui"></a>
+### X-LOW-CLEANUP（ui 腿）· `openapi` 不复制守卫（跨仓伞 `tellurion:X-LOW-CLEANUP`）
+
+> **施工记录（2026-11-12）**：
+> - **原文取证**：ODR-069 W2-F7 的低成本清理簇含「不复制守卫」要求；本仓与规格的关系是 ADR-0001：**openapi 只住 core**（`tellurion:docs/openapi.yaml`），治疗「各仓抄一份、然后各自漂移」。
+> - **改了什么**：新增 `scripts/check-no-openapi.mjs`（Node，零依赖）：递归扫工作区，文件名命中 `^(openapi|swagger).*\.(ya?ml|json)$` 即红；排除 `.git` / `node_modules` / `dist` / `coverage` / `test-results` / `playwright-report` / `.vite`。CI 在前端 job 末尾加 `Guard（openapi 不复制）` 步（`working-directory: .`）。
+> - **为什么扫工作区而不是 `git ls-files`**：未 commit 的副本同样会被拦下，PR 提交前本地就能发现，不依赖「已入库」这一前提。
+> - **破坏验证（真做真还原）**：`node scripts/check-no-openapi.mjs` → 退出码 0；复制 `tellurion:docs/openapi.yaml` 为仓库根 `openapi.yaml` ⇒ 退出码 1 并打印命中路径；删除后复跑退出码 0。
+> - **边界**：只加守卫脚本与 CI 一步；不改前端构建/测试，不引入新依赖。

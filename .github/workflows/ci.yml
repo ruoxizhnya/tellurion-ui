@@ -46,6 +46,12 @@ jobs:
       - name: Build
         run: npm run build
 
+      # X-LOW-CLEANUP（ui 腿）：ADR-0001 的「openapi 只住 core」守卫。
+      # 扫的是工作区而非 git 索引，未 commit 的副本同样会红。
+      - name: Guard（openapi 不复制）
+        working-directory: .
+        run: node scripts/check-no-openapi.mjs
+
   e2e:
     name: Playwright e2e (smoke)
     runs-on: ubuntu-latest
