@@ -20,6 +20,7 @@
 | UI-NPM-AUDIT-FIX | npm 依赖 5 个 high 漏洞（@vue/server-renderer XSS 等） | 2026-11-12 | 见正文 | [原文](#UI-NPM-AUDIT-FIX) |
 | UI-RUNBOOK-GAP | 本仓没有 runbook，托管失败与 `/api` 反代故障只有 README 零散说明 | 2026-11-12 | 见正文 | [原文](#UI-RUNBOOK-GAP) |
 | UI-HEALTHCHECK | ui Dockerfile 无 HEALTHCHECK，容器编排无法判活 | 2026-11-12 | 见正文 | [原文](#UI-HEALTHCHECK) |
+| UI-SCREEN-CONSUMER | 核验 `/api/screen` `/api/stocks/count` 修复后 ui 消费面真可用 | 2026-11-12 | 见正文 | [原文](#UI-SCREEN-CONSUMER) |
 
 ---
 
@@ -601,3 +602,32 @@
 - **破坏验证（现场）**：`docker exec ui-healthprobe sh -c "mv /usr/share/nginx/html/index.html /tmp/index.html"` —— nginx **进程仍活着**，但已不再 serving SPA：`/` 变 `403`，40s 后 `failing=1`，75s 后累计 `unhealthy failing=5`（`docker ps` 显示 `Up 3 minutes (unhealthy)`）。还原文件后 `/` 复 `200`，一个探测周期后回 `healthy failing=0`。即探针反映的是「真在 serving」而不是「容器没死」。
 - **⑥ 边界守住**：只改 `Dockerfile`；未动 `deploy/nginx-spa.conf`、未动 SPA 路由、未改 compose（统一栈的 healthcheck 配置属 core 仓批次，本单不跨仓）。
 - **残留**：探针只覆盖「本机 nginx 能吐 SPA」，不含反代链路的可用性——这是刻意的（③ 明确后端健康归 core），排障入口见 `docs/runbook.md` §1/§3。
+
+---
+
+<a id="UI-SCREEN-CONSUMER"></a>
+## UI-SCREEN-CONSUMER · 核验 `/api/screen` `/api/stocks/count` 修复后 ui 消费面真可用 ✅ 完成（2026-11-12）
+
+- **① 目标**：确认主任 `8c5272d` 修复 core 死反代后，本仓 Screener / DataQualityPanel / MarketMetrics 等消费方真能拿到数据或优雅处理新语义（count 派生 502），而不是静默坏掉。
+- **② 上下文（2026-11-11 全面审查 W2-F8 连带，证据 ODR-069 `tellurion-docs:docs/archive/odr/odr-069-audit-wave2-core-architecture.md`）**：`web/src/api/market.ts:21` `screenStocks` → `POST /api/screen`、`:13` `getStockCount` → `/api/stocks/count`；消费方 = `web/src/pages/Screener.vue`、`web/src/components/sync/DataQualityPanel.vue`、`web/src/components/dashboard/MarketMetrics.vue`（+ `DataSync.vue`）。主任 `8c5272d` 已改 core：screen 本地供数（裁决⑰姿势）、count 派生 **502**、ingest/raw 410。core 侧核验归 `tellurion:CORE-DEAD-PROXY-SCREEN-VERIFY`；本单是 ui 消费连带——尤其 count 现在可能回 502，ui 须优雅处理而非崩。
+- **③ 要求**：① 真栈（core 修复后）跑 Screener / DataQualityPanel / MarketMetrics，断言 screen 有读数、count 502 时 ui 显示「不可用」而非通用错误/空白崩；② 若 ui 把 count 502 当硬错误，改成降级提示；③ 补/改组件测试覆盖 count 502 分支；④ e2e 相关用例复跑不退化。
+- **④ 约束与非目标**：不改 core 路由（主任已修，归 CORE-DEAD-PROXY-SCREEN-VERIFY 核验）；不复制 openapi；不在前端伪造 screen/count 数值；不新造端点。
+- **⑤ 验收**：真栈三消费方各一条断言（screen 有读数 / count 502 降级）；组件测试覆盖 502 分支；破坏验证 = 把 502 降级改回硬错误 ⇒ 用例红，还原复绿；`npm run build`/`test` 绿。
+- **⑥ 边界**：本仓 `web/src/api/market.ts` 消费方组件 + 测试；core 反代核验归 `tellurion:CORE-DEAD-PROXY-SCREEN-VERIFY`。
+- **owner**：待定
+
+### 施工记录（2026-11-12）
+
+- **实栈核验（镜像内 nginx 起容器，`/api` 反代到运行中的 analysis-service:8085；真浏览器打开页面读数）**：
+  - **DataQualityPanel**（`/data-sync`）：`票池记录（含已退市）= 5580`、`在市 = 5580 (active)`、`行情最新日 = 2025-12-31`；`已退市`/`退市占比` 显示 **未读取**（后端 `by_status` 只回了 `active`，前端按 fail-explicit 留空，符合预期）；**无红条、无降级条、页面不空白**。与 `GET /api/stocks/count` 实测一致（`count:5580`，`by_status:{active:5580}`）。
+  - **MarketMetrics**（`/`）：请求被 core 的限流挡成 `429`，页面渲染的是**诚实的失败态**（红色「读数失败」标签 + 「这次请求没成功：后端不可达、回包不合形状，或没给回你点名的那一个指数，不是今天没有行情」+ 重试建议），**没有**伪装成「今天没有行情」。空数组 → 「无指数数据」的分支由 `MarketMetrics.test.ts:134` 覆盖（真栈在上一条限流下拿不到 200 空数组）。
+  - **Screener**（`/screener`）：`/api/screen` 命中限流 `429`，结果区显示「未找到符合条件的股票」；`POST /api/screen` 直连实测为 `200 {"count":0,"results":[]}`（库里有行情但基本面字段空，无过滤命中）。
+- **② 的落地**：`DataQualityPanel.vue` 把「5xx / 网络层失败」从**通用错误红条**改为**降级提示**（`data-testid="quality-degraded"`，文案点名 `HTTP 502` 或「网络不可达」，并说明各格保留「未读取」、不显示猜测值）；4xx 或畸形回包仍走红条（那是要人看的错）。格子形状、`未读取` 语义、`by_status` 缺键时的 fail-explicit 行为均未改。
+- **③ 组件测试**：新增 2 例（`count 502` / `status 0` 网络失败），并把原来那例 500 的断言从「红条文案」改为「格子仍为未读取」+ 新增降级用例；`DataQualityPanel.test.ts` 共 19 例。
+- **破坏验证（现场真输出）**：把 `catch` 里的降级分支删回「一律 `error.value = apiMessage(...)`」⇒ `Tests 2 failed | 17 passed`（`count 502：走降级提示` 与 `网络层失败` 两例红）；逐字节还原后 `Tests 19 passed (19)`。
+- **④ e2e 复跑（对真容器 `BASE_URL=127.0.0.1:18080`）**：`screener.spec.ts` + `dashboard.spec.ts` = **16 passed / 1 failed**，失败项为 `dashboard.spec.ts:162` 期望「暂无历史记录」但库里有回测历史 —— **与本单改动无关**（本单只改 `DataQualityPanel`，不在 dashboard 链路上），属既有用例把「空库」当默认环境的耦合。`a08-job-console.spec.ts -g "PIT 与幸存者"` 亦失败：用例硬编码 `5908`，而真库当前 `5580`，同样与改动无关。
+- **本次新发现（按「审查清单之外只登记不实现」处理，未改）**：
+  1. `e2e/tests/a08-job-console.spec.ts` 把真库读数写死（`5908` / `2026-10-14`），应改为向 `/api/stocks/count` 取期望值，否则换库/补数即红。
+  2. `e2e/tests/dashboard.spec.ts:162` 假定回测历史为空，应改为断言「空态或有行」二选一，或为 e2e 提供独立库。
+  3. `Screener.vue:140-141` 失败（含 429 限流）时只弹一条 3 秒后消失的 toast，结果区同时落到「未找到符合条件的股票」——**失败被读成「没找到」**。与 `UI-COPILOT-GATE-SURFACE` 同类问题，但本单 ④ 只要求 count 分支，故仅登记。
+- **边界守住**：只改 `web/src/components/sync/DataQualityPanel.vue` + 其测试；未改 core、未改 `market.ts` 契约、未新造端点、未伪造数值。

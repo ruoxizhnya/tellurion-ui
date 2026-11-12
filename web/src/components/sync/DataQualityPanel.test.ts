@@ -133,7 +133,35 @@ describe('幸存者偏差块', () => {
     market.getStockCount.mockRejectedValue(new ApiError(500, '服务暂时不可用，请稍后重试'))
     const w = await mountPanel()
     expect(valueOf(w, 'surv-total')).toBe('未读取')
-    expect(w.find('[data-testid="quality-error"]').text()).toBe('服务暂时不可用，请稍后重试')
+  })
+
+  /**
+   * `count` 是**派生**读数（core 由 stocks 表聚合），502 往往意味着整条数据链
+   * 此刻不可达。这时页面该说「这一块读数暂不可用」，而不是弹一条看起来像
+   * 「本页坏了」的通用错误 —— 用户对这两件事的反应完全不同
+   * （UI-SCREEN-CONSUMER ②）。
+   */
+  it('count 502：走降级提示并点名状态码，不弹通用错误条', async () => {
+    market.getStockCount.mockRejectedValue(new ApiError(502, '网关服务不可用'))
+    const w = await mountPanel()
+
+    const degraded = w.find('[data-testid="quality-degraded"]')
+    expect(degraded.exists()).toBe(true)
+    expect(degraded.text()).toContain('票池读数暂不可用')
+    expect(degraded.text()).toContain('HTTP 502')
+    // 降级不是错误：红条不许同时出现
+    expect(w.find('[data-testid="quality-error"]').exists()).toBe(false)
+    // 且格子仍是空态，不用 0 顶替
+    expect(valueOf(w, 'surv-total')).toBe('未读取')
+    expect(valueOf(w, 'surv-active')).toBe('未读取')
+  })
+
+  it('网络层失败（status 0）：降级提示写「网络不可达」', async () => {
+    market.getStockCount.mockRejectedValue(new ApiError(0, '网络连接失败'))
+    const w = await mountPanel()
+
+    expect(w.find('[data-testid="quality-degraded"]').text()).toContain('网络不可达')
+    expect(w.find('[data-testid="quality-error"]').exists()).toBe(false)
   })
 
   it('读数读不到时拆分两格也是未读取，不拿 0 顶替', async () => {

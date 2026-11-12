@@ -1,5 +1,11 @@
 <template>
   <NCard title="研究质量读数（PIT / 幸存者偏差）" size="small" data-testid="quality-panel">
+    <!-- 两种「读不到」必须分开说（UI-SCREEN-CONSUMER ②）：
+         5xx / 断网 = 上游此刻不可用，页面本身没坏，格子照常留「未读取」；
+         4xx = 我们的请求或契约有问题，那是错误，值得红条。 -->
+    <NAlert v-if="degraded" type="warning" class="quality-error" closable data-testid="quality-degraded">
+      {{ degraded }}
+    </NAlert>
     <NAlert v-if="error" type="error" class="quality-error" closable data-testid="quality-error">
       {{ error }}
     </NAlert>
@@ -70,6 +76,7 @@
 import { computed, onMounted, ref } from 'vue'
 import { NAlert, NCard, NDivider, NTag, NText } from 'naive-ui'
 import { getStockCount } from '@/api/market'
+import { ApiError } from '@/api/client'
 import { apiMessage } from '@/utils/apiMessage'
 
 /**
@@ -103,6 +110,17 @@ const latestDate = ref<string | null>(null)
  */
 const latestDateIsExplicitlyEmpty = ref(false)
 const error = ref('')
+/**
+ * 上游不可用时的降级提示（`UI-SCREEN-CONSUMER` ②）。
+ *
+ * `GET /api/stocks/count` 是由 stocks 表**派生**的读数，它 502 的时候数据服务
+ * 可能整个不可达 —— 页面对这种情况该说「这一块读数暂时不可用」，而不是弹一条
+ * 看起来像「本页坏了」的通用错误。两者对用户是两件事：前者等一会儿就好，
+ * 后者要报 bug。
+ *
+ * 格子的形状不变：照旧留「未读取」，**不**用 0 顶替，也**不**清空整页。
+ */
+const degraded = ref('')
 
 /**
  * 取一个后端读数：拿不到就是 null（显式空态），**不是 0**。
@@ -172,6 +190,7 @@ function setLatestDate(raw: unknown) {
 
 async function load() {
   error.value = ''
+  degraded.value = ''
   poolCount.value = null
   activeCount.value = null
   delistedCount.value = null
@@ -192,6 +211,14 @@ async function load() {
     delistedSharePct.value = delistedShare(poolCount.value, delistedCount.value)
     setLatestDate(resp.latest_date)
   } catch (err) {
+    // 5xx / 网络层失败 ⇒ 降级（上游不可用）；4xx 或畸形回包 ⇒ 错误（要人看）。
+    if (err instanceof ApiError && (err.isServerError || err.isNetworkError)) {
+      const code = err.status === 0 ? '网络不可达' : `HTTP ${err.status}`
+      degraded.value =
+        `票池读数暂不可用（${code}）：上游服务此刻不可达。` +
+        '本页不显示猜测值，下面各格保持「未读取」，稍后重试即可。'
+      return
+    }
     error.value = apiMessage(err, '票池读数获取失败')
   }
 }

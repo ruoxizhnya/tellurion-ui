@@ -12,7 +12,7 @@ verified-by: 2026-11-11 全面审查 W7 台账立单（A5 授权）——新立 
 
 ## 一、未做 / 挂起 / 外部依赖
 
-> 本节 = 既有 1 单（`UI-FACTOR-CITATION-RETIRED`）+ 全面审查 W7 新立的 4 单（`UI-COPILOT-GATE-SURFACE` / `UI-SCREEN-CONSUMER` / `UI-HEALTHCHECK` / `UI-LEDGER-SELF-CONSISTENCY`）。W7 的 `UI-NPM-AUDIT-FIX`、`UI-RUNBOOK-GAP`、`UI-HEALTHCHECK` 已于 2026-11-12 收口并移入归档。**订正**：原「本仓当前无未做」 boilerplate 与下文 ⬜ 自相矛盾（W1-F6），已撤；主台账与子台账（`docs/design/stitch_quantlab_ux_redesign/`）的关系见 `UI-LEDGER-SELF-CONSISTENCY`。此前已收口单的正文与施工记录全部在归档文件里。
+> 本节 = 既有 1 单（`UI-FACTOR-CITATION-RETIRED`）+ 全面审查 W7 新立 4 单中的 1 单（`UI-LEDGER-SELF-CONSISTENCY`）。W7 的 `UI-NPM-AUDIT-FIX`、`UI-RUNBOOK-GAP`、`UI-HEALTHCHECK`、`UI-SCREEN-CONSUMER` 已于 2026-11-12 收口并移入归档；`UI-COPILOT-GATE-SURFACE` 的 b 腿已落、a 腿待角色裁决，仍留在本节。**订正**：原「本仓当前无未做」 boilerplate 与下文 ⬜ 自相矛盾（W1-F6），已撤；主台账与子台账（`docs/design/stitch_quantlab_ux_redesign/`）的关系见 `UI-LEDGER-SELF-CONSISTENCY`。此前已收口单的正文与施工记录全部在归档文件里。
 
 ### UI-FACTOR-CITATION-RETIRED · 因子引用抽屉仍在调用已退役的 `GET /api/factors/:name` [P2] ⬜
 
@@ -36,16 +36,6 @@ verified-by: 2026-11-11 全面审查 W7 台账立单（A5 授权）——新立 
 - **⑥ 边界**：本仓 `web/src/pages/Copilot.vue` + `docs/runbook.md`；a 腿的 core 反代归 `tellurion`、strategy 角色策略归 `tellurion-strategy`（须先裁）；后端闸门行为归 agent（不动）。
 - **owner**：待定
 - **施工记录（2026-11-12，b 腿）**：新增 `web/src/utils/copilot.ts` 作为终态文案的唯一口径（按 `build_error` 分 `promote_gate` / `sandbox_unavailable` / `asset_register` / `chain_trace` / `unknown`，**认不出就不补解释**），`Copilot.vue` 改用它；进度文案改为 `LLM → 静态检查 → 沙箱编译 → 资产登记 → 人工 promote 闸门（这条链不会自动跑回测）`。用例 `web/src/pages/Copilot.test.ts`（4 例，真组件 + 假后端）钉住三条判据。破坏验证：把失败分支改回「一律追加沙箱未启用」⇒ 2 例红（`闸门拦下` / `认不出原因`），逐字节还原后 4 例绿。**a 腿未做**：仍待裁「人 promote 走什么身份」（service token 签发 vs admin 代调），裁决前不给 strategy 加档、不落按钮。
-
-### UI-SCREEN-CONSUMER · 核验 `/api/screen` `/api/stocks/count` 修复后 ui 消费面真可用 [P1] ⬜
-
-- **① 目标**：确认主任 `8c5272d` 修复 core 死反代后，本仓 Screener / DataQualityPanel / MarketMetrics 等消费方真能拿到数据或优雅处理新语义（count 派生 502），而不是静默坏掉。
-- **② 上下文（2026-11-11 全面审查 W2-F8 连带，证据 ODR-069 `tellurion-docs:docs/archive/odr/odr-069-audit-wave2-core-architecture.md`）**：`web/src/api/market.ts:21` `screenStocks` → `POST /api/screen`、`:13` `getStockCount` → `/api/stocks/count`；消费方 = `web/src/pages/Screener.vue`、`web/src/components/sync/DataQualityPanel.vue`、`web/src/components/dashboard/MarketMetrics.vue`（+ `DataSync.vue`）。主任 `8c5272d` 已改 core：screen 本地供数（裁决⑰姿势）、count 派生 **502**、ingest/raw 410。core 侧核验归 `tellurion:CORE-DEAD-PROXY-SCREEN-VERIFY`；本单是 ui 消费连带——尤其 count 现在可能回 502，ui 须优雅处理而非崩。
-- **③ 要求**：① 真栈（core 修复后）跑 Screener / DataQualityPanel / MarketMetrics，断言 screen 有读数、count 502 时 ui 显示「不可用」而非通用错误/空白崩；② 若 ui 把 count 502 当硬错误，改成降级提示；③ 补/改组件测试覆盖 count 502 分支；④ e2e 相关用例复跑不退化。
-- **④ 约束与非目标**：不改 core 路由（主任已修，归 CORE-DEAD-PROXY-SCREEN-VERIFY 核验）；不复制 openapi；不在前端伪造 screen/count 数值；不新造端点。
-- **⑤ 验收**：真栈三消费方各一条断言（screen 有读数 / count 502 降级）；组件测试覆盖 502 分支；破坏验证 = 把 502 降级改回硬错误 ⇒ 用例红，还原复绿；`npm run build`/`test` 绿。
-- **⑥ 边界**：本仓 `web/src/api/market.ts` 消费方组件 + 测试；core 反代核验归 `tellurion:CORE-DEAD-PROXY-SCREEN-VERIFY`。
-- **owner**：待定
 
 ### UI-LEDGER-SELF-CONSISTENCY · 主台账「无开放项」自相矛盾 + 子台账过期项 + broker frontmatter 漂移 [P3] ⬜
 
