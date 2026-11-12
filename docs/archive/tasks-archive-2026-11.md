@@ -22,6 +22,7 @@
 | UI-HEALTHCHECK | ui Dockerfile 无 HEALTHCHECK，容器编排无法判活 | 2026-11-12 | 见正文 | [原文](#UI-HEALTHCHECK) |
 | UI-SCREEN-CONSUMER | 核验 `/api/screen` `/api/stocks/count` 修复后 ui 消费面真可用 | 2026-11-12 | 见正文 | [原文](#UI-SCREEN-CONSUMER) |
 | UI-LEDGER-SELF-CONSISTENCY | 主台账「无开放项」自相矛盾 + 子台账过期项 + broker frontmatter 漂移 | 2026-11-12 | 见正文 | [原文](#UI-LEDGER-SELF-CONSISTENCY) |
+| UI-SCREENER-ERROR-STATE | 选股请求失败被渲染成「未找到符合条件的股票」（失败冒充空结果） | 2026-11-12 | 见正文 | [原文](#UI-SCREENER-ERROR-STATE) |
 
 ---
 
@@ -673,3 +674,34 @@
 - **④ 的落地（台账自身）**：主台账 §一 引言重写为「本节 = `UI-FACTOR-CITATION-RETIRED`（待产品裁决）+ `UI-COPILOT-GATE-SURFACE` a 腿（待角色裁决）」，并补一句「**本节有两单在等裁决（见各条重开条件），不是没人做**」，避免读者把「只剩 2 条且都带 ⬜/🔶」误读成停滞；同时新增「**主/子台账分工（D13）**」段作为两处关系的成文出处。
 - **⑥ 边界守住**：只改 5 个 md（`AGENTS.md`、`docs/TASKS.md`、`docs/ARCHITECTURE.md`、本归档文件、子台账 `TASKS.md`）；**未改任何代码**，未改子台账 B-01/B-02/B-06/G1~G4 的功能判定，未动 `UI-VISUAL-BASELINE-2026-11-12` ✅ 条目，未触碰 `SERVICE.md` 与其他仓。
 - **残留**：broker frontmatter（见 ③）；W1-F7 观察窗功能缺口按单要求 dedup 到子台账 B-01/B-02/B-06/G1~G4，**本单未新立功能单**。
+
+---
+
+<a id="UI-SCREENER-ERROR-STATE"></a>
+## UI-SCREENER-ERROR-STATE · 选股请求失败被渲染成「未找到符合条件的股票」[P0] ✅ 完成（2026-11-12）
+
+- **① 目标**：把「请求失败」与「查到了但 0 条」在界面上彻底分开——失败要能看见「请求失败 / 可重试」，只有后端明确回了 0 条才说「未找到」。
+- **② 上下文（2026-11-11 全面审查连带，`UI-SCREEN-CONSUMER` 施工时真栈发现第 3 条）**：`Screener.vue` 的 `catch` 只弹一条 3 秒后消失的 `message.error`，而模板的 `n-empty` 只看 `!loading && hasSearched`，于是**任何失败**（429 限流 / 502 / 断网）都同时落成「未找到符合条件的股票」。真栈复现：core 限流回 429 时页面正是这个形状。这不是文案问题——页面在替后端断言一个它没拿到的结论。
+- **③ 要求**：① 失败态独立呈现（错误条 + 重试入口），空结果文案只在请求成功且 0 条时出现；② 失败时清掉上一次的结果表，避免旧数据被当成本次结果；③ 补组件用例覆盖 5xx / 网络失败 / 200 空数组 / 先成功后失败 / 重试成功五条判据；④ 破坏验证 = 把失败分支改回旧渲染 ⇒ 用例红，逐字节还原 ⇒ 绿。
+- **④ 约束与非目标**：不改 `POST /api/screen` 契约、不改 core、不在前端伪造结果条数；不把限流（429）当空结果、也不把它当致命错误页——它只是失败态的一种。
+- **⑤ 验收**：`Screener.test.ts` 全绿；`vue-tsc -b` 退出码 0；破坏验证两段输出入档。
+- **⑥ 边界**：`web/src/pages/Screener.vue` + 其新增测试。
+- **owner**：待定
+
+### 施工记录（2026-11-12）
+
+- **改动**：`failure` 状态与 `results` 互斥——`runScreen()` 进入时清空、`catch` 里写 `apiMessage(e, '请求没有成功')` 并**清空上一轮结果**；模板新增 `data-testid="screen-error"` 错误条（含 `data-testid="screen-retry"` 重试按钮，复用同一套筛选条件），空结果 `n-empty` 的判据由 `!loading && hasSearched` 收紧为 `... && !failure`，末尾那句「设置筛选条件后开始选股」也加 `v-if="!failure"`，避免失败时叠一句「你还没查过」。原 `message.error(...)` toast 删除（失败不再只存在于一条会消失的提示里）。
+- **用例**：新增 `web/src/pages/Screener.test.ts`，5 例——502 → 错误态含「选股请求失败」+「网关服务不可用」+ 重试按钮，且**不出现**「未找到符合条件的股票」；`status 0` 网络失败 → 错误态；200 空数组 → 才出现「未找到」且无错误条；先成功（1 条）后 429 → 旧结果被清、错误条出现；重试成功 → 错误条消失、切成空结果态。
+- **破坏验证（真实输出）**：把 `catch` 改回 `message.error(...)`（不写 `failure`）、空结果判据改回 `!loading && hasSearched` ⇒
+  ```
+  ❯ src/pages/Screener.test.ts (5 tests | 4 failed) 512ms
+       × 后端 5xx：出现错误态 + 重试，不出现「未找到符合条件的股票」
+       × 网络层失败（status 0）：同样走错误态，不冒充空结果
+       ✓ 后端 200 但 0 条：这才说「未找到」，且不出现错误态
+       × 成功后有结果再失败：旧表格必须清掉，不能把上一次的行当这次的结果
+       × 重试按钮会用同一套条件重新发请求，成功后错误态消失
+  Tests  4 failed | 1 passed (5)
+  ```
+  逐字节还原后（`Screener.vue` SHA256 回到 `A907B003…7F8475`）⇒ `Tests 5 passed (5)`。
+- **⑤ 其它门禁**：`npx vue-tsc -b` = `TSC_EXIT=0`；`npx eslint src/pages/Screener.vue src/pages/Screener.test.ts` = `0 errors`（47 条 warning 全是该文件存量的 `vue/max-attributes-per-line` 风格项，非本次新增行）。
+- **⑥ 边界守住**：只改 `web/src/pages/Screener.vue` 并新增其测试；未动 `market.ts`、未动 core、未伪造条数。

@@ -51,6 +51,15 @@
       </n-form>
     </n-card>
 
+    <!-- 失败与空结果必须分开呈现：请求没成功时页面不许说「未找到符合条件的股票」
+         —— 那是在替后端断言「确实没有命中」，而我们根本没拿到结论。 -->
+    <n-alert v-if="failure" type="error" class="screen-error" data-testid="screen-error">
+      <div class="screen-error-body">
+        <span class="screen-error-text">选股请求失败：{{ failure }}</span>
+        <n-button size="small" :loading="loading" data-testid="screen-retry" @click="runScreen">重试</n-button>
+      </div>
+    </n-alert>
+
     <n-card v-if="results.results.length" title="选股结果" class="results-card">
       <template #header-extra>
         <n-tag type="success" round :bordered="false">找到 {{ results.count }} 只股票</n-tag>
@@ -65,24 +74,33 @@
       />
     </n-card>
 
-    <n-empty v-else-if="!loading && hasSearched" description="未找到符合条件的股票" class="empty-state" />
+    <n-empty
+      v-else-if="!loading && hasSearched && !failure"
+      description="未找到符合条件的股票"
+      class="empty-state"
+      data-testid="screen-empty"
+    />
 
-    <n-empty v-else description="设置筛选条件后开始选股" class="empty-state" />
+    <!-- 失败态上方已有错误条，这里不再叠一句「设置筛选条件」把失败说成没查过。 -->
+    <n-empty v-else-if="!failure" description="设置筛选条件后开始选股" class="empty-state" />
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, reactive, computed } from 'vue'
 import {
-  NCard, NForm, NFormItem, NInputNumber, NSelect, NButton,
+  NAlert, NCard, NForm, NFormItem, NInputNumber, NSelect, NButton,
   NDataTable, NEmpty, NTag, NSpace, NGrid, NGridItem, useMessage,
 } from 'naive-ui'
 import { screenStocks } from '@/api/market'
+import { apiMessage } from '@/utils/apiMessage'
 import type { ScreenResultItem } from '@/types/api'
 
 const message = useMessage()
 const loading = ref(false)
 const hasSearched = ref(false)
+/** 请求失败的原因。与「查到了但 0 条」互斥：前者说明我们没有结论，后者才是一条结论。 */
+const failure = ref<string | null>(null)
 
 const form = reactive({
   peMax: null as number | null,
@@ -123,6 +141,7 @@ const tableData = computed(() =>
 async function runScreen() {
   loading.value = true
   hasSearched.value = true
+  failure.value = null
   try {
     const params: Record<string, number> = {}
     if (form.peMax != null) params.pe_max = form.peMax
@@ -138,7 +157,10 @@ async function runScreen() {
     results.value = res
     message.success(`找到 ${res.count} 只股票`)
   } catch (e: unknown) {
-    message.error('选股失败: ' + (e instanceof Error ? e.message : String(e)))
+    // 失败要把「上一次的结果」一起清掉：留着旧表格 + 一条错误条，读者会以为
+    // 屏幕上这些行就是这次筛选的结果。
+    results.value = { count: 0, results: [] }
+    failure.value = apiMessage(e, '请求没有成功')
   } finally {
     loading.value = false
   }
@@ -148,6 +170,7 @@ function resetForm() {
   Object.assign(form, { peMax: null, pbMax: null, roeMin: null, roaMin: null, grossMarginMin: null, netMarginMin: null, marketCapMin: null, limit: 50 })
   results.value = { count: 0, results: [] }
   hasSearched.value = false
+  failure.value = null
 }
 </script>
 
@@ -155,4 +178,5 @@ function resetForm() {
 .screener-page { max-width: 1400px; margin: 0 auto; display: flex; flex-direction: column; gap: 20px; }
 .empty-state { padding: 60px 0; }
 .results-card { min-height: 300px; }
+.screen-error-body { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
 </style>
