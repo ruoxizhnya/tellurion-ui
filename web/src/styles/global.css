@@ -3,6 +3,9 @@
 html, body, #app {
   height: 100%;
   font-family: var(--q-font);
+  /* A-11 断言 5 / DESIGN §5.2：数字等宽（tabular lining figures）。
+     继承到所有数据单元，流式刷新时数字不会横向跳动；不必逐表重复声明。 */
+  font-variant-numeric: tabular-nums;
   background: var(--q-bg);
   color: var(--q-text);
   -webkit-font-smoothing: antialiased;

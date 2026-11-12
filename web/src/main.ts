@@ -4,6 +4,13 @@ import App from './App.vue'
 import router from './router'
 import { setUnauthorizedHandler } from './api/authToken'
 import { useAuthStore } from './stores/auth'
+// A-11 / ODR-001：拉丁字形自托管，只取用到的字重与 latin 子集。
+// 不要换成 @fontsource/inter/400.css —— 那是全子集（cyrillic/greek/vietnamese），
+// 体积翻倍且本产品界面没有这些字形。
+import '@fontsource/inter/latin-400.css'
+import '@fontsource/inter/latin-500.css'
+import '@fontsource/inter/latin-600.css'
+import '@fontsource/jetbrains-mono/latin-400.css'
 import './styles/variables.css'
 import './styles/global.css'
 

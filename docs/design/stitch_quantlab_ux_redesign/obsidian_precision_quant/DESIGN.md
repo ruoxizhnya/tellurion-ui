@@ -249,12 +249,14 @@ Chart.js 收不了 CSS 变量，只能收字面量，所以系列色必须有一
 ### 5.1 字体栈（**含 CJK —— v1.0 完全缺失**）
 
 ```css
---q-font: 'Inter', 'Geist', -apple-system, BlinkMacSystemFont, 'Segoe UI',
+--q-font: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI',
           'Noto Sans SC', 'PingFang SC', 'Microsoft YaHei', Roboto, sans-serif;
 --q-mono: 'JetBrains Mono', 'Noto Sans Mono CJK SC', 'Fira Code', monospace;
 ```
 
-> **v1.0 的缺口**：规定 Geist + JetBrains Mono，**一个 CJK 字体都没写**，而 12 屏几乎全是中文。Inter 与 Geist 均无中文字形，实际会 fallback 到浏览器默认（Windows 上是宋体族），密度与基线全乱。此处补齐并按"拉丁字体在前、CJK 在后"排列，使中文命中 `Noto Sans SC`。
+> **v1.0 的缺口**：规定 Geist + JetBrains Mono，**一个 CJK 字体都没写**，而 12 屏几乎全是中文。Inter 与 Geist 均无中文字形，实际会 fallback 到浏览器默认（Windows 上是宋体族），密度与基线全乱。此处补齐并按"拉丁字体在前、CJK 在后"排列。
+>
+> **A-11 收口（2026-11-12，ODR-001）**：拉丁字形**自托管**——`@fontsource/inter` 的 latin-400/500/600 与 `@fontsource/jetbrains-mono` 的 latin-400，woff2 随 npm 依赖发布，不经 CDN、不进 `public/` 二进制；`Geist` 从未随包发布，已从栈中移除。**CJK 不打包**：`Noto Sans SC` 单字重 woff2 已远超 200KB 预算，改由系统栈承担（Windows 落 `Microsoft YaHei`，macOS 落 `PingFang SC`，Linux 装了 CJK 时落 `Noto Sans CJK`）。实测 `document.fonts.check('12px "Noto Sans SC"')` 在未安装该字体的宿主上为 `false` —— 这是"不打包、走系统栈"的证据，不是缺陷。断言 4 按此订正。
 
 - **结构层（Inter）**：12–14px 下 kerning 优化，承载表头与侧栏树。
 - **数据层（JetBrains Mono）**：不可协商。表格数字、策略日志、Sharpe、因子表达式、矩阵形状一律等宽。

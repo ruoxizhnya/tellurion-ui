@@ -66,10 +66,11 @@
   --q-transition: 0.2s ease;
 
   /* —— 字体 —— */
-  /* ⚠️ Inter / Geist / JetBrains Mono 当前**未被加载**（index.html 无 link、public/ 无 woff2），
-     故实际渲染仍走系统字体。启用需单独决策：自托管 woff2（涉二进制，属 AGENTS 禁区，需批准）
-     或外部 CDN（与"自托管"定位冲突）。见 DESIGN.md §5.1 */
-  --q-font: 'Inter', 'Geist', -apple-system, BlinkMacSystemFont, 'Segoe UI',
+  /* A-11 / ODR-001：拉丁字形自托管（@fontsource 的 latin 子集，woff2，随包发布，
+     不进 public/ 二进制）；CJK **不打包**，由系统栈承担 —— 打包 Noto Sans SC 单字重
+     就远超 200KB 预算。栈序保证中文优先命中系统 Noto Sans SC，未安装时退到
+     PingFang SC / Microsoft YaHei。见 DESIGN.md §5.1、docs/odr/001-*.md */
+  --q-font: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI',
             'Noto Sans SC', 'PingFang SC', 'Microsoft YaHei', Roboto, sans-serif;
   --q-mono: 'JetBrains Mono', 'Noto Sans Mono CJK SC', 'Fira Code', monospace;
 
