@@ -16,6 +16,40 @@
           {{ currentTime }}
         </n-tag>
         <!--
+          A-04 断言 5：「待审阅 N」的 N 来自 core 聚合读面（G1），该端点尚未提供。
+          这里显式画成 disabled 角标并把依赖写在 tooltip 里 —— 不用恒 0 冒充真实读数。
+          位置必须在时间 tag 之后：dashboard.spec 用 .n-tag 的 nth(1) 锚定时间。
+        -->
+        <n-tooltip trigger="hover">
+          <template #trigger>
+            <n-tag
+              size="small"
+              round
+              :bordered="false"
+              data-testid="header-review-badge"
+              aria-disabled="true"
+              class="review-badge"
+            >
+              待审阅 —
+            </n-tag>
+          </template>
+          等待 core 聚合读面（G1）；接不上之前不画恒 0 的假数
+        </n-tooltip>
+        <n-tooltip trigger="hover">
+          <template #trigger>
+            <n-button
+              quaternary
+              size="tiny"
+              data-testid="header-command-trigger"
+              @click="emit('open-command')"
+            >
+              <template #icon><SearchOutline :size="16" /></template>
+              ⌘K
+            </n-button>
+          </template>
+          命令面板（Ctrl / ⌘ + K）
+        </n-tooltip>
+        <!--
           身份区只在**已登录**时存在。
 
           条件必须是 isAuthenticated 而不是 authEnabled：open-access（没配
@@ -54,11 +88,11 @@ import { useRouter } from 'vue-router'
 import { NButton, NTag, NTooltip, NSpace, useMessage } from 'naive-ui'
 import {
   LogOutOutline, MenuOutline, MoonOutline,
-  TrendingUpOutline, TimeOutline,
+  SearchOutline, TrendingUpOutline, TimeOutline,
 } from '@vicons/ionicons5'
 import { useAuthStore } from '@/stores/auth'
 
-const emit = defineEmits(['toggle-sidebar'])
+const emit = defineEmits(['toggle-sidebar', 'open-command'])
 const message = useMessage()
 const auth = useAuthStore()
 const router = useRouter()
@@ -124,4 +158,7 @@ onUnmounted(() => clearInterval(timer))
 }
 
 .header-right { display: flex; align-items: center; }
+
+/* 角标不可点：视觉上压低，避免被当成可跳转入口 */
+.review-badge { color: var(--q-text3); cursor: default; }
 </style>

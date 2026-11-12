@@ -31,69 +31,18 @@
 </template>
 
 <script setup lang="ts">
-import { computed, markRaw } from 'vue'
+import { computed } from 'vue'
 import { useRoute } from 'vue-router'
-import {
-  HomeOutline,
-  AnalyticsOutline,
-  SearchOutline,
-  BeakerOutline,
-  TrendingUpOutline,
-  CloudDownloadOutline,
-  NotificationsOutline,
-  GitCompareOutline,
-  DocumentTextOutline,
-  StatsChartOutline,
-  FlaskOutline,
-  ShieldCheckmarkOutline,
-  SettingsOutline,
-} from '@vicons/ionicons5'
+import { TrendingUpOutline } from '@vicons/ionicons5'
 import { NIcon } from 'naive-ui'
+import { NAV_GROUPS, navTestId } from './navItems'
 
 defineProps<{ collapsed: boolean }>()
 
 const route = useRoute()
 
-/**
- * 标签唯一真相源：user-flows.md §3.2 目标 IA。此前同一页在四处有四种叫法
- * （选股器 / 全市场选股 / 选股与市场、数据同步 / 数据通道 / 数据管道 …），
- * 设计稿每屏各写一遍，全站没有一套导航。此处只允许引 §3.2 的词。
- *
- * 分组沿用 §3.2 的四段；`研究主线` 的 审阅台 / 研究日志 与 `系统` 整段尚未落地
- * （B-02 / B-03），**不渲染空入口** —— 点了没反应的导航比没有更糟。
- * B-04 已把 策略库 / 编辑器 / Copilot 合成 `/strategy-lab` 一个入口，
- * 旧路径保留为路由别名（URL 不变），不在侧栏重复登记。
- */
-const navGroups = [
-  { title: '总览', items: [{ path: '/', label: '控制台', icon: markRaw(HomeOutline) }] },
-  {
-    title: '研究主线',
-    items: [
-      { path: '/explore', label: '探索观察', icon: markRaw(FlaskOutline) },
-      { path: '/evidence', label: '证据质问', icon: markRaw(DocumentTextOutline) },
-    ],
-  },
-  {
-    title: '仪器房',
-    items: [
-      { path: '/backtest', label: '回测引擎', icon: markRaw(AnalyticsOutline) },
-      { path: '/backtest/compare', label: '多策略对比', icon: markRaw(GitCompareOutline) },
-      { path: '/walkforward', label: '走向与批量', icon: markRaw(StatsChartOutline) },
-      { path: '/strategy-lab', label: '策略库', icon: markRaw(BeakerOutline) },
-      { path: '/factors', label: '因子研究', icon: markRaw(StatsChartOutline) },
-      { path: '/screener', label: '选股与市场', icon: markRaw(SearchOutline) },
-      { path: '/data-sync', label: '数据管理', icon: markRaw(CloudDownloadOutline) },
-    ],
-  },
-  {
-    title: '监控',
-    items: [
-      { path: '/alerts', label: '风险告警', icon: markRaw(NotificationsOutline) },
-      { path: '/compliance', label: '合规', icon: markRaw(ShieldCheckmarkOutline) },
-      { path: '/system-admin', label: '系统管理', icon: markRaw(SettingsOutline) },
-    ],
-  },
-]
+// 导航表在 ./navItems.ts：侧栏与 ⌘K 命令面板读同一份（A-04 断言 5）。
+const navGroups = NAV_GROUPS
 
 /**
  * 高亮唯一：旧实现用 `route.path.startsWith(item.path)`，于是在 /backtest/compare 上
@@ -110,16 +59,6 @@ const activePath = computed(() => {
   }
   return best
 })
-
-/**
- * AUD-63：sidebar 每项的 e2e 锚点（命名规则见 ui:docs/TASKS.md AUD-63）。
- * 根路径 `'/'` 映射为 `home`；其余去掉前导 `/`、内部 `/` 换成 `-`，
- * 例：`/backtest/compare` → `nav-item-backtest-compare`。属性值里不留斜杠。
- */
-function navTestId(path: string): string {
-  if (path === '/') return 'nav-item-home'
-  return `nav-item-${path.slice(1).replace(/\//g, '-')}`
-}
 </script>
 
 <style scoped>

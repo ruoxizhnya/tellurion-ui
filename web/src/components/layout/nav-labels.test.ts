@@ -10,15 +10,17 @@ import { describe, expect, it } from 'vitest'
  * "因子研究" vs 标签页"因子证据"，§3.2 又写"因子研究"）。本条把"三处一致"从人眼
  * 检查变成机器检查。
  *
- * 破坏验证：把 AppSidebar 任一 label 或 router 任一 title 改一个字 → 本测试必须红。
+ * 破坏验证：把 navItems.ts 任一 label 或 router 任一 title 改一个字 → 本测试必须红。
+ *
+ * A-04 断言 5 起，侧栏与 ⌘K 命令面板共用 `navItems.ts`，本守卫读的也是这份文件。
  */
 
-const sidebarSrc = readFileSync(resolve(__dirname, 'AppSidebar.vue'), 'utf8')
+const navSrc = readFileSync(resolve(__dirname, 'navItems.ts'), 'utf8')
 const routerSrc = readFileSync(resolve(__dirname, '../../router/index.ts'), 'utf8')
 
-/** 侧栏：{ path, label } 列表（按 navGroups 声明顺序） */
+/** 侧栏：{ path, label } 列表（按 NAV_GROUPS 声明顺序） */
 function navItems(): { path: string; label: string }[] {
-  return [...sidebarSrc.matchAll(/path:\s*'([^']+)',\s*label:\s*'([^']+)'/g)].map((m) => ({
+  return [...navSrc.matchAll(/path:\s*'([^']+)',\s*label:\s*'([^']+)'/g)].map((m) => ({
     path: m[1],
     label: m[2],
   }))
@@ -65,7 +67,7 @@ describe('导航标签与路由标题同源', () => {
     const hits: string[] = []
     for (const alias of aliases) {
       for (const [name, src] of [
-        ['AppSidebar.vue', sidebarSrc],
+        ['navItems.ts', navSrc],
         ['router/index.ts', routerSrc],
       ] as const) {
         // 只禁**作为标签**出现：注释里列举历史别名是正当的（正是本文件在做的事）
