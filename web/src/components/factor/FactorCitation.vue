@@ -1,162 +1,46 @@
 <script setup lang="ts">
-import { computed, h, ref } from 'vue'
-import {
-  NCard,
-  NSpace,
-  NInput,
-  NButton,
-  NAlert,
-  NDivider,
-  NDescriptions,
-  NDescriptionsItem,
-  NDataTable,
-  NTag,
-  NText,
-} from 'naive-ui'
-import type { DataTableColumns } from 'naive-ui'
-import { SearchOutline } from '@vicons/ionicons5'
-import { ApiError } from '@/api/client'
-import { getFactorCitation } from '@/api/factor'
-import EvidenceProbe from '@/components/evidence/EvidenceProbe.vue'
-import type { CitationTuple, FactorCacheEntry } from '@/types/factor'
+// 因子证据坐标 —— 能力退役后的**说明页**。
+//
+// 2026-11-11 core 按 ADR-037 §5 / ADR-041 把 `GET /api/factors/:factor_name`
+// 收回为 `410 Gone` + 机器码 `factor_http_surface_retired`，不再反代 data；
+// 因子值改由 core 按需求值。产品裁决（2026-11-12）：**不删这个入口**——
+// 用户问「这个因子数字从哪来」时需要一条可见的落点，而不是让抽屉静默消失
+// 或者把 410 渲染成一条带状态码的通用错误。
+//
+// 因此本组件不再发任何 `/api/factors` 请求，也不再展示任何因子数值（退役后
+// 前端没有任何合法来源，编一个出来就是伪造）。保留的可回溯路径写在下面。
+import { NCard, NSpace, NAlert, NDescriptions, NDescriptionsItem, NText } from 'naive-ui'
 
-// TASKS.md P5-3 / ADR-022 §5: read a factor_cache row and show the evidence
-// coordinate behind it, so any factor number can be walked back to the exact
-// archived source response. The row is the A→B link; the tuple is the address.
-
-const factorName = ref('')
-const symbol = ref('')
-const date = ref('')
-
-const entry = ref<FactorCacheEntry | null>(null)
-const notFound = ref(false)
-const errorMessage = ref<string | null>(null)
-const loading = ref(false)
-
-const canSubmit = computed(
-  () =>
-    factorName.value.trim() !== '' &&
-    symbol.value.trim() !== '' &&
-    /^\d{8}$/.test(date.value.trim()),
-)
-
-const tuples = computed<CitationTuple[]>(() => entry.value?.citation ?? [])
-
-/** A tuple with no four-tuple fields means the response was never archived —
- *  the stored hash is still truthful, so it is shown as-is (never padded). */
-function isArchived(tuple: CitationTuple): boolean {
-  return Boolean(tuple.source || tuple.dataset || tuple.key || tuple.as_of)
-}
-
-async function handleLoad() {
-  if (!canSubmit.value) return
-
-  loading.value = true
-  entry.value = null
-  notFound.value = false
-  errorMessage.value = null
-  try {
-    entry.value = await getFactorCitation(
-      factorName.value.trim(),
-      symbol.value.trim(),
-      date.value.trim(),
-    )
-  } catch (err) {
-    // 404 is the "no such factor_cache row" answer, not a failure.
-    if (err instanceof ApiError && err.isNotFound) {
-      notFound.value = true
-    } else {
-      errorMessage.value = err instanceof Error ? err.message : '因子读取失败'
-    }
-  } finally {
-    loading.value = false
-  }
-}
-
-const columns: DataTableColumns<CitationTuple> = [
-  { title: 'source', key: 'source', render: (row) => row.source || '—' },
-  { title: 'dataset', key: 'dataset', render: (row) => row.dataset || '—' },
-  { title: 'key', key: 'key', render: (row) => row.key || '—' },
-  { title: 'as_of', key: 'as_of', render: (row) => row.as_of || '—' },
-  {
-    title: 'content_hash',
-    key: 'content_hash',
-    render: (row) =>
-      h(NText, { depth: 3, style: 'font-size: 12px' }, { default: () => row.content_hash }),
-  },
-  {
-    title: '状态',
-    key: 'archived',
-    render: (row) =>
-      isArchived(row)
-        ? h(NTag, { size: 'small', type: 'success' }, { default: () => '已归档' })
-        : h(NTag, { size: 'small', type: 'warning' }, { default: () => '未归档' }),
-  },
-  {
-    title: '操作',
-    key: 'actions',
-    // 就地开抽屉问来源，不跳页；坐标缺失时它自己会显示"无法回溯"。
-    render: (row) =>
-      h(EvidenceProbe, {
-        label: `${row.dataset || '未归档坐标'} · ${row.key || row.content_hash.slice(0, 12)}`,
-        hash: row.content_hash,
-        value: row.content_hash,
-      }),
-  },
-]
+const ADR_037 = 'tellurion-docs:docs/adr/adr-037-factor-value-ownership.md'
 </script>
 
 <template>
   <NCard title="因子证据坐标" embedded>
     <NSpace vertical>
+      <NAlert
+        type="info"
+        data-testid="factor-retired-notice"
+        title="该能力已按 ADR-037 退役"
+      >
+        该能力已按 ADR-037 退役：因子值由 core 按需求值。core 已于 2026-11-11 把
+        <NText code>GET /api/factors/:factor_name</NText>
+        收回为 410 Gone（机器码 <NText code>factor_http_surface_retired</NText>），
+        不再反代 data —— 本页因而不再读取 factor_cache，也不显示任何因子数值。
+      </NAlert>
+
+      <NDescriptions label-placement="left" :column="2" size="small" bordered>
+        <NDescriptionsItem label="状态">已退役（410 Gone）</NDescriptionsItem>
+        <NDescriptionsItem label="机器码">factor_http_surface_retired</NDescriptionsItem>
+        <NDescriptionsItem label="裁决">ADR-037 · 因子值归属</NDescriptionsItem>
+        <NDescriptionsItem label="落点">{{ ADR_037 }}</NDescriptionsItem>
+        <NDescriptionsItem label="因子值">由 core 按需求值（前端不缓存、不推导）</NDescriptionsItem>
+        <NDescriptionsItem label="本页用途">解释「这个能力去哪了」，不作查询入口</NDescriptionsItem>
+      </NDescriptions>
+
       <NText depth="3">
-        输入因子、标的与交易日，查看该 factor_cache 行的证据坐标（source / dataset / key /
-        as_of / content_hash），并可一键回溯原始归档记录。
+        仍然可用的回溯路径：回测报告与回测对比页的质问入口（每个指标旁的来源按钮），
+        以及证据页深链 <NText code>/evidence?content_hash=&lt;hash&gt;</NText>。
       </NText>
-
-      <NSpace align="center">
-        <NInput v-model:value="factorName" placeholder="因子（如 momentum）" clearable style="width: 240px" />
-        <NInput v-model:value="symbol" placeholder="标的（如 000001.SZ）" clearable style="width: 200px" />
-        <NInput v-model:value="date" placeholder="交易日 YYYYMMDD" clearable style="width: 160px" />
-        <NButton type="primary" :loading="loading" :disabled="!canSubmit" @click="handleLoad">
-          <template #icon>
-            <SearchOutline />
-          </template>
-          查询
-        </NButton>
-      </NSpace>
-
-      <NAlert v-if="errorMessage" type="error" closable @close="errorMessage = null">
-        {{ errorMessage }}
-      </NAlert>
-
-      <NAlert v-if="notFound" type="warning">
-        未命中：该 标的 / 交易日 / 因子 组合没有 factor_cache 行。
-      </NAlert>
-
-      <template v-if="entry">
-        <NDivider />
-        <NDescriptions label-placement="left" :column="3" size="small" bordered>
-          <NDescriptionsItem label="标的">{{ entry.symbol }}</NDescriptionsItem>
-          <NDescriptionsItem label="交易日">{{ entry.trade_date }}</NDescriptionsItem>
-          <NDescriptionsItem label="因子">{{ entry.factor_name }}</NDescriptionsItem>
-          <NDescriptionsItem label="原始值">{{ entry.raw_value }}</NDescriptionsItem>
-          <NDescriptionsItem label="z-score">{{ entry.z_score }}</NDescriptionsItem>
-          <NDescriptionsItem label="百分位">{{ entry.percentile }}</NDescriptionsItem>
-        </NDescriptions>
-
-        <NAlert v-if="tuples.length === 0" type="info">
-          该因子行暂无证据坐标（citation 为空，尚未建立 A→B 链路）。
-        </NAlert>
-        <NDataTable
-          v-else
-          :columns="columns"
-          :data="tuples"
-          :row-key="(row: CitationTuple) => row.content_hash"
-          :bordered="false"
-          size="small"
-        />
-      </template>
     </NSpace>
   </NCard>
 </template>

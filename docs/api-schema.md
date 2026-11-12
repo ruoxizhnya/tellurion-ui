@@ -1,7 +1,7 @@
 ---
 status: active
-last-verified: 2026-11-11
-verified-by: 代码-文档对齐审计（2026-11-11）：逐模块复核 `web/src/api/*.ts` 的实际 URL；`/api/backtest`、`/api/ohlcv`、`/api/datasource/*`、`/api/sync/*`、`/api/explore`、`/api/copilot` 均在 core `openapi.yaml` 有条目；`/api/runs` 仍无消费代码。此前：功能边界固化（三份契约：db / api / dataflow，2026-10-22）
+last-verified: 2026-11-12
+verified-by: 2026-11-12 `UI-FACTOR-CITATION-RETIRED`：删除 `web/src/api/factor.ts`（其唯一端点 `GET /api/factors/:name` 已于 2026-11-11 退役为 410 `factor_http_surface_retired`，ADR-037），消费面表同步划除。此前：代码-文档对齐审计（2026-11-11）：逐模块复核 `web/src/api/*.ts` 的实际 URL；`/api/backtest`、`/api/ohlcv`、`/api/datasource/*`、`/api/sync/*`、`/api/explore`、`/api/copilot` 均在 core `openapi.yaml` 有条目；`/api/runs` 仍无消费代码。此前：功能边界固化（三份契约：db / api / dataflow，2026-10-22）
 ---
 
 # API Schema — tellurion-ui
@@ -22,7 +22,7 @@ verified-by: 代码-文档对齐审计（2026-11-11）：逐模块复核 `web/sr
 | `auth.ts` / `authToken.ts` | `/api/auth` | 登录 / 刷新 / 当前用户 |
 | `backtest.ts` | 现状：`/api/backtest`、`/api/ohlcv`；目标：`/api/runs`（orchestration 契约，尚无消费代码） | 提交回测、查进度、取结果、取 OHLCV 行情 |
 | `strategy.ts` | `/api/strategies` | 策略列表 / 版本 / 选择 |
-| `factor.ts` | `/api/factors` | 因子定义与因子值 |
+| ~~`factor.ts`~~ | ~~`/api/factors`~~ | **已删除（2026-11-12）**：`GET /api/factors/:name` 于 2026-11-11 退役为 `410 factor_http_surface_retired`（ADR-037），本仓无消费；`/factors` 页保留为退役说明页 |
 | `market.ts` | `/api/market` | 行情与标的 |
 | `sync.ts` | `/api/sync`、`/api/datasource` | 数据同步任务（jobs / schedules / workers / scheduler/stats）与数据源状态 |
 | `evidence.ts` | `/api/evidence` | 证据与引用（citation） |

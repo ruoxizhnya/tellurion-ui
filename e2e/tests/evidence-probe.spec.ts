@@ -3,17 +3,18 @@ import { apiRequest, dataApiRequest, getJsonWithBackoff, waitForBackendReady } f
 import { isolateTestEnvironment } from '../helpers/isolation';
 
 /**
- * A-06 证据质问内嵌 —— 三条断言用**真实后端**验，两条用 mock 补。
+ * A-06 证据质问内嵌 —— 三条断言用**真实后端**验，一条补退役面。
  *
  * 分工不是偷懒，是照着"哪条断言今天真的有真数据"划的：
  *
  * - 真数据能覆盖的：`ingest.raw`（命中态 / 404 未摄取态）、`backtest_jobs`
  *   有完成的回测（无坐标 → 无法回溯）、深链 `?content_hash=` 仍在。
- * - 真数据**覆盖不到**的：抽屉里的命中态。带坐标的数字只有因子侧有，而
- *   `factor_cache` 今天 0 行（实测 `GET /api/factors/... → 404 factor cache
- *   entry not found`）。不往那张表里塞假行 —— 引擎启动时会 warm 它
- *   （日志里就有 "factor cache warming enabled"），一条假因子可能悄悄进真回测。
- *   所以那两条走 mock，并在名字里写清楚它是 mock。
+ * - 原「有坐标的抽屉」两条 mock 用例已随因子读面退役**一并退役**（2026-11-12，
+ *   ADR-037）：它们唯一的坐标来源是 `GET /api/factors/:name` 的 citation 五元组，
+ *   而该端点已被 core 收回为 410 `factor_http_surface_retired`，`/factors` 页也
+ *   按产品裁决改成了退役说明页 —— 再去 mock 一个不存在的读面，只是在测一个
+ *   虚构的产品路径。抽屉的三态机本身由 `EvidenceProbe.test.ts`（11 例，逐态）
+ *   守着，这里改为钉住退役说明本身（不发请求、文案含 ADR-037 落点）。
  *
  * ⚠️ 深链那条（断言 6）原先硬编码一条 2026-09 的 akshare content_hash；
  * 2026-10-23 实测该行已不在 ingest.raw（深链翻成「未摄取」），硬编码 hash
@@ -22,8 +23,7 @@ import { isolateTestEnvironment } from '../helpers/isolation';
  * 算出，不再手工维护。
  */
 
-// mock 用例只需要一个形状合法的 64 位 hash；真数据用例走 ensureArchivedEvidence()。
-const MOCK_HASH = '59814525507f16b7c7514a72ffa3910eaf18ef21824980189276b0ff9bb01133';
+// 只用到一个 64 位 hash 作为"库里必然没有"的探针值。
 const ABSENT_HASH = '0'.repeat(64);
 
 /**
@@ -123,97 +123,23 @@ test.describe('A-06 证据质问内嵌', () => {
     expect(page.url()).toBe(before);
   });
 
-  test('断言 3（mock）：有坐标时一次点击就取到原始记录，且深链按钮在', async ({ page }) => {
-    // mock 的理由见文件头：factor_cache 空，真坐标取不到。
-    await page.route('**/api/evidence/**', (route) =>
-      route.fulfill({
-        contentType: 'application/json',
-        body: JSON.stringify({
-          content_hash: MOCK_HASH,
-          source: 'akshare',
-          dataset: 'akshare.stock_financial_abstract',
-          key: '600519.SH/2024Q1',
-          as_of: '2024-09-30T00:00:00Z',
-          fetched_at: '2026-09-25T09:04:45Z',
-          payload: { instrument: '600519.SH' },
-        }),
-      }),
-    );
-    await page.route('**/api/factors/**', (route) =>
-      route.fulfill({
-        contentType: 'application/json',
-        body: JSON.stringify({
-          id: 1,
-          symbol: '600000.SH',
-          trade_date: '2024-06-28T00:00:00Z',
-          factor_name: 'momentum',
-          raw_value: 1.25,
-          z_score: 0.5,
-          percentile: 0.69,
-          citation: [
-            {
-              content_hash: MOCK_HASH,
-              source: 'akshare',
-              dataset: 'akshare.stock_financial_abstract',
-              key: '600519.SH/2024Q1',
-              as_of: '2024-09-30T00:00:00Z',
-            },
-          ],
-        }),
-      }),
-    );
+  test('因子证据坐标：按 ADR-037 退役后只留说明页，且不再请求 /api/factors', async ({ page }) => {
+    const factorRequests: string[] = [];
+    page.on('request', (req) => {
+      if (req.url().includes('/api/factors')) factorRequests.push(req.url());
+    });
 
     await page.goto('/factors');
-    await page.locator('input[placeholder^="因子"]').fill('momentum');
-    await page.locator('input[placeholder^="标的"]').fill('600000.SH');
-    await page.locator('input[placeholder^="交易日"]').fill('20240628');
-    await page.getByRole('button', { name: /查询/ }).click();
 
-    const trigger = page.locator('[data-testid="ev-probe-trigger"]').first();
-    await expect(trigger).toBeVisible();
-    // 有坐标时入口不叫"无法回溯"
-    await expect(trigger).not.toContainText('无法回溯');
+    const notice = page.locator('[data-testid="factor-retired-notice"]');
+    await expect(notice).toBeVisible();
+    await expect(notice).toContainText('该能力已按 ADR-037 退役');
+    await expect(notice).toContainText('因子值由 core 按需求值');
+    await expect(page.locator('main')).toContainText('tellurion-docs:docs/adr/adr-037-factor-value-ownership.md');
+    await expect(page.locator('main')).toContainText('factor_http_surface_retired');
 
-    const before = page.url();
-    // 第 1 击：开抽屉并自动解析 → 原始记录直接出现，不再需要第 2 击
-    await trigger.click();
-    await expect(page.locator('[data-testid="evidence-record"]')).toBeVisible();
-    await expect(page.locator('.n-drawer')).toContainText('600519.SH/2024Q1');
-    expect(page.url()).toBe(before);
-
-    // 断言 6：完整页作为**主动**选择仍在
-    await page.locator('[data-testid="ev-probe-deeplink"]').click();
-    await expect(page).toHaveURL(/\/evidence\?content_hash=/);
-  });
-
-  test('断言 5（mock）：抽屉里 404 也走「未摄取」，与 /evidence 同一份三态机', async ({ page }) => {
-    await page.route('**/api/evidence/**', (route) =>
-      route.fulfill({ status: 404, contentType: 'application/json', body: '{"error":"not found"}' }),
-    );
-    await page.route('**/api/factors/**', (route) =>
-      route.fulfill({
-        contentType: 'application/json',
-        body: JSON.stringify({
-          id: 2,
-          symbol: '600000.SH',
-          trade_date: '2024-06-28T00:00:00Z',
-          factor_name: 'momentum',
-          raw_value: 0.4,
-          z_score: 0.1,
-          percentile: 0.52,
-          citation: [{ content_hash: ABSENT_HASH }],
-        }),
-      }),
-    );
-
-    await page.goto('/factors');
-    await page.locator('input[placeholder^="因子"]').fill('momentum');
-    await page.locator('input[placeholder^="标的"]').fill('600000.SH');
-    await page.locator('input[placeholder^="交易日"]').fill('20240628');
-    await page.getByRole('button', { name: /查询/ }).click();
-
-    await page.locator('[data-testid="ev-probe-trigger"]').first().click();
-    await expect(page.locator('[data-testid="ev-probe-not-ingested"]')).toBeVisible();
-    await expect(page.locator('[data-testid="ev-probe-failed"]')).toHaveCount(0);
+    // 退役的判据是「不再有查询入口 + 不再撞 410」，不是「文案里有退役两个字」。
+    await expect(page.locator('input[placeholder^="因子"]')).toHaveCount(0);
+    expect(factorRequests).toEqual([]);
   });
 });

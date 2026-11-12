@@ -291,6 +291,9 @@ SVG 呈现属性**不解析 CSS 自定义属性**，直接把 `var()` 塞进 `co
   **0 行**（`GET /api/factors/momentum?…` → 404），所以抽屉的命中态只能用 mock 验。
   **没有为了取证往那张表塞假行** —— 引擎启动即 warm 它（日志
   `factor cache warming enabled`），一条假因子可能悄悄进真回测。
+  **⚠️ 2026-11-12 订正**：该读面已被 core 收为 `410 factor_http_surface_retired`
+  （ADR-037），`/factors` 按产品裁决改为退役说明页；本节那两条 mock 用例随之退役
+  （见 `e2e/tests/evidence-probe.spec.ts` 文件头与主台账归档 `UI-FACTOR-CITATION-RETIRED`）。
 
 **两处自查记录**
 

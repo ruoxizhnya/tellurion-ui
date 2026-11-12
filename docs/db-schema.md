@@ -21,7 +21,8 @@ verified-by: 代码-文档对齐审计（2026-11-11）：复核「本仓零表�
 | 数据 | 真实 owner | 本仓怎么用 |
 |---|---|---|
 | 回测结果 / 指标 | core / `run` | 经 `/api/backtest` 等端点 |
-| 行情 / 因子值 | `tellurion-data` | 经 `/api/market`、`/api/factors` |
+| 行情 | `tellurion-data` | 经 `/api/market` |
+| 因子值 | core（ADR-037：按需求值） | **本仓不读**：`GET /api/factors/:name` 已于 2026-11-11 退役为 410 `factor_http_surface_retired`（见 `api-schema.md` §1） |
 | 实验与 Copilot | `tellurion-agent` | 经 `/api/{copilot,explore}` 反代 |
 | 鉴权 / 会话（`users` 及会话/角色） | core（ADR-017 鉴权域；SPEC-R-02 认领 `users` 表 owner） | `/api/auth` |
 

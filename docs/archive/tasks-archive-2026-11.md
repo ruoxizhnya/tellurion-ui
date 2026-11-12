@@ -25,6 +25,7 @@
 | UI-SCREENER-ERROR-STATE | 选股请求失败被渲染成「未找到符合条件的股票」（失败冒充空结果） | 2026-11-12 | 见正文 | [原文](#UI-SCREENER-ERROR-STATE) |
 | UI-E2E-A08-HARDCODE | a08 用例把票池总数写死 5908（真库 5580），数据一变就假绿 | 2026-11-12 | 见正文 | [原文](#UI-E2E-A08-HARDCODE) |
 | UI-E2E-HISTORY-EMPTY | dashboard 用例假定历史为空，而库里已有真实回测记录 | 2026-11-12 | 见正文 | [原文](#UI-E2E-HISTORY-EMPTY) |
+| UI-FACTOR-CITATION-RETIRED | 因子引用抽屉死调已退役的 `GET /api/factors/:name`，现改为退役说明页 | 2026-11-12 | 见正文 | [原文](#UI-FACTOR-CITATION-RETIRED) |
 
 ---
 
@@ -773,3 +774,38 @@
   ```
   逐字节还原后 `ConsoleHistory.vue` SHA256 回到 `7BB5E483…AB01DF`，复跑 `1 passed (1.8s)`。
 - **⑥ 边界守住**：只改这一条用例；组件与 store 未动。
+
+---
+
+<a id="UI-FACTOR-CITATION-RETIRED"></a>
+## UI-FACTOR-CITATION-RETIRED · 因子引用抽屉仍在调用已退役的 `GET /api/factors/:name` [P2] ✅ 完成（2026-11-12）
+
+- **① 目标**：把 `FactorCitation.vue` 从「读取 factor_cache 行」改成显式的「能力已退役」态，避免 core 返回 410 时被渲染成通用错误。
+- **② 上下文**：core 于 2026-11-11（C8 / ADR-037 §5 / ADR-041）把 `GET /api/factors/:factor_name` 显式退役为 `410 Gone` + 机器码 `factor_http_surface_retired`，不再反代 data。本仓 `web/src/api/factor.ts` 仍调用该路径，`FactorCitation.vue` 只把 404 当「无行」、其余都落 `errorMessage`，因此 410 会显示成一条含状态码的错误；`e2e/tests/evidence-probe.spec.ts` 的 `page.route('**/api/factors/**')` mock 也仍按 200/404 写。
+- **③ 要求**：① `getFactorCitation` 的调用方识别 410 + `factor_http_surface_retired`，渲染「该能力当前未提供/已退役」而不是通用错误；② 视产品取舍决定是否整体下线该抽屉入口（需产品决定，不在本单自拍）；③ e2e mock 更新为 410，断言退役文案；④ 不恢复任何反代或新端点。
+- **④ 约束与非目标**：不改 core 路由、不复制 openapi；不在前端伪造因子数值。
+- **⑤ 验收**：`npm run build` / `npm test` 绿；组件测试覆盖 410 退役分支；e2e 不再把 404 当唯一空态。
+- **⑥ 边界**：`web/src/api/factor.ts`、`web/src/components/factor/`、`e2e/tests/evidence-probe.spec.ts`。
+- **owner**：待定
+- **重开条件**：产品决定「因子引用抽屉是下线还是保留只读提示」后即可开工；若 core 按 ADR-041 重开因子读面，则本单作废并改指新契约。
+- **审查确认（2026-11-11 W7，dedup 不新立单）**：全面审查 W2-F7 复核 `web/src/api/factor.ts:20` 仍死调已退役 `GET /api/factors/:name`（410 `factor_http_surface_retired`），与本单前提一致；证据见 ODR-069（`tellurion-docs:docs/archive/odr/odr-069-audit-wave2-core-architecture.md`）W2-F7 行。
+
+### 裁决（2026-11-12，产品）
+
+**保留抽屉，内容换成退役说明**：明确写「该能力已按 ADR-037 退役，因子值由 core 按需求值」，并给 ADR-037 的落点。不删抽屉——用户的解释路径需要可见落点。原「下线 vs 保留提示」的待裁项就此关闭。
+
+### 施工记录（2026-11-12）
+
+- **组件**：`FactorCitation.vue` 从「查询表单 + 五元组表格 + 就地抽屉」改为**说明页**（`data-testid="factor-retired-notice"`）：文案写明「该能力已按 ADR-037 退役：因子值由 core 按需求值」、core 于 2026-11-11 把 `GET /api/factors/:factor_name` 收回为 `410 Gone`（机器码 `factor_http_surface_retired`）、不再读取 factor_cache；`NDescriptions` 列出状态 / 机器码 / 裁决 / **落点 `tellurion-docs:docs/adr/adr-037-factor-value-ownership.md`** / 因子值归属；末尾指明仍然可用的回溯路径（回测报告与对比页的质问入口、`/evidence?content_hash=` 深链）。**不再展示任何因子数值**（退役后前端没有合法来源）。
+- **删除死代码**：`web/src/api/factor.ts`、`web/src/api/factor.test.ts`、`web/src/types/factor.ts`（`FactorCacheEntry` / `CitationTuple` 已无消费方）。这不是"顺手清理"：留着它等于让下一个人照着它再写一次 410 调用。
+- **单测**：`FactorCitation.test.ts` 重写为 6 例——退役文案含 ADR-037 与「因子值由 core 按需求值」、落点路径逐字、机器码 + 410 + 端点名、**无输入框无「查询」按钮**、**挂载即不发任何 `/api/factors` 请求**、不展示 `z-score` / `百分位` / `原始值`。原「五元组表格 / 未归档旗标 / 未命中 / 抽屉就地打开」几组断言随被测对象退役（factor_cache 读面已不存在），证据三态机仍由 `EvidenceProbe.test.ts`（11 例）与真栈 e2e 守着。
+- **e2e**：`evidence-probe.spec.ts` 的两条 `**/api/factors/**` mock 用例（断言 3 / 断言 5 mock）退役——它们唯一的坐标来源就是被收回的读面，继续 mock 等于测一条不存在的产品路径；替换为一条真栈用例：`/factors` 出现退役说明、含 ADR-037 落点与机器码、**没有** `input[placeholder^="因子"]`、整段访问期间 `/api/factors` 请求数 = 0（`page.on('request')` 收集）。真栈结果 `1 passed (1.8s)`。
+- **验收（真实输出）**：`npm test` = **548 passed / 39 files**（`TEST_EXIT=0`）；`npx vue-tsc -b` = `TSC_EXIT=0`。
+- **破坏验证（真实输出）**：在 `FactorCitation.vue` 的 setup 里加一行 `fetch('/api/factors/probe')`（模拟"退役没退干净"）⇒
+  ```
+   × 挂载即不发任何 /api/factors 请求（退役后仍去撞 410 就是没退役干净）
+  AssertionError: expected [ '/api/factors/probe' ] to deeply equal []
+  ```
+  另 5 例仍绿（缺陷只落在这一条判据上）。逐字节还原后 SHA256 回到 `B479E9CEFCCA29D3435C068B4FB62BF5E68527538842C24CF733D9FD675171FF`，复跑 `Test Files 1 passed / Tests 6 passed`。
+- **文档同步（变更触发）**：`docs/api-schema.md` 消费面表把 `factor.ts` 划掉并注明退役（`last-verified: 2026-11-12`）；`docs/db-schema.md` 把「行情 / 因子值 → 经 `/api/factors`」拆成两行，因子值改为「core 按需求值（ADR-037），本仓不读」；子台账 A-06 的「因子侧只能 mock」补 2026-11-12 订正注。
+- **⑥ 边界守住**：未改 core 路由、未恢复反代、未新增端点、未伪造任何因子数值；`/api/factors` 在代码里已无任何调用点。

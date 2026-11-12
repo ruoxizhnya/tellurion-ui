@@ -1,7 +1,7 @@
 ---
 status: active
 last-verified: 2026-11-12
-verified-by: 2026-11-12 W7 收口批次（A4 授权）——`UI-NPM-AUDIT-FIX`（audit high 清零）/`UI-RUNBOOK-GAP`（新增 runbook）/`UI-SCREEN-CONSUMER`（count 5xx 降级）/`UI-HEALTHCHECK`（镜像 HEALTHCHECK）四单收口并归档，`UI-COPILOT-GATE-SURFACE` b 腿落地（a 腿待角色裁决）、`UI-LEDGER-SELF-CONSISTENCY` 订正 AGENTS.md / ARCHITECTURE.md 与子台账 B-05/G9 并写明主/子台账分工（已归档）；`UI-FACTOR-CITATION-RETIRED` 仍待产品裁决「下线抽屉」或「保留退役提示」。此前：2026-11-11 全面审查 W7 台账立单（A5 授权）——新立 5 条六字段单，证据坐标引 ODR-068/069/072/073（`tellurion-docs:docs/archive/odr/`）；同轮撤掉与下文两条 ⬜ 自相矛盾的「本仓当前没有未做项」boilerplate（W1-F6），并给既有 `UI-FACTOR-CITATION-RETIRED` 补审查确认指针（W2-F7，dedup 不新立单）。此前：2026-11-10 晚 AUD-61 收口——4 条视觉基线在原生三服务栈上逐张核对后重生成、整份 `visual-regression.spec.ts` 复跑 **12 passed**；破坏验证（隐藏 `.nav-tiles`）→ 2% 红，逐字节还原后复绿；`e2e/tests` 现存 `test.fixme` = **0**。此前：2026-11-10 AUD-63 收口补充——core `/api/market/index` 改为本地供数后「有读数」支真栈跑通。
+verified-by: 2026-11-12 W7 收口批次（A4 授权 + 两处裁决）——`UI-NPM-AUDIT-FIX`（audit high 清零）/`UI-RUNBOOK-GAP`（新增 runbook）/`UI-SCREEN-CONSUMER`（count 5xx 降级）/`UI-HEALTHCHECK`（镜像 HEALTHCHECK）四单收口并归档；`UI-COPILOT-GATE-SURFACE` b 腿落地、a 腿按「登录者自己的 JWT」裁决施工；`UI-LEDGER-SELF-CONSISTENCY` 订正 AGENTS.md / ARCHITECTURE.md 与子台账 B-05/G9 并写明主/子台账分工（已归档）；`UI-FACTOR-CITATION-RETIRED` 按裁决改为退役说明页（保留入口、删除 `api/factor.ts`，已归档）；另三条新发现（选股失败冒充空结果、a08 写死总数、dashboard 假定空历史）同批收口。此前：2026-11-11 全面审查 W7 台账立单（A5 授权）——新立 5 条六字段单，证据坐标引 ODR-068/069/072/073（`tellurion-docs:docs/archive/odr/`）；同轮撤掉与下文两条 ⬜ 自相矛盾的「本仓当前没有未做项」boilerplate（W1-F6），并给既有 `UI-FACTOR-CITATION-RETIRED` 补审查确认指针（W2-F7，dedup 不新立单）。此前：2026-11-10 晚 AUD-61 收口——4 条视觉基线在原生三服务栈上逐张核对后重生成、整份 `visual-regression.spec.ts` 复跑 **12 passed**；破坏验证（隐藏 `.nav-tiles`）→ 2% 红，逐字节还原后复绿；`e2e/tests` 现存 `test.fixme` = **0**。此前：2026-11-10 AUD-63 收口补充——core `/api/market/index` 改为本地供数后「有读数」支真栈跑通。
 ---
 
 # TASKS — tellurion-ui 未完成项
@@ -12,21 +12,9 @@ verified-by: 2026-11-12 W7 收口批次（A4 授权）——`UI-NPM-AUDIT-FIX`�
 
 ## 一、未做 / 挂起 / 外部依赖
 
-> 本节 = 既有 1 单（`UI-FACTOR-CITATION-RETIRED`，待产品裁决）+ `UI-COPILOT-GATE-SURFACE` 的 a 腿（b 腿已落，a 腿待角色裁决）。全面审查 W7 新立的 5 单中，`UI-NPM-AUDIT-FIX`、`UI-RUNBOOK-GAP`、`UI-HEALTHCHECK`、`UI-SCREEN-CONSUMER`、`UI-LEDGER-SELF-CONSISTENCY` 已于 2026-11-12 收口并移入归档；此前已收口单的正文与施工记录同样全部在归档文件里。**本节有两单在等裁决（见各条「重开条件」），不是没人做。**
+> 本节 = 唯一一张开放单 `UI-COPILOT-GATE-SURFACE` 的 a 腿（b 腿已落；a 腿的身份模型已于 2026-11-12 裁决为「登录者自己的 JWT」，施工中）。全面审查 W7 新立的 6 单中，`UI-NPM-AUDIT-FIX`、`UI-RUNBOOK-GAP`、`UI-HEALTHCHECK`、`UI-SCREEN-CONSUMER`、`UI-LEDGER-SELF-CONSISTENCY`、`UI-FACTOR-CITATION-RETIRED` 已于 2026-11-12 收口并移入归档（另三条 e2e / 失败态新发现也同批收口）；此前已收口单的正文与施工记录同样全部在归档文件里。
 >
 > **主/子台账分工（D13，2026-11-12 定）**：本文件装**跨仓 / 运维 / 一致性**类单，是「本仓现在在做什么」的唯一入口；`docs/design/stitch_quantlab_ux_redesign/TASKS.md` 装 **UX 重构功能项**（A/B 组与 G 缺口）。两处**互不收录、也不互相索引开放项**；某条单只出现在一处，出现第二处即视为重复立单。
-
-### UI-FACTOR-CITATION-RETIRED · 因子引用抽屉仍在调用已退役的 `GET /api/factors/:name` [P2] ⬜
-
-- **① 目标**：把 `FactorCitation.vue` 从「读取 factor_cache 行」改成显式的「能力已退役」态，避免 core 返回 410 时被渲染成通用错误。
-- **② 上下文**：core 于 2026-11-11（C8 / ADR-037 §5 / ADR-041）把 `GET /api/factors/:factor_name` 显式退役为 `410 Gone` + 机器码 `factor_http_surface_retired`，不再反代 data。本仓 `web/src/api/factor.ts` 仍调用该路径，`FactorCitation.vue` 只把 404 当「无行」、其余都落 `errorMessage`，因此 410 会显示成一条含状态码的错误；`e2e/tests/evidence-probe.spec.ts` 的 `page.route('**/api/factors/**')` mock 也仍按 200/404 写。
-- **③ 要求**：① `getFactorCitation` 的调用方识别 410 + `factor_http_surface_retired`，渲染「该能力当前未提供/已退役」而不是通用错误；② 视产品取舍决定是否整体下线该抽屉入口（需产品决定，不在本单自拍）；③ e2e mock 更新为 410，断言退役文案；④ 不恢复任何反代或新端点。
-- **④ 约束与非目标**：不改 core 路由、不复制 openapi；不在前端伪造因子数值。
-- **⑤ 验收**：`npm run build` / `npm test` 绿；组件测试覆盖 410 退役分支；e2e 不再把 404 当唯一空态。
-- **⑥ 边界**：`web/src/api/factor.ts`、`web/src/components/factor/`、`e2e/tests/evidence-probe.spec.ts`。
-- **owner**：待定
-- **重开条件**：产品决定「因子引用抽屉是下线还是保留只读提示」后即可开工；若 core 按 ADR-041 重开因子读面，则本单作废并改指新契约。
-- **审查确认（2026-11-11 W7，dedup 不新立单）**：全面审查 W2-F7 复核 `web/src/api/factor.ts:20` 仍死调已退役 `GET /api/factors/:name`（410 `factor_http_surface_retired`），与本单前提一致；证据见 ODR-069（`tellurion-docs:docs/archive/odr/odr-069-audit-wave2-core-architecture.md`）W2-F7 行。
 
 ### UI-COPILOT-GATE-SURFACE · Copilot 把 promote 闸门拦下误报成「沙箱未启用」，且无人类 promote 操作面 [P1] 🔶（b 腿 ✅ 2026-11-12；a 腿待角色裁决）
 
