@@ -10,6 +10,7 @@ vi.mock('@/api/execution', () => ({
   listOrders: vi.fn(),
   getPositions: vi.fn(),
   getAccount: vi.fn(),
+  listSignals: vi.fn(),
   getOrder: vi.fn(),
   createOrder: vi.fn(),
   cancelOrder: vi.fn(),
@@ -48,10 +49,20 @@ const position = {
   quantity_yesterday: 100,
 }
 
+const signal = {
+  model_id: 'ml-model',
+  symbol: '000001.SZ',
+  direction: 'long' as const,
+  strength: 0.8,
+  as_of: '2026-11-12T00:00:00Z',
+  factors: { momentum_z: 1.7 },
+}
+
 function okAll() {
   vi.mocked(execApi.listOrders).mockResolvedValue({ orders: [order], count: 1 })
   vi.mocked(execApi.getPositions).mockResolvedValue({ positions: [position], count: 1 })
   vi.mocked(execApi.getAccount).mockResolvedValue({ cash: 125000.5, total_value: 200000 })
+  vi.mocked(execApi.listSignals).mockResolvedValue({ signals: [signal], count: 1, limit: 100 })
 }
 
 describe('A-09 纸交易观测台', () => {
@@ -59,6 +70,9 @@ describe('A-09 纸交易观测台', () => {
     vi.mocked(execApi.listOrders).mockReset()
     vi.mocked(execApi.getPositions).mockReset()
     vi.mocked(execApi.getAccount).mockReset()
+    vi.mocked(execApi.listSignals).mockReset()
+    // 默认给空流，避免未声明该读面的用例拿到 undefined
+    vi.mocked(execApi.listSignals).mockResolvedValue({ signals: [], count: 0, limit: 100 })
   })
 
   it('四块齐备，订单/持仓/账户渲染后端返回值，并明确标注 Mock', async () => {
@@ -77,19 +91,40 @@ describe('A-09 纸交易观测台', () => {
     expect(w.text()).toContain('125000.5')
   })
 
-  it('信号流必须是 disabled（core 只有写门、没有读面）', async () => {
+  it('外部信号流渲染 GET /api/signals 的返回（读面已接，不再 disabled）', async () => {
     okAll()
     const w = mountPage()
     await flushPromises()
 
-    const dep = w.find('[data-testid="signals-dependency"]').text()
-    expect(dep).toContain('POST /api/signals')
-    expect(dep).toContain('没有读面')
+    expect(execApi.listSignals).toHaveBeenCalledWith({ limit: 100 })
+    const feed = w.find('[data-testid="paper-signals-feed"]').text()
+    expect(feed).toContain('ml-model')
+    expect(feed).toContain('000001.SZ')
+    expect(feed).toContain('多') // long 的中文展示
+    expect(feed).toContain('momentum_z=1.7')
+    // disabled 占位已删除
+    expect(w.find('[data-testid="signals-disabled-subscribe"]').exists()).toBe(false)
+  })
 
-    expect(w.find('[data-testid="signals-disabled-subscribe"]').attributes('disabled')).toBeDefined()
-    expect(
-      w.find('[data-testid="signals-disabled-input"]').find('input').attributes('disabled'),
-    ).toBeDefined()
+  it('空流显示「暂无信号」，与「读面未接」区分开', async () => {
+    okAll()
+    vi.mocked(execApi.listSignals).mockResolvedValue({ signals: [], count: 0, limit: 100 })
+    const w = mountPage()
+    await flushPromises()
+
+    expect(w.find('[data-testid="signals-empty"]').exists()).toBe(true)
+    expect(w.find('[data-testid="signals-unavailable"]').exists()).toBe(false)
+  })
+
+  it('读面 503 时不画成「没有信号」', async () => {
+    okAll()
+    vi.mocked(execApi.listSignals).mockRejectedValue(new ApiError(503, 'signal feed unavailable'))
+    const w = mountPage()
+    await flushPromises()
+
+    expect(w.find('[data-testid="signals-unavailable"]').exists()).toBe(true)
+    expect(w.find('[data-testid="signals-empty"]').exists()).toBe(false)
+    expect(w.find('[data-testid="paper-error"]').text()).toContain('信号流')
   })
 
   it('单个读面失败：错误态出现，且**不**把成功的持仓清空', async () => {

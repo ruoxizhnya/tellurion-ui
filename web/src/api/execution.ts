@@ -8,7 +8,8 @@
 //   POST/GET /api/execution/orders、GET /orders/{id}、POST /orders/{id}/cancel、
 //   GET /positions、GET /account，外加原本就在的 POST /emergency-flatten。
 // 注意：`POST /api/execution/orders` 与 cancel 要求角色 trader/admin（viewer 403）。
-// `GET /api/signals` **只有写门、没有读面**，所以页面的「外部信号流」只能是 disabled。
+// 外部信号流：core 2026-11-12 补了 `GET /api/signals` 读面（openapi:3193+），
+// 页面的第四块因此从 disabled 转为真实订阅列表。
 
 import api from './client'
 
@@ -85,6 +86,48 @@ export function getPositions(): Promise<PositionListResponse> {
 
 export function getAccount(): Promise<AccountSummary> {
   return api.get<AccountSummary>('/api/execution/account')
+}
+
+// ── 外部信号流（A-09 第四块，GET /api/signals） ─────────────────────
+//
+// 契约归 core openapi:3193+：倒序（newest first）、`as_of <= up_to`（默认今天，
+// 与消费侧同一防前视边界）、`limit` 默认 100 / 上限 500。空流是 200 + []，
+// 读面未接是 503 —— 两者不能混成一个空数组。
+
+export type SignalDirection = 'long' | 'short' | 'close'
+
+/** 「信号」是模型给出的可执行主张；`factors` 只是诊断快照（不参与 content_hash） */
+export interface ExternalSignal {
+  model_id: string
+  symbol: string
+  direction: SignalDirection
+  strength: number
+  as_of: string
+  factors?: Record<string, number>
+}
+
+export interface SignalFeedResponse {
+  signals: ExternalSignal[]
+  count: number
+  limit: number
+}
+
+export interface ListSignalsParams {
+  model_id?: string
+  symbol?: string
+  limit?: number
+  /** YYYY-MM-DD；省略 = 今天（UTC） */
+  up_to?: string
+}
+
+export function listSignals(params: ListSignalsParams = {}): Promise<SignalFeedResponse> {
+  const q = new URLSearchParams()
+  if (params.model_id) q.set('model_id', params.model_id)
+  if (params.symbol) q.set('symbol', params.symbol)
+  if (params.limit != null) q.set('limit', String(params.limit))
+  if (params.up_to) q.set('up_to', params.up_to)
+  const qs = q.toString()
+  return api.get<SignalFeedResponse>(`/api/signals${qs ? `?${qs}` : ''}`)
 }
 
 // ── Emergency Flatten (P2-3, ODR-026) ──────────────────────────────

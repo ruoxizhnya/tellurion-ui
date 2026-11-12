@@ -7,6 +7,7 @@ import {
   getOrder,
   getPositions,
   listOrders,
+  listSignals,
 } from './execution'
 
 vi.mock('./client', () => ({
@@ -55,5 +56,19 @@ describe('execution api', () => {
     vi.mocked(api.get).mockResolvedValue({})
     await getAccount()
     expect(api.get).toHaveBeenCalledWith('/api/execution/account')
+  })
+
+  it('listSignals → GET /api/signals（空参数不带 ?）', async () => {
+    vi.mocked(api.get).mockResolvedValue({ signals: [], count: 0, limit: 100 })
+    await listSignals()
+    expect(api.get).toHaveBeenCalledWith('/api/signals')
+  })
+
+  it('listSignals 参数按契约拼 query（model_id / symbol / limit / up_to）', async () => {
+    vi.mocked(api.get).mockResolvedValue({ signals: [], count: 0, limit: 50 })
+    await listSignals({ model_id: 'ml-model', symbol: '600000.SH', limit: 50, up_to: '2026-11-12' })
+    expect(api.get).toHaveBeenCalledWith(
+      '/api/signals?model_id=ml-model&symbol=600000.SH&limit=50&up_to=2026-11-12',
+    )
   })
 })
