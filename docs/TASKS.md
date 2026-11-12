@@ -12,7 +12,7 @@ verified-by: 2026-11-11 全面审查 W7 台账立单（A5 授权）——新立 
 
 ## 一、未做 / 挂起 / 外部依赖
 
-> 本节 = 既有 2 单（`UI-FACTOR-CITATION-RETIRED` / `UI-RUNBOOK-GAP`）+ 全面审查 W7 新立的 4 单（`UI-COPILOT-GATE-SURFACE` / `UI-SCREEN-CONSUMER` / `UI-HEALTHCHECK` / `UI-LEDGER-SELF-CONSISTENCY`）。W7 的 `UI-NPM-AUDIT-FIX` 已于 2026-11-12 收口并移入归档。**订正**：原「本仓当前无未做」 boilerplate 与下文 ⬜ 自相矛盾（W1-F6），已撤；主台账与子台账（`docs/design/stitch_quantlab_ux_redesign/`）的关系见 `UI-LEDGER-SELF-CONSISTENCY`。此前已收口单的正文与施工记录全部在归档文件里。
+> 本节 = 既有 1 单（`UI-FACTOR-CITATION-RETIRED`）+ 全面审查 W7 新立的 4 单（`UI-COPILOT-GATE-SURFACE` / `UI-SCREEN-CONSUMER` / `UI-HEALTHCHECK` / `UI-LEDGER-SELF-CONSISTENCY`）。W7 的 `UI-NPM-AUDIT-FIX`、`UI-RUNBOOK-GAP` 已于 2026-11-12 收口并移入归档。**订正**：原「本仓当前无未做」 boilerplate 与下文 ⬜ 自相矛盾（W1-F6），已撤；主台账与子台账（`docs/design/stitch_quantlab_ux_redesign/`）的关系见 `UI-LEDGER-SELF-CONSISTENCY`。此前已收口单的正文与施工记录全部在归档文件里。
 
 ### UI-FACTOR-CITATION-RETIRED · 因子引用抽屉仍在调用已退役的 `GET /api/factors/:name` [P2] ⬜
 
@@ -25,17 +25,6 @@ verified-by: 2026-11-11 全面审查 W7 台账立单（A5 授权）——新立 
 - **owner**：待定
 - **重开条件**：产品决定「因子引用抽屉是下线还是保留只读提示」后即可开工；若 core 按 ADR-041 重开因子读面，则本单作废并改指新契约。
 - **审查确认（2026-11-11 W7，dedup 不新立单）**：全面审查 W2-F7 复核 `web/src/api/factor.ts:20` 仍死调已退役 `GET /api/factors/:name`（410 `factor_http_surface_retired`），与本单前提一致；证据见 ODR-069（`tellurion-docs:docs/archive/odr/odr-069-audit-wave2-core-architecture.md`）W2-F7 行。
-
-### UI-RUNBOOK-GAP · 本仓没有 runbook，托管失败与 `/api` 反代故障只有 README 零散说明 [P1] ⬜
-
-- **① 目标**：给 ui 一份最小 runbook，让「页面打不开 / 静态资源 404 / `/api` 反代失败」有固定入口，并能一句话区分「本仓问题」还是「core 问题」。
-- **② 上下文**：`SERVICE.md` 落地时实测——本仓 `docs/` 无 `runbook.md`；起停与本地开发写在 `README.md`，反代配置在 `deploy/nginx-spa.conf`，但没有成文的排查顺序。六个服务仓都有 `docs/runbook.md`，core / agent / ui 三个仓没有。
-- **③ 要求**：① 覆盖「静态资源不可加载」「`/api` 404 / 502」「登录态失效」「e2e 基线红」四类现象；② 每节写「现象 → 先看什么 → 怎么判定是本仓还是 core → 处置」；③ 明确本仓无自带探针，不得把 core 的 `/health` / `/readyz` 当本仓探针；④ 完成后把 `SERVICE.md` 的 `truth.runbook` 改为该文件路径。
-- **④ 约束与非目标**：不写 SLO / 告警规则 / 值班表；不改 nginx 反代策略；不在 runbook 里复制 `openapi.yaml` 或端点清单。
-- **⑤ 验收**：按 runbook 能在「后端正常 / 后端停掉 / 反代配置错误」三种场景里各自定位到唯一责任仓，不出现「两边都像坏了」的结论。
-- **⑥ 边界**：前端托管与反代排查归本仓；`/api` 背后的业务故障归 `tellurion`，其排查入口在 core 的 runbook（缺口见 `tellurion:docs/TASKS.md` 的 `CORE-RUNBOOK-GAP`）。
-- **owner**：待定
-- **重开条件**：出现第二次「页面故障但无法判断是前端还是后端」的排障经历，或接手人变更。
 
 ### UI-COPILOT-GATE-SURFACE · Copilot 把 promote 闸门拦下误报成「沙箱未启用」，且无人类 promote 操作面 [P1] 🔶（b 腿 ✅ 2026-11-12；a 腿待角色裁决）
 

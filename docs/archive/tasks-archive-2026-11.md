@@ -18,6 +18,7 @@
 | UI-02 | 三值 status 消费与 `invalid_reasons` 展示口径（refactor-plan-review C1 传播）✅ 完成（2026-10-22） | 2026-10-22 | —（原文未记） | [原文](#UI-02) |
 | QT-61 | QT-61（ui 腿）· CI 基线归零——SchedulePanel flaky 用例 | 2026-10-21 | `1075c28` | [原文](#QT-61) |
 | UI-NPM-AUDIT-FIX | npm 依赖 5 个 high 漏洞（@vue/server-renderer XSS 等） | 2026-11-12 | 见正文 | [原文](#UI-NPM-AUDIT-FIX) |
+| UI-RUNBOOK-GAP | 本仓没有 runbook，托管失败与 `/api` 反代故障只有 README 零散说明 | 2026-11-12 | 见正文 | [原文](#UI-RUNBOOK-GAP) |
 
 ---
 
@@ -547,3 +548,28 @@
 - **破坏验证（现场，真退出码）**：`npm install --save-dev happy-dom@20.14.6`（降回漏洞版）→ `npm audit --audit-level=high` = **14 vulnerabilities (13 moderate, 1 high)，EXIT=1**（红）；随后用开工前留的 `package.json` / `package-lock.json` 备份**逐字节还原** → `npm install --no-audit` 对齐 node_modules（`happy-dom@21.0.4` / `vue-tsc@3.3.14` / `vitest@4.1.12`）→ audit 复回 **0 high，EXIT=0**、`npm test` 复回 **540 passed**。
 - **e2e 腿**：本单未改 `e2e/`（实测 0 漏洞、无改动），故 e2e 套件不因本单退化；按 ③ 只做基线核对。视觉基线口径沿用主台账「三、已判定不重录」。
 - **边界守住**：只改 `web/package.json` + `web/package-lock.json` + 本台账；未改任何源码、未动 `e2e/`、未动后端契约、未新增依赖。
+
+---
+
+<a id="UI-RUNBOOK-GAP"></a>
+## UI-RUNBOOK-GAP · 本仓没有 runbook，托管失败与 `/api` 反代故障只有 README 零散说明 ✅ 完成（2026-11-12）
+
+- **① 目标**：给 ui 一份最小 runbook，让「页面打不开 / 静态资源 404 / `/api` 反代失败」有固定入口，并能一句话区分「本仓问题」还是「core 问题」。
+- **② 上下文**：`SERVICE.md` 落地时实测——本仓 `docs/` 无 `runbook.md`；起停与本地开发写在 `README.md`，反代配置在 `deploy/nginx-spa.conf`，但没有成文的排查顺序。六个服务仓都有 `docs/runbook.md`，core / agent / ui 三个仓没有。
+- **③ 要求**：① 覆盖「静态资源不可加载」「`/api` 404 / 502」「登录态失效」「e2e 基线红」四类现象；② 每节写「现象 → 先看什么 → 怎么判定是本仓还是 core → 处置」；③ 明确本仓无自带探针，不得把 core 的 `/health` / `/readyz` 当本仓探针；④ 完成后把 `SERVICE.md` 的 `truth.runbook` 改为该文件路径。
+- **④ 约束与非目标**：不写 SLO / 告警规则 / 值班表；不改 nginx 反代策略；不在 runbook 里复制 `openapi.yaml` 或端点清单。
+- **⑤ 验收**：按 runbook 能在「后端正常 / 后端停掉 / 反代配置错误」三种场景里各自定位到唯一责任仓，不出现「两边都像坏了」的结论。
+- **⑥ 边界**：前端托管与反代排查归本仓；`/api` 背后的业务故障归 `tellurion`，其排查入口在 core 的 runbook（缺口见 `tellurion:docs/TASKS.md` 的 `CORE-RUNBOOK-GAP`）。
+- **owner**：待定
+- **重开条件**：出现第二次「页面故障但无法判断是前端还是后端」的排障经历，或接手人变更。
+
+### 施工记录（2026-11-12）
+
+- **产出**：新增 `docs/runbook.md`（§0 边界与两种运行形态 / §1 三十秒分诊 / §2 静态资源不可加载 / §3 `/api` 404-502 / §4 登录态失效 / §5 e2e 基线红 / §6 人工 promote / §7 红线）。`docs/README.md` 的「先读哪份」「文档地图」「变更触发」三张表均挂上该文件，并更新 frontmatter。
+- **③④ 的落地方式（未做的那一半，见下）**：runbook §0 明写「本仓没有自带业务探针，`/health` `/readyz` 都在 core，**不得**拿 `/api/health` 当本仓健康判据」，与 ③ 一致。**③④（改 `SERVICE.md` 的 `truth.runbook`）未执行**：本轮施工纪律是「不碰 `SERVICE.md`」（多会话共用该卡片，改它容易覆盖别人刚推的内容），故 `SERVICE.md` 的 `truth.runbook` 目前仍指向旧值 —— 已作为残留上报，待不与其它会话冲突时单独补一次。
+- **实测证据（nginx 真容器，本机 2026-11-12）**：
+  - 后端正常：`/` = `200`（`Server: nginx/1.27.5`，`Content-Type: text/html`）；`/api/health` = `200 {"service":"analysis-service","status":"healthy",...}`；`/api/auth/status` = `200 {"auth_enabled":false,"bootstrap_required":false}`；深链 `/copilot` = `200`（history 回退生效）；不存在的资产 `/assets/nope.js` = `404`。
+  - 反代配置错误 / 后端不可达（隔离网络跑同一镜像，使 `analysis-service` 解析不到）：`/` 仍 `200`，`/api/health` = **`502 Bad Gateway`**（nginx 自吐 HTML），error log = `analysis-service could not be resolved (110: Operation timed out)`。这正是「静态页没事、坏在反代链路」的形状，写进 §3 判定表。
+  - 后端路由不存在：`/api/not-exist` 经反代 = `404 page not found`（body 由 core 返回，非 nginx 的 404 页）。
+- **⑤ 三种场景的定位**：后端正常 → 唯一责任仓 = 本仓（SPA 逻辑）；后端停掉 → core（反代 502 + 解析/连接失败证据）；反代配置错误 → 本仓（`direct-core=200` 而 `via-nginx=404`）。三行判据 + 依据写在 §1 分诊表，避免「两边都像坏了」。
+- **⑥ 边界守住**：只新增 `docs/runbook.md` 与 `docs/README.md` 的三处导航行；未改 `deploy/nginx-spa.conf`（反代策略一行未动），未改 `SERVICE.md`，未复制端点清单（runbook 只引用现象需要的少数路径）。

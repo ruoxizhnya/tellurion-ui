@@ -1,7 +1,7 @@
 ---
 status: active
-last-verified: 2026-11-11
-verified-by: 代码-文档对齐审计（2026-11-11）：导航与文档地图复核；本仓无开放任务，AUD-61/AUD-63 已归档。此前：功能边界固化（三份契约：db / api / dataflow，2026-10-20）
+last-verified: 2026-11-12
+verified-by: UI-RUNBOOK-GAP（2026-11-12）：新增 `runbook.md` 并挂进导航与变更触发表，四类现象按真栈实测回填。此前：代码-文档对齐审计（2026-11-11）：导航与文档地图复核，AUD-61/AUD-63 已归档
 ---
 
 # 文档导航 — tellurion-ui
@@ -19,6 +19,7 @@ verified-by: 代码-文档对齐审计（2026-11-11）：导航与文档地图�
 | 改表 / 加列 | [`db-schema.md`](db-schema.md) |
 | 加 / 改接口 | [`api-schema.md`](api-schema.md) |
 | 改数据流向或顺序 | [`dataflow.md`](dataflow.md) |
+| **线上看着不对**（白屏 / 502 / 登录态 / e2e 红） | [`runbook.md`](runbook.md)（先分诊再动手） |
 | 想知道"为什么这样设计" | [`adr/`](adr/README.md) |
 | 要做删档 / 迁移 / 流程变更 | [`odr/`](odr/README.md) |
 | 查历史 | [`archive/`](archive/README.md) |
@@ -31,6 +32,7 @@ verified-by: 代码-文档对齐审计（2026-11-11）：导航与文档地图�
 | [`db-schema.md`](db-schema.md) | **表结构唯一真相源** + 所有权声明 | 改表的人 |
 | [`api-schema.md`](api-schema.md) | **对外接口唯一真相源** + 错误码 / 幂等 / 兼容 | 改接口的人 |
 | [`dataflow.md`](dataflow.md) | 数据流向、时序、fail-closed 点、不变量 | 改链路的人 |
+| [`runbook.md`](runbook.md) | 现场排障：分诊、四类现象、人工 promote 路径 | 排障的人（每次踩坑都补一行） |
 | [`TASKS.md`](TASKS.md) | 可执行任务（六字段） | 每个人 |
 | [`adr/`](adr/README.md) | 架构决策（只增不删） | 提变更的人 |
 | [`odr/`](odr/README.md) | 运行 / 治理决策（删档、审计、迁移、工具） | 做事的人 |
@@ -43,6 +45,7 @@ verified-by: 代码-文档对齐审计（2026-11-11）：导航与文档地图�
 | 建表 / 加列 / 加索引 / 改主键 | `db-schema.md`（+ 结构级变更立 ADR） |
 | 新增 / 修改 / 废弃接口 | `api-schema.md`（错误码与幂等两节要一起看） |
 | 新增数据源、改聚合口径、改顺序 | `dataflow.md` |
+| 改静态托管 / `/api` 反代 / 端口 / 探针 | `runbook.md`（§0 形态表、§1 分诊、§3 反代判定） |
 | 改分层、依赖方向、模块职责 | `ARCHITECTURE.md` + 一条 ADR |
 | 删档 / 迁移 / 换 CI / 换工具链 | 一条 ODR |
 | 完成一张单 | `TASKS.md` 标 ✅，整条移入 `archive/` |
