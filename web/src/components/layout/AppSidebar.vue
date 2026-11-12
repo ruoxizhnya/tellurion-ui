@@ -37,13 +37,11 @@ import {
   HomeOutline,
   AnalyticsOutline,
   SearchOutline,
-  ChatbubbleEllipsesOutline,
   BeakerOutline,
   TrendingUpOutline,
   CloudDownloadOutline,
   NotificationsOutline,
   GitCompareOutline,
-  ConstructOutline,
   DocumentTextOutline,
   StatsChartOutline,
   FlaskOutline,
@@ -62,7 +60,9 @@ const route = useRoute()
  * 设计稿每屏各写一遍，全站没有一套导航。此处只允许引 §3.2 的词。
  *
  * 分组沿用 §3.2 的四段；`研究主线` 的 审阅台 / 研究日志 与 `系统` 整段尚未落地
- * （B-02 / B-03 / F17 / F18），**不渲染空入口** —— 点了没反应的导航比没有更糟。
+ * （B-02 / B-03），**不渲染空入口** —— 点了没反应的导航比没有更糟。
+ * B-04 已把 策略库 / 编辑器 / Copilot 合成 `/strategy-lab` 一个入口，
+ * 旧路径保留为路由别名（URL 不变），不在侧栏重复登记。
  */
 const navGroups = [
   { title: '总览', items: [{ path: '/', label: '控制台', icon: markRaw(HomeOutline) }] },
@@ -80,8 +80,6 @@ const navGroups = [
       { path: '/backtest/compare', label: '多策略对比', icon: markRaw(GitCompareOutline) },
       { path: '/walkforward', label: '走向与批量', icon: markRaw(StatsChartOutline) },
       { path: '/strategy-lab', label: '策略库', icon: markRaw(BeakerOutline) },
-      { path: '/strategy-builder', label: '策略编辑器', icon: markRaw(ConstructOutline) },
-      { path: '/copilot', label: '策略 Copilot', icon: markRaw(ChatbubbleEllipsesOutline) },
       { path: '/factors', label: '因子研究', icon: markRaw(StatsChartOutline) },
       { path: '/screener', label: '选股与市场', icon: markRaw(SearchOutline) },
       { path: '/data-sync', label: '数据管理', icon: markRaw(CloudDownloadOutline) },

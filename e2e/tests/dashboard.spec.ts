@@ -31,20 +31,22 @@ test.describe('Dashboard Page (Vue SPA)', () => {
     await page.waitForSelector('[data-testid="sidebar-nav"]', { timeout: 10000 });
 
     // AUD-63：侧栏每项的锚点由 AppSidebar.vue 的 navTestId() 生成。
-    // 目标 IA（user-flows.md §3.2）共 12 项；差一项就说明导航少渲染了入口。
+    // 目标 IA（user-flows.md §3.2）共 13 项：A-10 新增 走向与批量 / 合规 / 系统管理，
+    // B-04 把 策略编辑器 / 策略 Copilot 并入「策略库」一项。差一项就说明导航少渲染了入口。
     const expected = [
       'nav-item-home',
       'nav-item-explore',
       'nav-item-evidence',
       'nav-item-backtest',
       'nav-item-backtest-compare',
+      'nav-item-walkforward',
       'nav-item-strategy-lab',
-      'nav-item-strategy-builder',
-      'nav-item-copilot',
       'nav-item-factors',
       'nav-item-screener',
       'nav-item-data-sync',
       'nav-item-alerts',
+      'nav-item-compliance',
+      'nav-item-system-admin',
     ];
     const navItems = page.locator('[data-testid^="nav-item-"]');
     await expect(navItems).toHaveCount(expected.length);
@@ -121,15 +123,15 @@ test.describe('Dashboard Page (Vue SPA)', () => {
     await page.waitForLoadState('domcontentloaded');
     await page.waitForSelector('[data-testid="nav-tiles"]', { timeout: 15000 });
 
-    // NavTiles.vue 共 5 张 tile（AUD-63 的 testid 面）；href 必须指向各自路由。
+    // NavTiles.vue 共 4 张 tile（AUD-63 的 testid 面）；href 必须指向各自路由。
+    // B-04 后 Copilot 并入策略库 tab，不再单独占一张 tile。
     const tiles = page.locator('[data-testid^="nav-tile-"]');
-    await expect(tiles).toHaveCount(5);
+    await expect(tiles).toHaveCount(4);
 
     const expected: Array<[string, string]> = [
       ['nav-tile-backtest', '/backtest'],
       ['nav-tile-screener', '/screener'],
       ['nav-tile-strategy-lab', '/strategy-lab'],
-      ['nav-tile-copilot', '/copilot'],
       ['nav-tile-batch', '/dashboard?tab=batch'],
     ];
     for (const [id, href] of expected) {

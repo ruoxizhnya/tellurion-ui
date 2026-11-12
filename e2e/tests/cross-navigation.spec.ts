@@ -32,9 +32,10 @@ test.describe('Cross-page Navigation & Integration (Vue SPA)', () => {
     await page.waitForLoadState('domcontentloaded');
     await page.waitForSelector('[data-testid="nav-tiles"]', { timeout: 15000 });
 
-    // NavTiles.vue 共 5 张 tile（回测/选股/策略库/Copilot/批量），testid 由 AUD-63 提供。
+    // NavTiles.vue 共 4 张 tile（回测/选股/策略库/批量），testid 由 AUD-63 提供。
+    // B-04 后 Copilot 并入策略库 tab，不再单独占一张 tile。
     const tiles = page.locator('[data-testid^="nav-tile-"]');
-    await expect(tiles).toHaveCount(5);
+    await expect(tiles).toHaveCount(4);
   });
 
   test('root URL serves Dashboard (default route)', async ({ page }) => {
@@ -53,10 +54,11 @@ test.describe('Cross-page Navigation & Integration (Vue SPA)', () => {
 
     // 用 data-nav-path 而不是文案：A-04 把标签收敛成一套（选股器→选股与市场、
     // 策略实验室→策略库），按文案点导航的用例当场就断了 —— 这正是 AUD-61 说的"靠文案即碎"
+    // B-04：`/copilot` / `/strategy-builder` 不再是侧栏入口（收成 `/strategy-lab`
+    // 的别名），从侧栏点不到，故从本清单移除；别名直达由 strategy-hub.spec.ts 覆盖。
     const routes = [
       { path: '/screener', urlPattern: /\/screener/, selector: '.screener-page' },
-      { path: '/copilot', urlPattern: /\/copilot/, selector: '.copilot-page' },
-      { path: '/strategy-lab', urlPattern: /\/strategy-lab/, selector: '.strategy-lab-page' },
+      { path: '/strategy-lab', urlPattern: /\/strategy-lab/, selector: '.strategy-hub-page' },
     ];
 
     for (const route of routes) {
@@ -94,8 +96,9 @@ test.describe('Cross-page Navigation & Integration (Vue SPA)', () => {
     const pages = [
       { url: '/', selector: '.dashboard-page' },
       { url: '/screener', selector: '.screener-page' },
+      // 别名直达仍可用：`/copilot` 解析到 Copilot tab，`.copilot-page` 可见
       { url: '/copilot', selector: '.copilot-page' },
-      { url: '/strategy-lab', selector: '.strategy-lab-page' },
+      { url: '/strategy-lab', selector: '.strategy-hub-page' },
     ];
 
     for (const p of pages) {
@@ -120,7 +123,7 @@ test.describe('Cross-page Navigation & Integration (Vue SPA)', () => {
     await page.locator('[data-nav-path="/screener"]').click();
     await page.waitForLoadState('domcontentloaded');
 
-    await page.locator('[data-nav-path="/copilot"]').click();
+    await page.locator('[data-nav-path="/strategy-lab"]').click();
     await page.waitForLoadState('domcontentloaded');
 
     // Initial page load + possible lazy-loaded component loads

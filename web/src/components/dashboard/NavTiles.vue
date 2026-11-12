@@ -26,7 +26,6 @@ import {
   AnalyticsOutline,
   FlashOutline,
   SearchOutline,
-  ChatbubblesOutline,
   SettingsOutline,
 } from '@vicons/ionicons5'
 import { ChevronForward } from '@vicons/ionicons5'
@@ -41,13 +40,12 @@ interface NavTile {
   testid: string
 }
 
-// accent 是装饰性标识色：确定性磁贴从 §0.2 系列带取（系列带无状态语义，可借），
-// AI Copilot 必须走概率通道 --q-ai-text —— 这条不是配色偏好，是 DESIGN.md §3 双通道硬规则。
+// accent 是装饰性标识色：磁贴从 §0.2 系列带取（系列带无状态语义，可借），
+// 不承载概率/确定性语义。B-04 后 Copilot 并入策略库 tab，不再单独占一张磁贴。
 const tiles: NavTile[] = [
   { to: '/backtest', icon: h(NIcon, null, () => h(AnalyticsOutline)), title: '回测引擎', desc: '单股票/组合回测分析', color: 'var(--q-primary)', testid: 'nav-tile-backtest' },
   { to: '/screener', icon: h(NIcon, null, () => h(SearchOutline)), title: '选股与市场', desc: '多因子筛选与排名', color: 'var(--q-series-2)', testid: 'nav-tile-screener' },
-  { to: '/strategy-lab', icon: h(NIcon, null, () => h(SettingsOutline)), title: '策略库', desc: '策略管理与参数优化', color: 'var(--q-series-3)', testid: 'nav-tile-strategy-lab' },
-  { to: '/copilot', icon: h(NIcon, null, () => h(ChatbubblesOutline)), title: '策略 Copilot', desc: '智能策略生成助手', color: 'var(--q-ai-text)', testid: 'nav-tile-copilot' },
+  { to: '/strategy-lab', icon: h(NIcon, null, () => h(SettingsOutline)), title: '策略库', desc: '策略管理 · 编辑器 · Copilot', color: 'var(--q-series-3)', testid: 'nav-tile-strategy-lab' },
   { to: '/dashboard?tab=batch', icon: h(NIcon, null, () => h(FlashOutline)), title: '批量回测', desc: '多策略多标的对比', color: 'var(--q-series-5)', testid: 'nav-tile-batch' },
 ]
 </script>

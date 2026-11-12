@@ -1,8 +1,8 @@
 <template>
   <div class="wf-batch-page" data-testid="walkforward-batch-page">
     <n-page-header
-      title="走向验证与批量回测"
-      subtitle="POST /api/walkforward · /api/batch（4 条，A-10）"
+      title="走向与批量"
+      subtitle="走向验证 · 批量回测（POST /api/walkforward · /api/batch，4 条）"
     />
 
     <n-tabs type="line" animated data-testid="wf-batch-tabs">

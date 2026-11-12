@@ -16,10 +16,8 @@ const ROUTES = [
   '/backtest/compare',
   '/walkforward',
   '/screener',
-  '/copilot',
   '/explore',
   '/strategy-lab',
-  '/strategy-builder',
   '/data-sync',
   '/evidence',
   '/factors',
@@ -33,7 +31,13 @@ test.describe('A-04 导航与顶栏统一', () => {
     expect(await waitForBackendReady(60000)).toBe(true)
   })
 
-  /** 断言 1：15 个页面渲染出的侧栏条目集合完全相同 */
+  /**
+   * 断言 1：13 个**导航可达**页面渲染出的侧栏条目集合完全相同。
+   *
+   * B-04 把 `/copilot`、`/strategy-builder` 收成 `/strategy-lab` 的路由别名：
+   * 两个 URL 仍可直达（深链不断），但侧栏不再有对应入口，因此它们不进本清单 ——
+   * 这里量的是「侧栏在每页是否一致」，别名页的侧栏本来就与 `/strategy-lab` 同一份。
+   */
   test('全部路由的侧栏条目数组逐字相同', async ({ page }) => {
     let baseline: string[] | null = null
     for (const route of ROUTES) {

@@ -92,13 +92,16 @@ describe('导航标签与路由标题同源', () => {
     '/evidence': 'pages/Evidence.vue',
     '/backtest': 'components/backtest/BacktestForm.vue',
     '/backtest/compare': 'pages/BacktestCompare.vue',
-    '/strategy-lab': 'pages/StrategyLab.vue',
-    '/strategy-builder': 'pages/StrategyBuilder.vue',
-    '/copilot': 'pages/Copilot.vue',
+    '/walkforward': 'pages/WalkForwardBatch.vue',
+    // B-04：策略库 / 编辑器 / Copilot 三页合一，页面级标题在 StrategyHub.vue；
+    // 旧路径 `/strategy-builder`、`/copilot` 只是别名，不再是独立导航项。
+    '/strategy-lab': 'pages/StrategyHub.vue',
     '/factors': 'pages/FactorCitation.vue',
     '/screener': 'pages/Screener.vue',
     '/data-sync': 'pages/DataSync.vue',
     '/alerts': 'pages/Alerts.vue',
+    '/compliance': 'pages/Compliance.vue',
+    '/system-admin': 'pages/SystemAdmin.vue',
   }
 
   it('每个导航项都在页面标题文件表里登记（新增入口忘登记即红）', () => {

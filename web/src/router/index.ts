@@ -53,10 +53,13 @@ const routes: RouteRecordRaw[] = [
         meta: { title: '选股与市场' },
       },
       {
-        path: 'copilot',
-        name: 'copilot',
-        component: () => import('@/pages/Copilot.vue'),
-        meta: { title: '策略 Copilot' },
+        // B-04：策略库 / 编辑器 / Copilot 三页合一。旧路径作为别名保留，
+        // URL 不变（深链与既有 e2e 不断），由 StrategyHub 依据路径选 tab。
+        path: 'strategy-lab',
+        alias: ['/copilot', '/strategy-builder'],
+        name: 'strategy-lab',
+        component: () => import('@/pages/StrategyHub.vue'),
+        meta: { title: '策略库' },
       },
       {
         // P1-3: 探索观察台 —— 看见 AI 正在试什么、试得怎么样，并随时叫停。
@@ -64,19 +67,6 @@ const routes: RouteRecordRaw[] = [
         name: 'explore',
         component: () => import('@/pages/Explore.vue'),
         meta: { title: '探索观察' },
-      },
-      {
-        path: 'strategy-lab',
-        name: 'strategy-lab',
-        component: () => import('@/pages/StrategyLab.vue'),
-        meta: { title: '策略库' },
-      },
-      {
-        // P3: visual drag-drop multi-factor strategy builder.
-        path: 'strategy-builder',
-        name: 'strategy-builder',
-        component: () => import('@/pages/StrategyBuilder.vue'),
-        meta: { title: '策略编辑器' },
       },
       {
         path: 'data-sync',
