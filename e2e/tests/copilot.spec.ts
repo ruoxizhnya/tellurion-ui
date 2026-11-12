@@ -74,10 +74,13 @@ test.describe('Copilot Page (Vue SPA)', () => {
     await page.goto('/');
     await page.waitForLoadState('domcontentloaded');
 
-    await page.locator('.nav-tile').filter({ hasText: '策略 Copilot' }).click();
+    // B-04 起策略库 / 编辑器 / Copilot 合成 `/strategy-lab` 一个入口，仪表盘
+    // 上那张「策略 Copilot」磁贴已不存在（NavTiles.vue:44）。这里钉的是
+    // 「仪表盘磁贴能进策略库」，`/copilot` 退成路由别名，不在磁贴里重复登记。
+    await page.locator('[data-testid="nav-tile-strategy-lab"]').click();
     await page.waitForLoadState('domcontentloaded');
 
-    await expect(page).toHaveURL(/\/copilot/);
-    await expect(page.locator('.copilot-page')).toBeVisible();
+    await expect(page).toHaveURL(/\/strategy-lab/);
+    await expect(page.locator('.strategy-lab-page')).toBeVisible();
   });
 });
