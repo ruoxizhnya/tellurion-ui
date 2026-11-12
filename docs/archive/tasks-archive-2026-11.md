@@ -29,6 +29,7 @@
 | UI-COPILOT-GATE-SURFACE | Copilot 把 promote 闸门拦下误报成「沙箱未启用」，且无人类 promote 操作面（b 腿文案 + a 腿放行按钮） | 2026-11-12 | 见正文 | [原文](#UI-COPILOT-GATE-SURFACE) |
 | X-CI-RACE-STATICCHECK（ui 腿） | CI 在前端 job 补生产构建门 `npm run build` | 2026-11-12 | 见本条 | [施工记录](#X-CI-RACE-STATICCHECK-ui) |
 | X-LOW-CLEANUP（ui 腿） | `scripts/check-no-openapi.mjs`：openapi 不复制守卫 + CI 门 | 2026-11-12 | 见本条 | [施工记录](#X-LOW-CLEANUP-ui) |
+| UX-AB-CLOSEOUT | UX 重构 A/B 收尾批（A-09/A-10/A-11/B-01/B-02/B-04/B-06 连同 A-04 断言 5） | 2026-11-12 | `9ca2a61` `97e934d` `efc6cef` `416d598` `319004c` `a540f65` `01b5baa` `08e95f1` + A-10 五连 | [原文](#UX-AB-CLOSEOUT-2026-11-12) |
 
 ---
 
@@ -889,3 +890,23 @@
 > - **为什么扫工作区而不是 `git ls-files`**：未 commit 的副本同样会被拦下，PR 提交前本地就能发现，不依赖「已入库」这一前提。
 > - **破坏验证（真做真还原）**：`node scripts/check-no-openapi.mjs` → 退出码 0；复制 `tellurion:docs/openapi.yaml` 为仓库根 `openapi.yaml` ⇒ 退出码 1 并打印命中路径；删除后复跑退出码 0。
 > - **边界**：只加守卫脚本与 CI 一步；不改前端构建/测试，不引入新依赖。
+
+---
+
+<a id="UX-AB-CLOSEOUT-2026-11-12"></a>
+### UX-AB-CLOSEOUT · UX 重构 A/B 收尾批（2026-11-12）
+
+> **归档口径**：本批是子台账 `docs/design/stitch_quantlab_ux_redesign/TASKS.md` 的功能项，**断言原文与取证表不搬入本归档**（D13：主/子台账互不收录正文）。本段只做收口索引；判据一律回子台账对应小节。
+
+| ID | 收口内容 | commit |
+|---|---|---|
+| A-09 | 纸交易观测台 `/paper-trading`：订单 / 持仓 / 账户 / 外部信号流四块；信号流接 core 新补的 `GET /api/signals`（空流与「读面未接」分开画） | `9ca2a61`、`97e934d` |
+| A-10 | 合规 / 系统管理 / walkforward+batch 三缺屏；断言 3 由 5 条订正为 **4 条**（walkforward 历史读端点退役、batch CSV 501） | 五连（已推 `origin/main`） |
+| A-11 | 字体自托管：`@fontsource/inter` + `jetbrains-mono` 的 latin 子集，ODR-001；woff2 增量 91.4 KiB | `01b5baa` |
+| B-01 | 回放按 `seq` 升序（`orderAttemptsBySeq`）+ 反插入顺序用例；不改页面 | `416d598` |
+| B-02 | 审阅台 `/review`：平台宽度 × 因果强度排序（近似，页顶标注）+ 采纳裁决写 G6 | `efc6cef` |
+| B-04 | 策略库 / 编辑器 / Copilot 三页合一为 `/strategy-lab` 三 tab；旧路径保留别名 | `08e95f1` |
+| B-06 | 指方向 / 追问 / 标记三干预接真端点（G2/G3/G4）；disabled 与可用两态 DOM 结构一致 | `efc6cef` |
+| A-04 断言 5 | ⌘K 命令面板 + 「待审阅 N」接 `GET /api/review/pending`（`null` 显示「—」） | `319004c`、`a540f65` |
+
+> **验收输出**：新增/改动单测（`review` 工具、`InterventionBar`、`ReviewDesk`、`review`/`execution` API、`PaperTrading`）本地全绿；`npx vue-tsc -b` 退出码 0；`eslint` 0 error；e2e 子集 `review-desk` / `command-palette` / `nav-consistency` / `dashboard` **21 passed / 1 failed**（dashboard 历史卡片依赖真库历史，属既有环境依赖，非本批引入）、`paper-trading` 4 passed。视觉基线：A-11 后重生成 10 张非 responsive 基线，连跑两轮 10/10；2 条 responsive 仍红（V-2/V-3 测试债，不在本批）。

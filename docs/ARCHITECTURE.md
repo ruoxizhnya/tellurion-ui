@@ -34,7 +34,7 @@ analysis-service（:8085）→ data（:8081）/ ai（:8086）/ core 引擎
 | `e2e/` | 端到端用例 | 不做单元测试（vitest 在 web/） |
 | `deploy/` | nginx 配置 | 不含业务 |
 
-### 3.1 页面清单（A-10 新增三页登记于此）
+### 3.1 页面清单（A-09 / A-10 / B-02 新增页登记于此）
 
 > core 侧 `tellurion:docs/ARCHITECTURE.md` 已声明「前端已拆仓」，页面登记
 > 只在本仓维护，不在 core 重复登记（避免两处漂移）。
@@ -44,6 +44,8 @@ analysis-service（:8085）→ data（:8081）/ ai（:8086）/ core 引擎
 | `/compliance` | `pages/Compliance.vue` | `/api/compliance/*` 9 条 | 适当性 / 异常交易 / 大额日报 / 减持规则；`AbnormalAlert`、`DivestmentRule` 无 JSON tag，按大驼峰建模 |
 | `/system-admin` | `pages/SystemAdmin.vue` | `/api/auth/admin/{users,audit}`、`/api/auth/{status,bootstrap}`、`/api/plugins*` 9 条 | admin 端点 403 原样展示错误态；`User`/`AuditLog` 无 JSON tag，页面只读白名单字段，不渲染 `PasswordHash` |
 | `/walkforward` | `pages/WalkForwardBatch.vue` | `/api/walkforward`、`/api/batch`、`/api/batch/{id}`、`/api/batch/{id}/export/json` | 共 4 条（台账原写 5 条是含两个已退役读端点）；csv 导出后端 501，页面不画 |
+| `/paper-trading` | `pages/PaperTrading.vue` | `/api/execution/{orders, orders/{id}, orders/{id}/cancel, positions, account, emergency-flatten}` + `GET /api/signals` | 纸交易观测台（F16）：四块齐备；信号空流与「读面未接」分开画；页面不出现实盘 / FIX / 低延迟一类文案 |
+| `/review` | `pages/ReviewDesk.vue` | `/api/explore/runs/{id}`、`/api/explore/runs/{id}/{steer,attempts/{seq}/ask,attempts/{seq}/mark}`、`/api/pipeline/adoption`、`/api/review/pending` | 审阅台（B-02）：排序为**前端近似**（高原面积 × 因果强度），页顶 `approx-banner` 显式标注；采纳裁决写 G6 台账（`proposal_id=<run>:<seq>` 幂等） |
 
 ## 4. 三份契约（功能的边界就在这三份文件里）
 

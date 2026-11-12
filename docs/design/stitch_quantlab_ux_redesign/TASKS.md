@@ -1,7 +1,7 @@
 # 重构任务清单（TASKS）— Quant Lab UI
 
 > **版本**: 1.0（2026-10-13；2026-11-12 订正台账关系与两处过期缺口，见文末「更新记录」）
-> **定位**: 本文件是 **UX 重构（分组 A/B 与 G 缺口）** 的任务台账，装的是功能项；**跨仓 / 运维 / 台账一致性**类单子在主台账 [`../../TASKS.md`](../../TASKS.md) §一，两处**互不收录**，也不互相索引开放项。判「本仓现在在做什么」只读主台账 §一，再按需下钻本文件。每个任务用 **6 条可判定断言**描述（AGENTS.md §8.5.2 六字段的断言化：一条断言 = 一个可独立判真伪的事实，不是动作描述）。
+> **定位**: 本文件是 **UX 重构（分组 A/B 与 G 缺口）** 的任务台账，装的是功能项；**跨仓 / 运维 / 台账一致性**类单子在主台账 [`../../TASKS.md`](../../TASKS.md) §一，两处**互不收录正文**。**主台账 §一 末尾只列本文件开放项的 ID（不搬正文），本文件不反向复制主账内容** —— 这样主账能看见开放项，又不产生两份会漂移的正文。判「本仓现在在做什么」只读主台账 §一 + 该开放项清单，再按需下钻本文件。每个任务用 **6 条可判定断言**描述（AGENTS.md §8.5.2 六字段的断言化：一条断言 = 一个可独立判真伪的事实，不是动作描述）。
 > **依据**: [ANNOTATIONS.md](ANNOTATIONS.md)（逐控件处置）· [../user-flows.md](../user-flows.md) v1.1（需求基线）· [obsidian_precision_quant/DESIGN.md](obsidian_precision_quant/DESIGN.md) v2.0（token 真相源）· [ODR-066](../../../../tellurion-docs/docs/archive/odr/odr-066-stitch-design-review-and-boundary-ruling.md)（裁决）
 > **不双写**: 本清单**不**复制进 core 仓 `tellurion/docs/TASKS.md`。core 侧只登记后端缺口（G1–G8）自己的修复任务。
 
@@ -134,7 +134,7 @@ SVG 呈现属性**不解析 CSS 自定义属性**，直接把 `var()` 塞进 `co
 
 ## A-04 侧栏与顶栏统一（ANNOTATIONS §13 第 1–2 项）
 
-🔶 **部分完成 2026-10-14** —— 断言 1/3/4/6/7 已收口；**2/5/8 未做，且 2 与 8 需要主任拍板**（理由见取证表末）。
+🔶 **部分完成** —— 断言 1/3/4/6/7 于 2026-10-14 收口；**断言 5 于 2026-11-12 收口**（`319004c` 命令面板 + `a540f65` 输入锚点修复，角标接 G1 读面）；**2/8 仍是主任 2026-10-14 裁决的暂缓项**（理由见取证表末）。
 
 ### A-04 取证结果
 
@@ -144,10 +144,10 @@ SVG 呈现属性**不解析 CSS 自定义属性**，直接把 `var()` 塞进 `co
 | 2 | ✅ **已拍板 2026-10-14：暂不收敛**（主任裁决："等 F11/A-06 落地后再动"）。§3.2 的树实际有 **15 个条目**，而 ANNOTATIONS §13-1 写"9 项一套标签" —— 两个数对不上，"9 项"没有权威清单；且收敛必然摘掉 3 个入口，其归宿（F11 三库合一、A-06 证据内嵌）都还没做，现在摘就是孤儿路由。**在此之前侧栏保持 12 项** |
 | 3 | ✅ | 5 个漂移别名作为**标签**出现 0 次（`nav-labels.test.ts` 断言；注释里列举历史别名不算，见该测试的匹配范围）。顺带发现标签其实散在**四处**：侧栏 label、路由 `meta.title`、页面 H1/卡片标题、**首页磁贴标题**（`因子选股 / 策略实验室 / AI Copilot` 与侧栏三套叫法）—— 已全部收敛到 §3.2 词表，并由 `nav-labels.test.ts` 7 条断言钉住（含"磁贴标题须与侧栏同源"，破坏验证：把磁贴改回 `因子选股` 即红） |
 | 4 | ✅ | `components/layout/` 内 `\bSSE\b / L2 / probe\/h / iter\/h / HERMES / QUEUE` 命中 0；e2e 有一条顶栏文字断言。注：`stores/sync.ts` 里的 SSE 是**单作业进度流**，A-08 断言 4 明确允许，不在此禁 |
-| 5 | ⛔ **待后端** | `⌘K` 命令面板全站不存在（要新写组件）；"待审阅 N"计数**没有 API** —— 审阅台本身是 B-02（等 ai-service）。**不在没有数据源的情况下先画一个恒为 0 的角标**，那是谎报 |
+| 5 | ✅ **2026-11-12 收口** | `⌘K` 命令面板已落地（`319004c`；`e2e/tests/command-palette.spec.ts` 5 条，含过滤 + Enter 跳转 + Esc 关闭）；"待审阅 N"接 core `GET /api/review/pending`（G1，`openapi.yaml:3331`），**`pending === null`（任一源不可用）显示「—」，绝不画恒 0 的假数**；角标两条断言在 `command-palette.spec.ts` 与 `review-desk.spec.ts` |
 | 6 | ✅ | 键盘 Tab 实测：焦点环计算值 `solid 2px rgb(180, 197, 255)` = `--q-focus`，压画布 **11.67:1**（≥3:1）。**排查过程本身是个教训**：先用 `el.focus()` 程序化聚焦测，读到的是 `3px currentColor`，一度以为规则没生效 —— `:focus-visible` 按**交互方式**判定，程序化聚焦不触发；且 `.nav-item` 上有 `transition: all`，`outline-color/width` 可动画、`outline-style` 离散，聚焦瞬间读到的是动画起点。最终用真键盘事件 + `expect.poll` 等条件才测对，写进 e2e 而不是靠一次性手工探针 |
 | 7 | ✅ | 侧栏 Redis/Postgres 常绿点**已删除**（含 `.sys-dot` 三条规则）。裁决依据：`/api/health` 实测只返回 `{service,status,timestamp}`，**没有 redis/postgres 分项**；接真值要后端加字段 = 前端驱动后端设计，违反主任 2026-10-13 的边界裁决 ⇒ 按断言 7 的第二选项删掉，不留常绿点 |
-| 8 |  **随断言 2 挂起**（触发条件已明确：F11 + A-06 落地） | 当前侧栏 12 项（分组：总览 1 / 研究主线 2 / 仪器房 8 / 监控 1） |
+| 8 |  **随断言 2 挂起**（触发条件已明确：F11 + A-06 落地） | 2026-11-12 实测侧栏 **15 项**（分组：总览 1 / 研究主线 3 / 仪器房 8 / 监控 3）；比原文的 12 项新增 A-09 纸交易、A-10 合规 + 系统管理、B-02 审阅台。归并到 9 项的决定**未变**（仍待主任拍板） |
 
 **顺带修掉的一个真 bug**：旧 `isActive` 用 `route.path.startsWith(item.path)`，在 `/backtest/compare` 上「回测引擎」与「多策略对比」**同时高亮**（后者是前者的字符串前缀）。改为最长匹配。破坏验证：把模板退回旧判定 → e2e 断言在 `/backtest/compare` 报 `Expected: 1, Received: 2`，还原后 4/4 绿。
 
@@ -607,32 +607,32 @@ core SYNC-01 的验收第 1、2 条要防的形状，本任务不能替它绕过
   - **本轮引入的断言级红：0 条** —— 我自己那 7 条（A-08 e2e 6 + data-sync 基线）在全量运行里全绿。但**不把话说满**：这几条也往同一个限流桶里投了约 25 次请求（两次真页面加载 + 真 cancel 的写），涨的 18 条红不能排除被它推过顶。"谁贡献了几次 429"这种归因要 AUD-61 阶段一的逐条登记 + 单跑复验才做得起，本轮不下那个结论。
 
 
-## A-09 `execution` 重画为纸交易观测台（F16）
+## A-09 `execution` 重画为纸交易观测台（F16）　✅ **2026-11-12 完成**（`9ca2a61` 页面 + `97e934d` 信号读面）
 
-1. 页面四块齐备：订单 / 持仓 / 账户 / 外部信号流，对应 `core` 的 `orders`、`positions`、`account`、`signals` 端点（稿上后三块缺失）。
+1. 页面四块齐备：订单 / 持仓 / 账户 / 外部信号流，对应 `core` 的 `orders`、`positions`、`account`、`signals` 端点（稿上后三块缺失）。**2026-11-12：`GET /api/signals` 读面补齐，第四块从 disabled 占位转为真实列表**（空数组=合法空流；503/取数失败显示「读面未接通」，不画成「没有信号」）。
 2. 全站文案 grep 不出现 `实盘`、`FIX`、`Colocation`、`DMA`、`TWAP`、`VWAP`、`100 FPS`、`亚毫秒`（F16「UI 文案不得暗示实盘」）。
 3. 紧急平仓按钮满足红色 + 二次确认 + 独立确认码三条件，且有一条用例断言缺确认码时不可提交。
 4. 所有数值来自 `MockTrader` 真实响应，无写死的机构级布景（担保品金额、保证金占用率等虚构值 grep 为 0）。
 5. 页面明确标注"纸交易 / Mock"身份，与 `/api/execution/*` 的实际能力一致。
-6. 不引入任何新的执行端点假设（`grep` 请求路径全部命中 openapi 已有 6 条）。
+6. 不引入任何新的执行端点假设（`grep` 请求路径全部命中 openapi 已有 **6 条 execution 路径 + `GET /api/signals`**，共 7 条）。
 
-## A-10 缺屏补设计：合规 F17 / 系统管理 F18 / walkforward+batch
+## A-10 缺屏补设计：合规 F17 / 系统管理 F18 / walkforward+batch　✅ **2026-11-12 完成**（`b82f4ac` / `bf23eb3` / `b9db1e7` / `8f68af4` / `88d3a3a`）
 
 1. 合规页覆盖 `core` `/api/compliance/*` 全部 **9** 条端点，逐条有调用点。
 2. 系统管理页覆盖 `/api/auth/admin/users`、`/audit`、`/status`、`/bootstrap` 与 `/api/plugins*` **9** 条。
-3. walk-forward 与批量回测有承载页，覆盖 `/api/walkforward*`、`/api/batch*` 共 **5** 条。
+3. walk-forward 与批量回测有承载页，覆盖 `/api/walkforward*`、`/api/batch*` 共 **4** 条（2026-11-12 订正：原写 5 条；walkforward 的历史读端点已退役，batch 的 CSV 导出如实 501，故只承载 4 条。证据：`tellurion:cmd/analysis/handlers_walkforward.go:15`、`handlers_batch.go:126-129`、`openapi.yaml:622/660/685/706`）。
 4. 三个新页均登记进 `core` 侧 `docs/ARCHITECTURE.md` 前端章节（AGENTS.md Rule 1 触发器）。
 5. 每页有对应 Playwright spec，且新增路由后 `authGuard` 分支行为不变（开放访问/鉴权两态各一条）。
 6. 三页都不引入后端没有的控件（每个控件可指到一条端点或标 ⏳）。
 
-## A-11 字体加载决策落地
+## A-11 字体加载决策落地　✅ **2026-11-12 完成**（`01b5baa`，ODR `docs/odr/001-font-self-hosting-latin-subset.md`）
 
 1. 决策二选一并有 ODR 记录：自托管 woff2（需主任批准二进制）或外部 CDN（需说明与"自托管"定位的冲突如何化解）。
 2. 若加载：`document.fonts.check('12px Inter')` 在真实页面返回 `true`。
 3. 若不加载：`DESIGN.md §5.1`、`variables.css` 注释、本任务三处的"未加载"标注被更新为明确结论，不留悬置。
 4. 中文实际命中 `Noto Sans SC` 族（可用 `document.fonts` 或像素比对验证，不靠"看起来对"）。
 5. 等宽数字在表格中不横向跳动：`font-variant-numeric: tabular-nums` 在数据单元上生效，有一条计算样式断言。
-6. 字体变更不使 `npm run build` 产物体积无谓膨胀 >200KB（若自托管需报告实际增量）。
+6. 字体变更不使 `npm run build` 产物体积无谓膨胀 >200KB（若自托管需报告实际增量）。**实测 woff2 合计 93,556 B ≈ 91.4 KiB**（Inter 400/500/600 + JetBrains Mono 400，latin 子集），未超预算。
 
 ---
 
@@ -657,21 +657,21 @@ core SYNC-01 的验收第 1、2 条要防的形状，本任务不能替它绕过
 3. **V-3 待办**：`data-sync` 页渲染的是**活的后台状态**（纳秒时间戳作业 ID `ohlcv_all_aud49_17919266933509689000`、近期任务列表随状态变、数据源限流告警时有时无），全页基线原理上不可复现。二选一并说明理由：(a) `toHaveScreenshot({ mask: [...] })` 遮掉同步状态卡与告警条；(b) 给视觉测试一套固定 fixture 后端。**不得**删该页基线或断言了事。
 4. 三条收口后，**12/12 连跑三轮全绿**才算 V 组完成（两轮不够 —— race 的漏检率就是这么量出来的）。
 
-## B-01 `explore` 改造：三栏观察 + 路径回放（F1/F4）
+## B-01 `explore` 改造：三栏观察 + 路径回放（F1/F4）　✅ **2026-11-12 关账**（`416d598`，只补断言 3 用例，不重做页面）
 
-1. 页面消费 `ai` `POST /api/explore/runs` / `GET /runs/:runID` / `POST /runs/:runID/stop` 三条端点，全部真实可达（**当前阻塞：ai-service 未运行**）。
+1. 页面消费 `ai` `POST /api/explore/runs` / `GET /runs/:runID` / `POST /runs/:runID/stop` 三条端点，全部真实可达（**2026-11-12：ai-service 已在 `127.0.0.1:8086` healthy，原「未运行」阻塞解除**；G9 已证伪）。
 2. 三栏数据源是**轮询**，不是推送；订阅层与 A-08 的 SSE 共用同一抽象接口。
-3. F4 回放按 `seq` **升序**渲染尝试序列，且存在一条用例断言"非插入顺序"。
+3. F4 回放按 `seq` **升序**渲染尝试序列，且存在一条用例断言"非插入顺序"——`api/explore.ts::orderAttemptsBySeq`，`explore.test.ts` 用 `[3,1,2] → [1,2,3]` 且断言不改入参；破坏验证：去掉 `sort` 后 received `[3,1,2]` 红。
 4. "被叫停"与"跑满"在回放与摘要中显著区分（`ExploreStatus.stopped`），有一条用例比对二者文案。
 5. 失败的尝试不渲染裁决（同 A-05 第 5 条）。
 6. 解锁前置：ai-service 可构建 + `/api/explore/*` 补进 `openapi.yaml`（缺口 **G7**）。
 
-## B-02 审阅台（F2/F3/F5/F7，P0 新页）
+## B-02 审阅台（F2/F3/F5/F7，P0 新页）　✅ **2026-11-12 完成（近似版）**（`efc6cef`，页面 `/review`）
 
-1. 摘要排序按**高原面积 × 因果强度**，不是按 IC；有一条用例用反例数据断言排序结果不同。
+1. 摘要排序按**高原面积 × 因果强度**，不是按 IC；`utils/review.ts::rankAttempts`，`review.test.ts` + `ReviewDesk.test.ts` 用反例断言（Sharpe 2.0 孤峰不排第一，1.5 平台三项优先），破坏验证已做。
 2. 候选卡三要素齐备：路径缩略图（**不是**收益曲线）、质疑清单（blocking/warning/note 分级）、概率估计（注明最弱一环）。
-3. 摘要聚合数据源为后端缺口 **G1**；未就绪前用前端 attempts+verdict 近似聚合，且界面**显式标注"近似"**。
-4. 四干预入口一致（同 A-05/B-01 的候选卡、结果流行、回放页三上下文）；指方向/追问/标记三条为 **G2/G3/G4**，画 disabled。
+3. 摘要聚合数据源为后端缺口 **G1**；**2026-11-12 订正：G1 的聚合读面 `GET /api/review/pending` 已实现（core `openapi:3331`），但派生量（高原面积 / 因果强度）仍未提供** ⇒ 前端继续用 attempts+verdict 近似聚合，页面顶部 `approx-banner` **显式标注"近似"**。
+4. 四干预入口一致（同 A-05/B-01 的候选卡、结果流行、回放页三上下文）；指方向/追问/标记三条为 **G2/G3/G4**，**2026-11-12 已由 agent 实现并经 core 反代**，前端接真端点（`InterventionBar.vue`）。
 5. 采纳动作必须采集**理由（自由文本）+ 概率快照**，缺任一不可提交（F7/S6）。
 6. 被叫停的 run 与跑满的 run 在列表中不混排无差别（F2 异常条款）。
 
@@ -684,9 +684,9 @@ core SYNC-01 的验收第 1、2 条要防的形状，本任务不能替它绕过
 5. 导出仅 `html`（`openapi:285` 明写），不出现 xlsx/pdf 选项。
 6. 解锁前置：**G6** 采纳记录落库（含理由与概率快照两列）。
 
-## B-04 策略库合并（F11）的 Copilot 腿
+## B-04 策略库合并（F11）的 Copilot 腿　✅ **2026-11-12 完成**（`08e95f1`，`/strategy-lab` 三 tab；旧路径保留路由别名）
 
-1. 三页合一（`strategy-lab` + `strategy-builder` + `copilot`）的 tab 结构可做；**Copilot 提案流依赖 ai-service，延后**。
+1. 三页合一（`strategy-lab` + `strategy-builder` + `copilot`）的 tab 结构已落地（`StrategyHub.vue`）；**Copilot tab 依赖 ai-service**，页面用 `copilot-dependency` 写清依赖，不假装可用。
 2. 策略 CRUD 走 `core` `/api/strategies*` 两条端点，可做。
 3. 生成代码 artifact 是 **Go + 表达式**，不出现 Python 类、`AlphaStrategy`、`resample('5min')`、`.qpkg`（ADR-024 三重违例），grep 为 0。
 4. "沙箱编译通过"展示为可审阅 artifact 状态，**不加载不执行**，失败不阻断（ADR-024）。
@@ -695,23 +695,23 @@ core SYNC-01 的验收第 1、2 条要防的形状，本任务不能替它绕过
 
 ## B-05 因子研究页的 AI 腿（F12）
 
-> **⚠️ 2026-11-12 订正（原第 1 条前提已失效）**：原文写「因子列表 / IC / 十分位收益 / 计算触发全部走 `core` `/api/factor/*` 5 条端点 —— 这部分现在就能做」，该前提**不成立**：core 侧 `/api/factors/{name}` 已退役（返回 **410**），`/api/factor*` 的其余读面也不存在；IC / 十分位收益的真相源在 **analytics**（`ic_analysis` / `factor_returns`，归属见 ADR-037）。当前 UI 里唯一的 factor 端点消费是 [`web/src/api/factor.ts:20`](../../../web/src/api/factor.ts) 调已退役的 `/api/factors/{name}`，对应主台账 `UI-FACTOR-CITATION-RETIRED`。**B-05 维持挂起**，重开条件：analytics 提供因子列表 / IC / 分位收益读面，且主台账 `UI-FACTOR-CITATION-RETIRED` 收口。
+> **⚠️ 2026-11-12 订正（归口由 analytics 改为 core）**：原文「IC / 十分位收益的真相源在 **analytics**（`ic_analysis` / `factor_returns`，ADR-037）」**不成立**：跨仓裁决把这两张派生表划归 **core**（`tellurion-docs:docs/adr/adr-038-factor-derived-tables-ownership.md`），且 **analytics 全仓没有因子读端点**（grep 为 0）。core 侧 `/api/factors/{name}` 已退役（410）、`/api/factor*` 读面不存在，对应主台账 `UI-FACTOR-CITATION-RETIRED`。**B-05 维持挂起，UI 保留 disabled**；本条改为 **core 的后端任务指针**：`tellurion:docs/TASKS.md` §三 C3 → `CORE-FACTOR-DERIVED-GUARD`（派生表守卫已 ✅，但未提供读面）。重开条件：core 新增因子列表 / IC / 分位收益读面并新立单，且主台账 `UI-FACTOR-CITATION-RETIRED` 收口。
 
-1. ~~因子列表 / IC / 十分位收益 / 计算触发全部走 `core` `/api/factor/*` 5 条端点 —— **这部分现在就能做**。~~（见上方订正：端点已退役 / 不存在，需等 analytics 读面）
+1. ~~因子列表 / IC / 十分位收益 / 计算触发全部走 `core` `/api/factor/*` 5 条端点 —— **这部分现在就能做**。~~（见上方订正：端点已退役 / 不存在，**归口 core**，需等 core 提供读面）
 2. 六维裁决面板复用 A-05 组件，不自造。
 3. "变异建议 / 一键派生变异"依赖基因池与 ai 层，延后；界面画 disabled。
 4. 不实现 Polars / Parquet / L2 分区 / Barra CNE6（栈错位与幻觉项），grep 为 0。
 5. `VERIFIED` 二值徽标不出现，改综合概率 + 最弱项。
 6. 因子证据坐标并入因子详情（`/factors` 独立页降级为深链兜底），现有 `FactorCitation` 测试不退化。
 
-## B-06 指方向 / 追问 / 标记 三干预（G2/G3/G4）
+## B-06 指方向 / 追问 / 标记 三干预（G2/G3/G4）　✅ **2026-11-12 完成**（`efc6cef`，`components/review/InterventionBar.vue`）
 
-1. 三条端点在后端存在并可调用（**当前均无**）。
+1. 三条端点在后端存在并可调用——**2026-11-12 订正：G2/G3/G4 已实现**（agent `cmd/ai/handlers_explore.go:227-231`，契约 `tellurion-agent:docs/api-schema.md` §1.1；core 反代 `openapi.yaml:3926/3942`）。前端接真端点，不再画 disabled。
 2. 三者在候选卡、结果流行、回放页三个上下文入口一致。
 3. "追问"入口挂在**被放弃的尝试**上，不是只挂在成功候选上（F3 UX 要点）。
-4. 每条端点有契约测试，且补进 `openapi.yaml`（连带收 G7）。
-5. 前端从 disabled 转可用时，**只改状态位、不改结构**（有一条快照测试断言 DOM 结构不变）。
-6. 解锁前置：G2/G3/G4 后端实现。
+4. 每条端点有契约测试，且补进 `openapi.yaml`（连带收 G7）——契约测试在 agent 仓；core openapi 已以通配收录 `/api/explore`。
+5. 前端从 disabled 转可用时，**只改状态位、不改结构**——`InterventionBar.test.ts` 对比两态下 `[data-testid]` 集合与标签名完全一致，仅 `disabled` 位不同。
+6. 解锁前置：~~G2/G3/G4 后端实现~~ **已解除**。
 
 ---
 
@@ -719,13 +719,13 @@ core SYNC-01 的验收第 1、2 条要防的形状，本任务不能替它绕过
 
 | # | 缺口 | 阻塞的 UI | 状态 |
 |---|---|---|---|
-| G1 | 摘要聚合 API（高原面积×因果强度排序、路径缩略图数据） | B-02 | 无 |
-| G2 | 指方向（run 续跑注入约束） | B-06 | 无 |
-| G3 | 追问（针对被放弃方向的问答） | B-01 / B-06 | 无 |
-| G4 | 标记（派生子 run / 提升权重） | B-06 | 无 |
+| G1 | 摘要聚合 API（高原面积×因果强度排序、路径缩略图数据） | B-02 | **部分已落地（2026-11-12）**：聚合读面 `GET /api/review/pending` 已实现（`openapi.yaml:3331`，`pending` 仅在全部源可用时为数字）；**派生量（高原面积 / 因果强度）仍未提供** ⇒ B-02 用近似 |
+| G2 | 指方向（run 续跑注入约束） | B-06 | **已落地**：`POST /api/explore/runs/{runID}/steer`（agent `handlers_explore.go:227`；core 反代 `openapi:3926`） |
+| G3 | 追问（针对被放弃方向的问答） | B-01 / B-06 | **已落地**：`POST .../attempts/{seq}/ask`（同上） |
+| G4 | 标记（派生子 run / 提升权重） | B-06 | **已落地**：`POST .../attempts/{seq}/mark`（同上） |
 | G5 | 实验日志深查询 | B-01 | `GET /api/explore/runs/{id}` 基本够用 |
-| G6 | 采纳记录（决定 / 理由 / 概率快照） | B-02 / B-03 + **成功指标测量** | 无 |
-| G7 | `/api/explore/*`、`/api/tools/*` 未入 openapi 契约 | B-01~B-06 | 反代可用，契约待补 |
+| G6 | 采纳记录（决定 / 理由 / 概率快照） | B-02 / B-03 + **成功指标测量** | **已落地**：`POST /api/pipeline/adoption` + `GET /api/pipeline/calibration`（`tellurion-agent:docs/api-schema.md` §1.3） |
+| G7 | `/api/explore/*`、`/api/tools/*` 未入 openapi 契约 | B-01~B-06 | **部分已收（2026-11-12）**：core openapi 已以通配收录 `/api/explore`、`/api/explore/{path}`、`/api/tools`、`/api/tools/{path}`（`openapi.yaml:3926/3942/3960/3975`）；契约权威仍在 agent `api-schema.md` |
 | G8 | 行情侧推送 | — | **明确不做**（ODR-066 B3）；sync 作业 SSE 已存在 |
 | **G9** | ~~ai-service 镜像构建失败（`go mod tidy`）~~ **已证伪（2026-11-12）**：ai-service 镜像可构建，本机全栈下 `ai-service` 在 `127.0.0.1:8086` healthy 运行 | ~~整个分组 B~~ 分组 B 的真实前置改为 **G7 契约缺口 + B-05 因子读面缺失 + promote 闸门 a 腿裁决** | **不再是缺口**；分组 B 仍挂起，但理由已换成上面三条 |
 
@@ -753,4 +753,4 @@ A-10 → A-11          （补屏与字体）
 | 2026-10-14 (3) | **A-03 自审第二轮**，四处直接修掉：① §0.2.2 声称的"等重量 alpha"实测**并不等量**（`primary-soft` 只有旧值 0.78×）—— 根因是我把合成后的绝对亮度当成 ΔL 记进文档、且从上次扫描输出里挑数而没当场重跑，这是"估算当实测"第三次犯，已按实测重解为 0.10 / 0.16 并连带重生成 12 张基线；② `palette.test.ts` 抬头一直写着三方对账，实际**从不核对 DESIGN.md** —— 补守卫后上线即抓到 7 处真漂移（`--q-series-1..6` + `--q-ai-light` 实现里有、基准里从未立项）；③ `BacktestHistory` 三条 `.pnl-*` 规则**永不匹配**（模板不产该类名，真正用的是 `TradeTable.vue`），我扫页时机械替换的是死代码；④ 用脚本扫完 A-01~A-03 全部 10 个文件的 scoped 选择器，另抓到一处**谎报**：侧栏 Redis/Postgres 状态点写死 `online`、`.offline` 规则永不命中 ⇒ 界面恒久宣称基础设施在线却什么都没查，登记为 **A-04 断言 7**（并补断言 8：12 项归并到 9 项）。四个盲点同一条教训：**静态 grep 命中 ≠ 该样式在页面上起作用** |
 | 2026-10-14 (7) | **A-07 完成**（详见该节）。三件事值得单独记：① 三值口径收进 `utils/runStatus.ts` 一份表，**动了别人的断言** —— `BacktestEngine.test.ts` 与 `backtest-engine.spec.ts` 各有一条在断屏幕上出现原始 Code（`empty_universe`），那是被本任务**故意**改掉的行为，不是为了让测试变绿；② 断言 1 的机械腿第一版 `\bstatus\b` 是**假护栏**（注释就能骗绿），改成"必须真的读 status"并用探针文件双向破坏验证；③ 真数据抓到无效响应的实情：指标键是**缺席**而非零值，同时带着 `sortino_ratio=1.79e+308`（MaxFloat64）—— 我原先写在 `ConsoleHistory` 注释里的"invalid 保留数字（它算出来了）"因此**不准确**，已按实测改写。另：`pickJob` 被**共享限流**打成无关处变红，只给 429 加退避（其他码照旧响），同类 flake 按归属登记给 AUD-61；④ **更正我自己写过的假结论** —— A-06 台账那句"全量 playwright 116 passed / 0 failed"是把 `npx playwright test \| tail -30` 的输出当结论（管道给的是 `tail` 的退出码，截断又切掉了红清单）。不截断重跑实测 **61 failed / 116 passed / 2 skipped**（退出码 1），该 61 条经逐类取证（死选择器 / strict-mode 撞 async 默认态 / 纯 API 用例的指标假设 / 共享限流）**均非 A-06~A-07 引入**，已登记给 AUD-61 |
 
-| 2026-11-12 | **台账关系与两处过期缺口订正（主台账 `UI-LEDGER-SELF-CONSISTENCY`）**：① 抬头「本文件是 UI 重构的唯一任务台账」改成「装 UX 重构功能项，跨仓/运维/一致性单在主台账 §一，两处互不收录也不互相索引开放项」，消除与主台账的「唯一」之争（D13）；② **B-05** 第 1 条前提证伪并划掉 —— `core` 的 `/api/factors/{name}` 已退役为 **410**、其余 `/api/factor*` 读面不存在，IC/分位收益真相源在 analytics（ADR-037）；B-05 维持挂起并重写重开条件。当前 UI 唯一的 factor 端点消费仍是 `web/src/api/factor.ts:20`（对应主台账 `UI-FACTOR-CITATION-RETIRED`）；③ **G9**「ai-service 镜像构建失败」**证伪**：镜像可构建，本机全栈下 `ai-service` 在 `127.0.0.1:8086` healthy；分组 B 仍挂起，但拦路项换成 G7 契约缺口 + B-05 因子读面 + promote a 腿裁决。A 组判定与 B-01/B-02/B-06/G1~G4 的功能判定**未改**（按单约束只订正过期项）。 |
+| 2026-11-12 (2) | **A-09/A-10/A-11/B-01/B-02/B-04/B-06 关账 + 事实订正**：① A-09 纸交易观测台 `9ca2a61`，外部信号流 `97e934d` 接上 core 新补的 `GET /api/signals` 读面（空流 ≠ 读面未接，已分开画）；② A-10 三个缺屏 5 个 commit 已推，**断言 3 由 5 条订正为 4 条**（walkforward 历史读端点退役、batch CSV 501）；③ A-11 自托管 latin 子集 woff2（ODR-001，91.4 KiB）；④ B-01 `416d598` 只补 seq 升序用例并关账；⑤ B-02 审阅台 + B-06 三干预 `efc6cef`；⑥ B-04 三页合一 `08e95f1`；⑦ **G 表过期判据订正**：G1 聚合读面已实现（派生量仍缺）、G2/G3/G4 已落地（agent 实现 + core 反代）、G6 已落地、G7 已以通配收录，因此 B-02/B-06 从「画 disabled」改为**接真端点**；⑧ **B-05 归口由 analytics 改为 core**（ADR-038；analytics 全仓无因子读端点），UI 保留 disabled 并改为 core 后端任务指针 |

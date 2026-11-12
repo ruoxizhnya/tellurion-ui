@@ -1,7 +1,7 @@
 ---
 status: active
 last-verified: 2026-11-12
-verified-by: 2026-11-12 跨仓伞 `X-LOW-CLEANUP` 的 ui 腿——新增 `scripts/check-no-openapi.mjs` 守卫（ADR-0001：openapi 只住 core），CI 在前端 job 末尾加 Guard 步；破坏验证：复制一份 `openapi.yaml` ⇒ EXIT=1，删除后 ⇒ EXIT=0；2026-11-12 跨仓伞 `X-CI-RACE-STATICCHECK` 的 ui 腿——前端 CI 在 `Test` 之后补 `Build`（`npm run build`）门，本地真跑退出码 0（vite build 6.96s，产物正常）；本仓无 Go 代码，`-race`/`staticcheck` 由 Go 仓各自承担；2026-11-12 W7 收口批次（A4 授权 + 两处裁决）——`UI-COPILOT-GATE-SURFACE` b 腿 + a 腿全部落地并归档（a 腿按「登录者自己的 JWT」裁决施工，含组件测试与破坏验证；端到端成功态的两条跨仓前置写成归档条目的重开条件）；`UI-NPM-AUDIT-FIX`（audit high 清零，13 条 moderate 的不修理由 + 重开条件已写进归档）/`UI-RUNBOOK-GAP`（新增 runbook，`SERVICE.md` 的 `truth.runbook` 已订正）/`UI-SCREEN-CONSUMER`（count 5xx 降级）/`UI-HEALTHCHECK`（镜像 HEALTHCHECK）四单收口并归档；`UI-LEDGER-SELF-CONSISTENCY` 订正 AGENTS.md / ARCHITECTURE.md 与子台账 B-05/G9 并写明主/子台账分工（已归档）；`UI-FACTOR-CITATION-RETIRED` 按裁决改为退役说明页（保留入口、删除 `api/factor.ts`，已归档）；另三条新发现（选股失败冒充空结果、a08 写死总数、dashboard 假定空历史）同批收口。**台账现状：0 张开放单。** 此前：2026-11-11 全面审查 W7 台账立单（A5 授权）——新立 5 条六字段单，证据坐标引 ODR-068/069/072/073（`tellurion-docs:docs/archive/odr/`）；同轮撤掉与下文两条 ⬜ 自相矛盾的「本仓当前没有未做项」boilerplate（W1-F6），并给既有 `UI-FACTOR-CITATION-RETIRED` 补审查确认指针（W2-F7，dedup 不新立单）。此前：2026-11-10 晚 AUD-61 收口——4 条视觉基线在原生三服务栈上逐张核对后重生成、整份 `visual-regression.spec.ts` 复跑 **12 passed**；破坏验证（隐藏 `.nav-tiles`）→ 2% 红，逐字节还原后复绿；`e2e/tests` 现存 `test.fixme` = **0**。此前：2026-11-10 AUD-63 收口补充——core `/api/market/index` 改为本地供数后「有读数」支真栈跑通。
+verified-by: 2026-11-12 跨仓伞 `X-LOW-CLEANUP` 的 ui 腿——新增 `scripts/check-no-openapi.mjs` 守卫（ADR-0001：openapi 只住 core），CI 在前端 job 末尾加 Guard 步；破坏验证：复制一份 `openapi.yaml` ⇒ EXIT=1，删除后 ⇒ EXIT=0；2026-11-12 跨仓伞 `X-CI-RACE-STATICCHECK` 的 ui 腿——前端 CI 在 `Test` 之后补 `Build`（`npm run build`）门，本地真跑退出码 0（vite build 6.96s，产物正常）；本仓无 Go 代码，`-race`/`staticcheck` 由 Go 仓各自承担；2026-11-12 W7 收口批次（A4 授权 + 两处裁决）——`UI-COPILOT-GATE-SURFACE` b 腿 + a 腿全部落地并归档（a 腿按「登录者自己的 JWT」裁决施工，含组件测试与破坏验证；端到端成功态的两条跨仓前置写成归档条目的重开条件）；`UI-NPM-AUDIT-FIX`（audit high 清零，13 条 moderate 的不修理由 + 重开条件已写进归档）/`UI-RUNBOOK-GAP`（新增 runbook，`SERVICE.md` 的 `truth.runbook` 已订正）/`UI-SCREEN-CONSUMER`（count 5xx 降级）/`UI-HEALTHCHECK`（镜像 HEALTHCHECK）四单收口并归档；`UI-LEDGER-SELF-CONSISTENCY` 订正 AGENTS.md / ARCHITECTURE.md 与子台账 B-05/G9 并写明主/子台账分工（已归档）；`UI-FACTOR-CITATION-RETIRED` 按裁决改为退役说明页（保留入口、删除 `api/factor.ts`，已归档）；另三条新发现（选股失败冒充空结果、a08 写死总数、dashboard 假定空历史）同批收口。**台账现状：0 张开放单；UX 子台账开放项见 §一 末表（B-03 / B-05 / V-2 / V-3 / A-04 断言 2·8）。** 2026-11-12 UX 收尾批（ui 仓，不改后端）：`A-09` 纸交易观测台（`9ca2a61`，四块齐备；外部信号流 `97e934d` 接 core 新补的 `GET /api/signals`）、`A-10` 三缺屏（5 commit）、`A-11` 自托管 latin 子集（`01b5baa`，ODR-001，91.4 KiB）、`B-01` seq 升序用例（`416d598`）、`B-02` 审阅台（`efc6cef`，近似版显式标注）、`B-04` 三页合一（`08e95f1`）、`B-06` 三干预（`efc6cef`，接真端点）、`A-04` 断言 5（`319004c`+`a540f65`）；**事实订正**：G1/G2/G3/G4/G6 由「无」改为已落地，A-10 断言 3 由 5→4，B-05 归口由 analytics 改为 core（ADR-038）。此前：2026-11-11 全面审查 W7 台账立单（A5 授权）——新立 5 条六字段单，证据坐标引 ODR-068/069/072/073（`tellurion-docs:docs/archive/odr/`）；同轮撤掉与下文两条 ⬜ 自相矛盾的「本仓当前没有未做项」boilerplate（W1-F6），并给既有 `UI-FACTOR-CITATION-RETIRED` 补审查确认指针（W2-F7，dedup 不新立单）。此前：2026-11-10 晚 AUD-61 收口——4 条视觉基线在原生三服务栈上逐张核对后重生成、整份 `visual-regression.spec.ts` 复跑 **12 passed**；破坏验证（隐藏 `.nav-tiles`）→ 2% 红，逐字节还原后复绿；`e2e/tests` 现存 `test.fixme` = **0**。此前：2026-11-10 AUD-63 收口补充——core `/api/market/index` 改为本地供数后「有读数」支真栈跑通。
 ---
 
 # TASKS — tellurion-ui 未完成项
@@ -14,7 +14,16 @@ verified-by: 2026-11-12 跨仓伞 `X-LOW-CLEANUP` 的 ui 腿——新增 `script
 
 > **当前没有未做的单。** 2026-11-12 W7 收口批次后，全部六字段单（含 `UI-COPILOT-GATE-SURFACE` b 腿 + a 腿、`UI-FACTOR-CITATION-RETIRED`、三条 e2e / 失败态新发现）均已收口并移入 [`docs/archive/tasks-archive-2026-11.md`](archive/tasks-archive-2026-11.md)，检索入口见该文件的「检索索引」表。`UI-COPILOT-GATE-SURFACE` 的端到端成功态有两条跨仓前置（core 反代 promote、strategy policy 打开 admin/trader），已写成该归档条目的「重开条件」，**不计入本仓开放项**。
 >
-> **主/子台账分工（D13，2026-11-12 定）**：本文件装**跨仓 / 运维 / 一致性**类单，是「本仓现在在做什么」的唯一入口；`docs/design/stitch_quantlab_ux_redesign/TASKS.md` 装 **UX 重构功能项**（A/B 组与 G 缺口）。两处**互不收录、也不互相索引开放项**；某条单只出现在一处，出现第二处即视为重复立单。
+> **主/子台账分工（D13，2026-11-12 定；同日修订「互不索引」条款）**：本文件装**跨仓 / 运维 / 一致性**类单，是「本仓现在在做什么」的唯一入口；`docs/design/stitch_quantlab_ux_redesign/TASKS.md` 装 **UX 重构功能项**（A/B 组与 G 缺口）。两处**互不收录正文**；某条单只在一处写正文，出现第二处即视为重复立单。**但主台账 §一 末尾必须列出子台账开放项的 ID（只列 ID，不搬正文）** —— 否则会出现「主账说 0、子账躺 10 条」的自相矛盾。
+
+### 子台账开放项（只列 ID，正文见 [`design/stitch_quantlab_ux_redesign/TASKS.md`](design/stitch_quantlab_ux_redesign/TASKS.md)，截至 2026-11-12）
+
+| ID | 状态 | 一句话 |
+|---|---|---|
+| B-03 | 可开工 | 实验日志与采纳台账（G6 已落地：`/api/pipeline/adoption` + `/calibration`） |
+| B-05 | ⏸ 挂起 | 因子读面归 **core**（ADR-038）；analytics 全仓无因子端点，等 core 提供读面并新立单 |
+| V-2 / V-3 | 待做（测试债） | 2 条 responsive 视觉基线仍红；归 AUD-61 执行登记，不在 UX 批次内 |
+| A-04 断言 2/8 | ⏸ 裁决暂缓 | 侧栏 9 项归并（主任 2026-10-14 裁决暂不实施；当前实测 15 项） |
 
 ## 二、跨仓指针（不在本仓，勿双写）
 
