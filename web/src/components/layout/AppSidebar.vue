@@ -48,6 +48,7 @@ import {
   StatsChartOutline,
   FlaskOutline,
   ShieldCheckmarkOutline,
+  SettingsOutline,
 } from '@vicons/ionicons5'
 import { NIcon } from 'naive-ui'
 
@@ -90,6 +91,7 @@ const navGroups = [
     items: [
       { path: '/alerts', label: '风险告警', icon: markRaw(NotificationsOutline) },
       { path: '/compliance', label: '合规', icon: markRaw(ShieldCheckmarkOutline) },
+      { path: '/system-admin', label: '系统管理', icon: markRaw(SettingsOutline) },
     ],
   },
 ]

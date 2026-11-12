@@ -91,6 +91,14 @@ const routes: RouteRecordRaw[] = [
         meta: { title: '合规' },
       },
       {
+        // A-10 / F18：鉴权状态 / 用户 / 审计 / 插件（/api/auth/admin/* 与
+        // /api/plugins* 9 条）。
+        path: 'system-admin',
+        name: 'system-admin',
+        component: () => import('@/pages/SystemAdmin.vue'),
+        meta: { title: '系统管理' },
+      },
+      {
         // ADR-022 §5: L0 evidence lookup — content_hash -> ingest.raw row.
         path: 'evidence',
         name: 'evidence',

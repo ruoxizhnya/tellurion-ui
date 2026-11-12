@@ -59,3 +59,61 @@ export async function getMe(): Promise<MeResponse> {
 export async function refreshTokens(refreshToken: string): Promise<TokenResponse> {
   return api.post<TokenResponse>('/api/auth/refresh', { refresh_token: refreshToken })
 }
+
+// ============================================================
+// 管理员用户管理（/api/auth/admin/*，admin 角色）
+//
+// 注意：后端 `pkg/auth.User` / `AuditLog` 没有 JSON tag，序列化后是
+// Go 字段名（大驼峰），且 `User.PasswordHash` 也会被序列化。前端只读
+// 白名单字段，**绝不渲染 PasswordHash**。
+// ============================================================
+
+export interface AdminUser {
+  ID: number
+  Username: string
+  Role: string
+  CreatedAt: string
+  LastLoginAt: string | null
+  Disabled: boolean
+}
+
+export interface AuditRow {
+  ID: number
+  UserID: number | null
+  Role: string
+  IP: string
+  Endpoint: string
+  Method: string
+  PayloadHash: string
+  TraceID: string
+  StatusCode: number
+  Timestamp: string
+}
+
+export interface CreateUserRequest {
+  username: string
+  /** 后端要求 ≥8 位（binding:"min=8"）。 */
+  password: string
+  role: 'viewer' | 'trader' | 'admin'
+}
+
+export interface CreatedUser {
+  user_id: number
+  username: string
+  role: string
+}
+
+/** GET /api/auth/admin/users（admin） */
+export async function listUsers(): Promise<{ users: AdminUser[] }> {
+  return api.get<{ users: AdminUser[] }>('/api/auth/admin/users')
+}
+
+/** POST /api/auth/admin/users（admin） */
+export async function createUser(req: CreateUserRequest): Promise<CreatedUser> {
+  return api.post<CreatedUser>('/api/auth/admin/users', req)
+}
+
+/** GET /api/auth/admin/audit（admin） */
+export async function listAudit(): Promise<{ audit: AuditRow[] }> {
+  return api.get<{ audit: AuditRow[] }>('/api/auth/admin/audit')
+}
