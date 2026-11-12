@@ -11,6 +11,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { flushPromises, mount } from '@vue/test-utils'
 import { defineComponent, h } from 'vue'
+import { createPinia } from 'pinia'
 import { NMessageProvider } from 'naive-ui'
 import Copilot from './Copilot.vue'
 import * as copilotApi from '@/api/copilot'
@@ -20,12 +21,13 @@ vi.mock('@/api/copilot', () => ({
   pollCopilotJob: vi.fn(),
 }))
 
-/** naive-ui 的 useMessage() 要求祖先有 provider，所以套一层壳挂载。 */
+/** naive-ui 的 useMessage() 要求祖先有 provider，所以套一层壳挂载。
+ *  PromoteGate 里要读 auth store（角色门），因此同时装一个空 pinia。 */
 function mountPage() {
   const Host = defineComponent({
     render: () => h(NMessageProvider, null, { default: () => h(Copilot) }),
   })
-  return mount(Host, { attachTo: document.body })
+  return mount(Host, { attachTo: document.body, global: { plugins: [createPinia()] } })
 }
 
 async function send(wrapper: ReturnType<typeof mountPage>, text = '写一个动量策略') {
@@ -104,6 +106,40 @@ describe('Copilot 失败终态：只对着认出来的原因说', () => {
     expect(text).toContain('os.RemoveAll is forbidden')
     expect(text).not.toContain('沙箱未启用')
     expect(text).not.toContain('promote')
+    w.unmount()
+  })
+
+  it('闸门拦下且坐标可读：挂出放行入口，坐标就是资产登记那两个值', async () => {
+    vi.mocked(copilotApi.pollCopilotJob).mockResolvedValue({
+      job_id: 'job-abcdef123456',
+      status: 'sandbox_rejected',
+      build_error:
+        '编译通过并已登记资产坐标（carrier=wasm strategy_id=st_x version_hash=abc）；' +
+        '未过 promote 人工闸门，不进回测（QT-32）。',
+    })
+
+    const w = mountPage()
+    await send(w)
+
+    const gate = w.get('[data-testid="promote-gate"]')
+    expect(gate.text()).toContain('st_x')
+    expect(gate.text()).toContain('abc')
+    // 未登录时按钮必须是禁用的：不许让人点出一个注定 401 的按钮
+    expect(w.get('[data-testid="promote-btn"]').attributes('disabled')).toBeDefined()
+    w.unmount()
+  })
+
+  it('闸门拦下但坐标读不出：不给按钮（宁可没有，也不猜一个版本去放行）', async () => {
+    vi.mocked(copilotApi.pollCopilotJob).mockResolvedValue({
+      job_id: 'job-abcdef123456',
+      status: 'sandbox_rejected',
+      build_error: '未过 promote 人工闸门，不进回测（QT-32）。',
+    })
+
+    const w = mountPage()
+    await send(w)
+
+    expect(w.find('[data-testid="promote-gate"]').exists()).toBe(false)
     w.unmount()
   })
 

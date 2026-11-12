@@ -26,6 +26,7 @@
 | UI-E2E-A08-HARDCODE | a08 用例把票池总数写死 5908（真库 5580），数据一变就假绿 | 2026-11-12 | 见正文 | [原文](#UI-E2E-A08-HARDCODE) |
 | UI-E2E-HISTORY-EMPTY | dashboard 用例假定历史为空，而库里已有真实回测记录 | 2026-11-12 | 见正文 | [原文](#UI-E2E-HISTORY-EMPTY) |
 | UI-FACTOR-CITATION-RETIRED | 因子引用抽屉死调已退役的 `GET /api/factors/:name`，现改为退役说明页 | 2026-11-12 | 见正文 | [原文](#UI-FACTOR-CITATION-RETIRED) |
+| UI-COPILOT-GATE-SURFACE | Copilot 把 promote 闸门拦下误报成「沙箱未启用」，且无人类 promote 操作面（b 腿文案 + a 腿放行按钮） | 2026-11-12 | 见正文 | [原文](#UI-COPILOT-GATE-SURFACE) |
 
 ---
 
@@ -549,6 +550,9 @@
   3. `npm update brace-expansion` → 嵌套的 `2.0.3` 抬到 **`2.1.8`**（仍在 `minimatch@9` 的 `^2.0.2` 范围内，未用 override 强改 semver）。
 - **终态**：`npm audit --audit-level=high` = **13 moderate / 0 high，EXIT=0**。
 - **残留登记（④：不静默绕过，也不为变绿硬降级）**：13 条 moderate 全部落在 **lint/test 工具链**（`minimatch@9/10` + `glob@10` ← `eslint` / `typescript-eslint` / `@vue/test-utils → js-beautify → editorconfig`）。`npm audit fix` 给出的修法是 **`--force` 把 `eslint` 降回 9.39.5**（降级换绿，违反本单 ④ 与非目标「不引入回归」），故**不做**；上游 `minimatch` 修复版（>11.0.0）尚未被 eslint 采纳，等上游升级即可自然清掉。这些包不进生产产物（`vite build` 的 dist 不含 devDependencies）。
+- **不修的理由 + 重开条件（2026-11-12 登记，对 13 条 moderate）**：
+  - **不修的理由**：唯一能清掉它们的官方修法是 `npm audit fix --force`，而它会把 `eslint` 从 10.x 降回 9.39.5 —— 这是**降级换绿**，本单 ④ 明确禁止，且会让 lint 规则面与配置回退（不是安全修复，是换一个更旧的工具链）。这些包是 devDependencies，不进 `vite build` 的 dist，也不在运行时路径上；留在树里不改变生产产物的攻击面。既不放宽 `--audit-level` 也不 `--force`，故 `--audit-level=high` 口径下 EXIT=0 是**真实终态**，不是绕过。
+  - **重开条件（满足任一即重开并复跑本单验收）**：① 上游 `eslint` / `typescript-eslint` 采纳 `minimatch` 修复版（>11.0.0），`npm update` 能在**不降级、不 `--force`** 的前提下让 13 条归零；② `npm audit --audit-level=moderate` 出现落进**生产依赖链**的新条目（不再只是 devDependencies）；③ 本仓升级到 `eslint` 新 major（届时重核规则面）。
 - **验收（真实输出）**：
   - `npm audit --audit-level=high` → `13 moderate severity vulnerabilities` + `AUDIT_EXIT=0`。
   - `npm run build`（`vue-tsc -b && vite build`）→ `✓ built in 15.79s`，`BUILD_EXIT=0`。
@@ -809,3 +813,54 @@
   另 5 例仍绿（缺陷只落在这一条判据上）。逐字节还原后 SHA256 回到 `B479E9CEFCCA29D3435C068B4FB62BF5E68527538842C24CF733D9FD675171FF`，复跑 `Test Files 1 passed / Tests 6 passed`。
 - **文档同步（变更触发）**：`docs/api-schema.md` 消费面表把 `factor.ts` 划掉并注明退役（`last-verified: 2026-11-12`）；`docs/db-schema.md` 把「行情 / 因子值 → 经 `/api/factors`」拆成两行，因子值改为「core 按需求值（ADR-037），本仓不读」；子台账 A-06 的「因子侧只能 mock」补 2026-11-12 订正注。
 - **⑥ 边界守住**：未改 core 路由、未恢复反代、未新增端点、未伪造任何因子数值；`/api/factors` 在代码里已无任何调用点。
+
+---
+
+<a id="UI-COPILOT-GATE-SURFACE"></a>
+## UI-COPILOT-GATE-SURFACE · Copilot 把 promote 闸门拦下误报成「沙箱未启用」，且无人类 promote 操作面 [P1] ✅ 完成（2026-11-12；b 腿 + a 腿）
+
+- **① 目标**：让主任在 Copilot 看到的终态文案**诚实**（闸门拦下 ≠ 沙箱未启用），并有一条**可操作的人工 promote 路径**，使 ADR-023「人是闸门」在产品面落地，而不是呈现为「永远失败」。
+- **② 上下文（2026-11-11 全面审查 W6-F2 ★H，证据 ODR-073 `tellurion-docs:docs/archive/odr/odr-073-audit-wave6-service-repos-frontend.md`；裁决 D3=b 先行 + a 立案）**：后端闸门 fail-closed **正确**（agent `copilot.go:666-669` / `stopAtGate:708-709` 终态 `sandbox_rejected`，`api-schema.md:92/:168-172` 诚实成文四成因；`generated`/`backtest_complete` 是契约刻意保留的预留态）。缺口在 UI 与人类侧：① `web/src/pages/Copilot.vue:89-92` 对**一切** `sandbox_rejected` 追加「（沙箱未启用：需配置 copilot.working_dir…）」——对今天占主导的**闸门拦下**路径是假话；② `:71` 进度文案「生成中（LLM → 沙箱编译 → **回测**）」承诺不存在的回测跳（agent 今天不跑回测，`copilot.go:660`）；③ `:78-84` 仍处理 `backtest_complete`（白名单保留是契约要求，但进度文案撒谎）；④ 全 ui 仓 grep `promote|promote_gate|blocked_reason` **零命中**，唯一 promote 端点 = strategy `POST .../versions/{hash}/promote` 只认 `service` + `X-Actor`，主任以管理员身份调也不通。
+- **③ 要求（分两腿，b 先行不依赖角色裁决）**：**b 腿（先行）**：① 订正 Copilot.vue 文案——`sandbox_rejected` 按 `build_error` 区分「闸门拦下」（提示「编译已通过，待人工 promote」）与「沙箱/资产/链故障」，不再一律说「沙箱未启用」；② 进度文案去掉「→ 回测」假跳（改为「LLM → 沙箱编译 → 人工闸门」）；③ 本仓 `docs/runbook.md`（与 `UI-RUNBOOK-GAP` 协同）写成文人工 promote 路径：主任拿 service token + `X-Actor` curl strategy promote 端点（可审计）。**a 腿（立案，须先裁角色）**：④ UI promote 按钮经 core 反代到 strategy——**前置 = 裁「人 promote 走什么身份」**（strategy 策略表今天只认 service；admin 代调还是给主任签发 service token 未定），角色裁决前不落按钮。
+- **④ 约束与非目标**：不改后端闸门 fail-closed 语义（W4 A-3 ✅ 不动）；不删 `generated`/`backtest_complete` 白名单（契约刻意保留）；不在前端伪造 promote 成功；a 腿角色未裁前不擅自给 strategy 策略表加 admin 档；不复制 openapi。
+- **⑤ 验收**：b 腿——组件测试断言「闸门拦下」终态文案不含「沙箱未启用」、含「待人工 promote」；runbook 有成文 curl promote 步骤且真栈跑通一次（A4 授权）；破坏验证 = 把文案改回一律「沙箱未启用」⇒ 用例红，还原复绿。a 腿——角色裁决落定后另验收（按钮经反代 promote 成功 + 审计留痕）。`npm run build`/`test` 绿。
+- **⑥ 边界**：本仓 `web/src/pages/Copilot.vue` + `docs/runbook.md`；a 腿的 core 反代归 `tellurion`、strategy 角色策略归 `tellurion-strategy`（须先裁）；后端闸门行为归 agent（不动）。
+- **owner**：待定
+
+### 施工记录（b 腿，2026-11-12）
+
+- 新增 `web/src/utils/copilot.ts` 作为终态文案的唯一口径（按 `build_error` 分 `promote_gate` / `sandbox_unavailable` / `asset_register` / `chain_trace` / `unknown`，**认不出就不补解释**），`Copilot.vue` 改用它；进度文案改为 `LLM → 静态检查 → 沙箱编译 → 资产登记 → 人工 promote 闸门（这条链不会自动跑回测）`。
+- 用例 `web/src/pages/Copilot.test.ts`（真组件 + 假后端）钉住三条判据。破坏验证：把失败分支改回「一律追加沙箱未启用」⇒ 2 例红（`闸门拦下` / `认不出原因`），逐字节还原后 4 例绿。
+
+### 裁决（a 腿，2026-11-12，产品）
+
+**人 promote 走登录者自己的身份**：前端用当前登录用户的 JWT 调 promote，**不要 service token，也不要 admin 代调**。理由：promote 是人对某个策略版本背书，责任人必须能落回具体用户；service token 是机器身份，用它 promote 等于把人的决定洗成系统行为，审计链断掉；admin 代调则把责任从决策人身上挪走。角色门槛沿用后端既有分级（**admin / trader**），**不新增角色**。上述理由同时写进 `web/src/api/strategy.ts` 的实现注释与 `docs/runbook.md` §6。
+
+### 施工记录（a 腿，2026-11-12）
+
+- **API 层**：`web/src/api/strategy.ts` 新增 `PromoteTarget` / `PromotedArtifact` / `promoteStrategyVersion(target, actor)`。请求 = `POST /api/strategies/{id}/versions/{hash}/promote`，带 `X-Actor: <登录用户名>`；`Authorization` 由 `api/client.ts` 自动注入 `getAccessToken()`（**登录者本人的 token**，不读 service token、不留任何代调后门）。注释逐条写明裁决理由与 400/401/403/404/409 拒绝口径。
+- **坐标来源**：job 读面不发资产字段，唯一坐标来源是 `build_error` 里 agent 写下的资产登记语（`carrier=wasm strategy_id=st_… version_hash=…`）。新增 `web/src/utils/copilot.ts:parsePromoteTarget()` 解析这一句；**取不全就返回 `null`，页面不渲染按钮**（宁可没有，也不猜一个版本去放行）。
+- **组件**：新增 `web/src/components/copilot/PromoteGate.vue`。角色门 `canPromote = username && (role === 'admin' || role === 'trader')`：未登录 / 角色不足时按钮 `disabled`，不让人点出一个注定 401/403 的按钮；两段式确认（先点「放行这个版本」，再点「确认放行」）避免误触；成功文案写明「已由 `<用户名>` 放行（status=…），审计已留痕」；失败按 401/403/404/409 分别给可执行解释（404 明说「坐标过期或网关未开通」，**不**把 404 说成成功）。`Copilot.vue` 在闸门拦下且坐标可读的终态消息下挂出该组件。
+- **文档**：`docs/runbook.md` §6 身份口径改为登录者自己的凭据（`Authorization: Bearer <你的 access token>` + `X-Actor: <你的用户名>`），拒绝表补 401 / 403 两行；「本机栈的已知缺口」扩为三条（无编译器 → 成功态本机不可达；core 未反代 promote → UI 会如实显示 404，不许改直连或改回 service token；strategy `policy.go` 只放 `service` → 需 strategy 仓打开 admin/trader）。`docs/api-schema.md` 的 `strategy.ts` 行补 promote 端点与拒绝口径。
+- **单测（新增三份 12 例）**：`web/src/utils/copilot.test.ts`（3 例，解析坐标 / 缺一半返回 null / 半角括号逗号不被带入）；`web/src/components/copilot/PromoteGate.test.ts`（7 例，真 `api/client` + 假 `fetch`：admin 登录 → 请求头含 `Authorization: Bearer jwt-alice` 与 `X-Actor: alice`、**无 service 头**、成功文案含用户名与 promote 结果；无 token → 401 且不带 Authorization；viewer → 按钮 disabled + 零请求；未登录 → disabled；403/409/404 各一条文案）；`web/src/pages/Copilot.test.ts` 增 2 例（闸门 + 坐标 → 挂出组件且未登录时 disabled；坐标读不出 → 不渲染组件）。
+- **验收（真实输出）**：`npx vitest run src/utils/copilot.test.ts src/components/copilot/PromoteGate.test.ts src/pages/Copilot.test.ts` = `Test Files 3 passed (3)` / `Tests 16 passed (16)`；全量 `npm test` = `Test Files 41 passed (41)` / `Tests 562 passed (562)`（`TEST_EXIT=0`）；`npx vue-tsc -b` = `TSC_EXIT=0`。
+- **破坏验证（真实输出）**：把身份来源改回 service token——`web/src/api/strategy.ts` 的 headers 改成 `{ 'X-Actor': 'service', 'X-Service-Token': 'service-token' }` ⇒
+  ```
+   × 登录用户放行成功：带自己的 Bearer，X-Actor 是登录名，且不带 service 凭据
+   AssertionError: expected 'service' to be 'alice'
+   × 没有 token：请求不带 Authorization，界面说「需要登录」而不是假装成功
+  EXIT=1
+  ```
+  逐字节还原后 `strategy.ts` SHA256 回到 `AC1144602D1AA71C95159E6AFF3672985512BCB3F49F214F3FE6A93B8BEA257F`，三文件复跑 `Test Files 3 passed / Tests 16 passed`。
+- **⑤ 怎么算过、什么还不可达**：UI 侧要求（同源 JWT + 角色门 + 诚实错误面 + 坐标不可读不给按钮）已全部落地并被上面用例钉住。端到端「按钮真的 promote 成功」在本机**不可达**，缺的是两条跨仓前置，不在本仓施工范围：① core 未反代 `POST /api/strategies/{id}/versions/{hash}/promote`（打 `:8085` 返 404，归 `tellurion`）；② strategy `internal/httpapi/policy.go` 当前只放行 `service` 角色，用户 JWT（admin/trader）会被 403（归 `tellurion-strategy`）。两者满足后按 `docs/runbook.md` §6 ② 原样复跑即可，本仓前端无需再改。
+- **⑥ 边界守住**：未改后端闸门、未改 core / strategy 任何代码、未在前端伪造 promote 成功、未直连 `:8090`、未给任何角色开后门；新增角色 = 0。
+
+### 重开条件
+
+以下任一成立时重开本单（只补 e2e 成功态，不重做 UI）：
+
+1. `tellurion` 在 core 补上 promote 反代（`:8085` 可达），且
+2. `tellurion-strategy` 的 `internal/httpapi/policy.go` 给 promote 打开 `admin` / `trader` 角色。
+
+两条同时满足后，在原生三服务栈上补一条 e2e：登录用户点「放行这个版本」→ 200 → `GET .../promotions` 出现一行 `X-Actor` = 该用户名。若只想验拒绝面（401/403/409），在 dev 栈即可跑，不需要编译器。
+

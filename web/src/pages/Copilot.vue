@@ -12,6 +12,8 @@
               </div>
               <pre><code>{{ msg.code }}</code></pre>
             </div>
+            <!-- 闸门拦下且坐标可读时，才给放行入口：坐标取不到就不猜。 -->
+            <PromoteGate v-if="msg.promoteTarget" :target="msg.promoteTarget" />
           </div>
           <div v-if="!messages.length" class="empty-chat">
             <p>描述你想要实现的策略，例如：</p>
@@ -44,13 +46,17 @@ import { ref, nextTick } from 'vue'
 import { NCard, NInput, NButton, useMessage } from 'naive-ui'
 import { generateStrategy, pollCopilotJob } from '@/api/copilot'
 import { backtestValidityNote } from '@/utils/runStatus'
-import { copilotAcceptedText, describeCopilotRejection } from '@/utils/copilot'
+import { copilotAcceptedText, describeCopilotRejection, parsePromoteTarget } from '@/utils/copilot'
+import type { PromoteTarget } from '@/api/strategy'
+import PromoteGate from '@/components/copilot/PromoteGate.vue'
 
 const message = useMessage()
 const inputText = ref('')
 const generating = ref(false)
 const messagesRef = ref<HTMLElement>()
-const messages = ref<Array<{ role: string; content: string; code?: string; language?: string }>>([])
+const messages = ref<
+  Array<{ role: string; content: string; code?: string; language?: string; promoteTarget?: PromoteTarget | null }>
+>([])
 
 async function sendMessage() {
   const text = inputText.value.trim()
@@ -90,6 +96,11 @@ async function sendMessage() {
       lastMsg.content = rejected.message
       if (rejected.hint) {
         lastMsg.content += `\n（${rejected.hint}）`
+      }
+      // 闸门拦下 = 编译已通过、只差人的一道签字：给放行入口（a 腿）。
+      // 坐标只从 build_error 的资产登记语里取；取不到就不给按钮（见 parsePromoteTarget）。
+      if (rejected.kind === 'promote_gate') {
+        lastMsg.promoteTarget = parsePromoteTarget(job.build_error)
       }
       // build_failed 时通常仍有代码可审阅——展示出来而不是只报错。
       if (job.generated_code) {

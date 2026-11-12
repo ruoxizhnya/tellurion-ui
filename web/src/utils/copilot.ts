@@ -1,4 +1,5 @@
 import type { CopilotJobStatus } from '@/types/api'
+import type { PromoteTarget } from '@/api/strategy'
 
 /**
  * Copilot 终态的「人话」口径 —— 全站唯一一份。
@@ -110,4 +111,24 @@ export function copilotAcceptedText(jobId: string): string {
     'LLM → 静态检查 → 沙箱编译 → 资产登记 → 人工 promote 闸门' +
     '（这条链不会自动跑回测）'
   )
+}
+
+/**
+ * 从闸门拦下的 `build_error` 里取 promote 坐标。
+ *
+ * agent 在 `stopAtGate` 时把坐标逐字写进这句
+ * （`tellurion-agent:pkg/copilot/copilot.go:667-669`）：
+ * `编译通过并已登记资产坐标（carrier=wasm strategy_id=st_x version_hash=abc）；…`
+ * —— 这是前端唯一能拿到这个版本的路径（job 读面不发资产字段）。
+ *
+ * 取不到就返回 `null`，**绝不**从别处凑一个 id 出来：坐标错了会把 promote 打到
+ * 另一个版本上，那比没有按钮更坏。
+ */
+export function parsePromoteTarget(buildError?: string | null): PromoteTarget | null {
+  const text = buildError || ''
+  const stop = '[^\\s）；);,，。]*'
+  const sid = text.match(new RegExp(`strategy_id=(${stop})`))
+  const hash = text.match(new RegExp(`version_hash=(${stop})`))
+  if (!sid?.[1] || !hash?.[1]) return null
+  return { strategyId: sid[1], versionHash: hash[1] }
 }

@@ -206,13 +206,21 @@ npx playwright test tests/visual-regression.spec.ts        # 先只跑红的那�
 
 **前置**：该版本在 strategy 里已有 **status = validated** 的产物。
 
+**身份口径（2026-11-12 裁决）**：promote 用**登录者自己的凭据**——你本人登录后的
+access token 作 `Authorization: Bearer …`，`X-Actor` 填**你的用户名**。**不要**用
+service token，也**不要**让管理员代调：promote 是人对某个版本背书，责任人必须能
+落回具体用户；机器身份会把人的决定洗成系统行为，审计链就断了。角色沿用后端既有
+分级（**admin / trader**），不新增角色。UI 上 Copilot 页面在闸门拦下且坐标可读时
+直接给「放行这个版本」按钮，走的就是这条同源路径。
+
 ```bash
 # ① 看这一版有没有产物、什么状态（公开读面）
 curl -s "http://127.0.0.1:8090/api/strategies/<id>/versions/<version_hash>"
 
-# ② 放行（X-Actor 必填：它进审计，回答「谁批的」）
+# ② 放行（身份 = 你本人的登录凭据；X-Actor 必填，它进审计，回答「谁批的」）
 curl -s -X POST \
-  -H "X-Actor: <你的名字>" \
+  -H "Authorization: Bearer <你登录拿到的 access token>" \
+  -H "X-Actor: <你的用户名>" \
   -H "Content-Type: application/json" \
   -d '{}' \
   "http://127.0.0.1:8090/api/strategies/<id>/versions/<version_hash>/promote"
@@ -221,22 +229,33 @@ curl -s -X POST \
 curl -s "http://127.0.0.1:8090/api/strategies/<id>/promotions"
 ```
 
-**四种被拒的形状**（都不会写审计行，可放心重试）——本机 2026-11-12 真退出码：
+**被拒的形状**（都不会写审计行，可放心重试）——本机 2026-11-12 真退出码：
 
 | HTTP | `code` | 含义 | 怎么办 |
 |---|---|---|---|
 | 400 | `actor_required` | 没带 `X-Actor` | 补上。这不是权限问题，是缺「谁批的」 |
+| 401 | — | 没带/带了坏 token（鉴权收紧后） | 重新登录，用**你自己的** token |
+| 403 | — | 角色不够（需要 admin 或 trader） | 找有权限的人以**其本人身份**操作，不要代签 |
 | 404 | `artifact_not_found` | 这一版没有产物（编译器没跑/没跑完） | 先跑 build + validate，再 promote |
 | 400 | `unsupported_carrier` | `builtin` / `dsl` / `external` 没有字节码，不开放版本级 promote | 无需操作 |
 | 409 | 状态机不符（`want validated`） | 产物还没到 `validated` | 先 validate |
 
-鉴权收紧后（`JWT_SECRET` 非空）还需 `Authorization: Bearer <service token>`，无 token 的写请求是 **401**。
+鉴权收紧后（`JWT_SECRET` 非空）无 token 的写请求是 **401**；token 有效但角色不是
+admin/trader 是 **403**。
 
 ### 本机栈的已知缺口
 
-本机**没有编译器**（strategy 容器无 `STRATEGY_COMPILER_*`，也没有 compiler 容器）：
-`POST .../build` 只会排队，永远产不出 artifact，所以**成功态 promote 在本机不可达**——
-上表四条拒绝边界可以现场验，成功态要等编译器装配后按 ② 原样跑。
+1. **没有编译器**：strategy 容器无 `STRATEGY_COMPILER_*`，也没有 compiler 容器）
+   `POST .../build` 只会排队，永远产不出 artifact，所以**成功态 promote 在本机不可达**——
+   上表拒绝边界可以现场验，成功态要等编译器装配后按 ② 原样跑。
+2. **core 还没反代这条路由**：`POST /api/strategies/{id}/versions/{hash}/promote`
+   目前只在 strategy `:8090` 直连可达，core `:8085` 返回 404。UI 的放行按钮因此会
+   如实显示 404 与「网关可能还没开通」——**不要**因此把前端改成直连 8090 或改回
+   service token；缺的是 core 的一条反代（归 `tellurion` 仓）。
+3. **strategy 的写端点策略表当前只放行 `service` 角色**：用户 JWT（admin/trader）
+   会被回 403。要让「本人身份放行」端到端成立，需在 `tellurion-strategy`
+   的 `internal/httpapi/policy.go` 给 promote 打开 admin/trader（归 strategy 仓），
+   本仓前端不需要再改。
 
 > **不要**手搓 artifact、也不要直接改 `strategy_artifacts.status` 绕过：
 > 那会让 `resolve` 返回一个跑不起来的字节码，把假绿灯发给回测入口。
