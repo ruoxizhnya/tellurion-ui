@@ -1,7 +1,7 @@
 ---
 status: active
 last-verified: 2026-11-12
-verified-by: 2026-11-12 台账自洽订正（`UI-LEDGER-SELF-CONSISTENCY`）：去掉上一版里「本仓台账没有未做的事」这句过期断言（本仓仍有开放项，见 `docs/TASKS.md` §一）。此前：代码-文档对齐审计（2026-11-11）：AUD-61（e2e 与结构脱节）与 AUD-63（票池读数）均已收口，`test.fixme` 归零。此前：功能边界固化（三份契约：db / api / dataflow，2026-10-20）
+verified-by: 2026-11-12 A-10 三页登记（合规 F17 / 系统管理 F18 / 走向与批量）：§3.1 页面清单落地，端点条数与形态按 core handlers 实测；此前：2026-11-12 台账自洽订正（`UI-LEDGER-SELF-CONSISTENCY`）：去掉上一版里「本仓台账没有未做的事」这句过期断言（本仓仍有开放项，见 `docs/TASKS.md` §一）。此前：代码-文档对齐审计（2026-11-11）：AUD-61（e2e 与结构脱节）与 AUD-63（票池读数）均已收口，`test.fixme` 归零。此前：功能边界固化（三份契约：db / api / dataflow，2026-10-20）
 ---
 
 # 架构 — tellurion-ui
@@ -33,6 +33,17 @@ analysis-service（:8085）→ data（:8081）/ ai（:8086）/ core 引擎
 | `web/src/api/` | 端点封装 | 不做 UI 逻辑 |
 | `e2e/` | 端到端用例 | 不做单元测试（vitest 在 web/） |
 | `deploy/` | nginx 配置 | 不含业务 |
+
+### 3.1 页面清单（A-10 新增三页登记于此）
+
+> core 侧 `tellurion:docs/ARCHITECTURE.md` 已声明「前端已拆仓」，页面登记
+> 只在本仓维护，不在 core 重复登记（避免两处漂移）。
+
+| 路由 | 页面 | 端点 | 备注 |
+|---|---|---|---|
+| `/compliance` | `pages/Compliance.vue` | `/api/compliance/*` 9 条 | 适当性 / 异常交易 / 大额日报 / 减持规则；`AbnormalAlert`、`DivestmentRule` 无 JSON tag，按大驼峰建模 |
+| `/system-admin` | `pages/SystemAdmin.vue` | `/api/auth/admin/{users,audit}`、`/api/auth/{status,bootstrap}`、`/api/plugins*` 9 条 | admin 端点 403 原样展示错误态；`User`/`AuditLog` 无 JSON tag，页面只读白名单字段，不渲染 `PasswordHash` |
+| `/walkforward` | `pages/WalkForwardBatch.vue` | `/api/walkforward`、`/api/batch`、`/api/batch/{id}`、`/api/batch/{id}/export/json` | 共 4 条（台账原写 5 条是含两个已退役读端点）；csv 导出后端 501，页面不画 |
 
 ## 4. 三份契约（功能的边界就在这三份文件里）
 
