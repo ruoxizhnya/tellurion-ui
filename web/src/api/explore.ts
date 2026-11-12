@@ -116,6 +116,18 @@ export interface ExploreStatus {
   best_seq?: number | null
 }
 
+/**
+ * 回放顺序 = **按 seq 升序**，不是后端数组的插入顺序（B-01 断言 3）。
+ *
+ * 为什么不能直接信后端数组：契约只保证 attempts 是"尝试的集合"，没有保证顺序；
+ * 一旦服务端改成按完成时间追加（并发尝试下完成顺序 ≠ 发起顺序），回放会把
+ * "第 3 次" 排在 "第 1 次" 前面，读起来像实验步骤错乱。排序放在这里而不是
+ * `Explore.vue` 里，是为了让结果流、当前最优、裁决面板**读同一份列表**。
+ */
+export function orderAttemptsBySeq<T extends { seq: number }>(attempts: T[]): T[] {
+  return [...attempts].sort((a, b) => a.seq - b.seq)
+}
+
 export interface StartExploreRequest {
   description: string
   max_tries?: number

@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest'
-import { assessedProbability, weakestDimension, type Verdict } from './explore'
+import {
+  assessedProbability,
+  orderAttemptsBySeq,
+  weakestDimension,
+  type Verdict,
+} from './explore'
 
 /**
  * 综合概率与最弱一环的**唯一口径**（A-05）。
@@ -30,6 +35,19 @@ describe('assessedProbability', () => {
     expect(assessedProbability(v({ dimensions: {}, probability: 0 }))).toBeNull()
     expect(assessedProbability(null)).toBeNull()
     expect(assessedProbability(undefined)).toBeNull()
+  })
+})
+
+describe('orderAttemptsBySeq', () => {
+  it('按 seq 升序，而不是后端数组的插入顺序（B-01 断言 3）', () => {
+    const input = [{ seq: 3 }, { seq: 1 }, { seq: 2 }]
+    expect(orderAttemptsBySeq(input).map((a) => a.seq)).toEqual([1, 2, 3])
+  })
+
+  it('不改动入参数组（调用方仍在用原始引用）', () => {
+    const input = [{ seq: 2 }, { seq: 1 }]
+    orderAttemptsBySeq(input)
+    expect(input.map((a) => a.seq)).toEqual([2, 1])
   })
 })
 

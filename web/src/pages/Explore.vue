@@ -20,6 +20,7 @@ import {
 import {
   assessedProbability,
   getExploreStatus,
+  orderAttemptsBySeq,
   startExplore,
   stopExplore,
   type AttemptView,
@@ -63,7 +64,10 @@ const error = ref('')
 
 let timer: number | undefined
 
-const attempts = computed<AttemptView[]>(() => status.value?.attempts ?? [])
+const attempts = computed<AttemptView[]>(() =>
+  // B-01 断言 3：回放按 seq 升序，不随后端数组的插入顺序漂移。
+  orderAttemptsBySeq(status.value?.attempts ?? []),
+)
 const latest = computed<AttemptView | null>(() =>
   attempts.value.length ? attempts.value[attempts.value.length - 1] : null,
 )
