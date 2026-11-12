@@ -98,6 +98,7 @@ describe('导航标签与路由标题同源', () => {
     // B-04：策略库 / 编辑器 / Copilot 三页合一，页面级标题在 StrategyHub.vue；
     // 旧路径 `/strategy-builder`、`/copilot` 只是别名，不再是独立导航项。
     '/strategy-lab': 'pages/StrategyHub.vue',
+    '/paper-trading': 'pages/PaperTrading.vue',
     '/factors': 'pages/FactorCitation.vue',
     '/screener': 'pages/Screener.vue',
     '/data-sync': 'pages/DataSync.vue',

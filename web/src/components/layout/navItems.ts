@@ -13,6 +13,7 @@ import {
   SettingsOutline,
   ShieldCheckmarkOutline,
   StatsChartOutline,
+  SwapHorizontalOutline,
 } from '@vicons/ionicons5'
 
 export interface NavItem {
@@ -54,6 +55,7 @@ export const NAV_GROUPS: NavGroup[] = [
       { path: '/backtest/compare', label: '多策略对比', icon: markRaw(GitCompareOutline) },
       { path: '/walkforward', label: '走向与批量', icon: markRaw(StatsChartOutline) },
       { path: '/strategy-lab', label: '策略库', icon: markRaw(BeakerOutline) },
+      { path: '/paper-trading', label: '纸交易', icon: markRaw(SwapHorizontalOutline) },
       { path: '/factors', label: '因子研究', icon: markRaw(StatsChartOutline) },
       { path: '/screener', label: '选股与市场', icon: markRaw(SearchOutline) },
       { path: '/data-sync', label: '数据管理', icon: markRaw(CloudDownloadOutline) },

@@ -18,6 +18,7 @@ const ROUTES = [
   '/screener',
   '/explore',
   '/strategy-lab',
+  '/paper-trading',
   '/data-sync',
   '/evidence',
   '/factors',

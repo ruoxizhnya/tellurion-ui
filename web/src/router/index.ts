@@ -47,6 +47,14 @@ const routes: RouteRecordRaw[] = [
         meta: { title: '走向与批量' },
       },
       {
+        // A-09：纸交易观测台（F16）—— 订单/持仓/账户 + 紧急平仓；
+        // 外部信号流因 core 只有 `POST /api/signals` 写门而 disabled。
+        path: 'paper-trading',
+        name: 'paper-trading',
+        component: () => import('@/pages/PaperTrading.vue'),
+        meta: { title: '纸交易' },
+      },
+      {
         path: 'screener',
         name: 'screener',
         component: () => import('@/pages/Screener.vue'),

@@ -27,7 +27,7 @@ test.describe('⌘K 命令面板', () => {
 
     await page.keyboard.press('Control+k')
     await expect(page.getByTestId('command-palette')).toBeVisible()
-    await expect(page.locator('[data-testid^="command-item-"]')).toHaveCount(13)
+    await expect(page.locator('[data-testid^="command-item-"]')).toHaveCount(14)
 
     await page.keyboard.press('Escape')
     await expect(page.getByTestId('command-palette')).toHaveCount(0)
