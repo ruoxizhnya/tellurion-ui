@@ -24,6 +24,7 @@
 | UI-LEDGER-SELF-CONSISTENCY | 主台账「无开放项」自相矛盾 + 子台账过期项 + broker frontmatter 漂移 | 2026-11-12 | 见正文 | [原文](#UI-LEDGER-SELF-CONSISTENCY) |
 | UI-SCREENER-ERROR-STATE | 选股请求失败被渲染成「未找到符合条件的股票」（失败冒充空结果） | 2026-11-12 | 见正文 | [原文](#UI-SCREENER-ERROR-STATE) |
 | UI-E2E-A08-HARDCODE | a08 用例把票池总数写死 5908（真库 5580），数据一变就假绿 | 2026-11-12 | 见正文 | [原文](#UI-E2E-A08-HARDCODE) |
+| UI-E2E-HISTORY-EMPTY | dashboard 用例假定历史为空，而库里已有真实回测记录 | 2026-11-12 | 见正文 | [原文](#UI-E2E-HISTORY-EMPTY) |
 
 ---
 
@@ -741,3 +742,34 @@
   ```
   （破坏态只定向跑这一条：EXPECTED 是 902，屏上却是写死的 5580 —— 判据命中的正是「模板里有常量」。）逐字节还原后 `DataQualityPanel.vue` SHA256 回到 `EFA765DE…B6D58C5`，复跑 `3 passed (3.7s)`。
 - **⑥ 边界守住**：只改这一份 spec；组件与契约未动。
+
+---
+
+<a id="UI-E2E-HISTORY-EMPTY"></a>
+## UI-E2E-HISTORY-EMPTY · dashboard 用例假定历史为空，而库里已有真实回测记录 [P2] ✅ 完成（2026-11-12）
+
+- **① 目标**：把「控制台历史」这条 e2e 从「假定没有记录」改成「有记录时渲染得对」，并保留「空态不许出现」的反向断言。
+- **② 上下文（2026-11-11 全面审查连带发现，2026-11-12 复核）**：`e2e/tests/dashboard.spec.ts` 的 `history card section renders` 只有一条实质断言 —— `expect(card.getByText('暂无历史记录')).toBeVisible()`。它把「隔离环境」理解成「历史为空」，但历史实际来自 `GET /api/backtest/jobs`（`stores/backtest.ts` 的 `loadHistoryFromDB`），清 localStorage 只清本地缓存。库里已有完成记录（`c31722e0`、`2e1f22e9` 等），于是这条用例长期红 —— 而它红的方式很危险：任何人「修绿」它的最省事办法就是把断言删掉。
+- **③ 要求**：① 断言列表真的渲染出记录（`n-list-item` 数 > 0）；② 断言空态**不**出现；③ 断单行结构三件套 —— 标题含 `·`（票池 · 策略）、前缀有状态/方向标签、右侧有「查看」；④ 不放宽、不删除任何既有断言，不改成 `.skip`。
+- **④ 约束与非目标**：不改 `ConsoleHistory.vue`、不改 store 的数据来源；不为了稳定去 mock `backtest/jobs`（那会把「读真库」这条链路也一起测掉）。若将来库被清空，这条用例会红 —— 那是**正确的**红：它说明「有记录时能渲染」这个前提不再可验，应改判据而不是删断言。
+- **⑤ 验收**：同一条 dev 栈上 `1 passed`；破坏验证 = 让列表恒不渲染（`v-if="validHistory.length > 0"` → `v-if="false"`）⇒ 用例红，逐字节还原 ⇒ 绿。
+- **⑥ 边界**：`e2e/tests/dashboard.spec.ts` 的这一条用例。
+- **owner**：待定
+
+### 施工记录（2026-11-12）
+
+- **改动**：用例重命名为 `history card 渲染真实回测记录：存在记录时列表结构完整，空态不出现`；断言链改为 `rows.first()` 可见（15s 等异步读库）→ `rows.count() > 0` → `暂无历史记录` 计数为 0 → 首行 `.n-thing-header__title` 含 `·`、`.n-tag` 首个可见、「查看」按钮可见。原「卡片可见 + 标题含控制台历史」保留。
+- **验收（真实输出）**：
+  ```
+  Running 1 test using 1 worker
+  [1/1] [chromium] › tests\dashboard.spec.ts:153:7 › Dashboard Page (Vue SPA) › history card 渲染真实回测记录：存在记录时列表结构完整，空态不出现
+    1 passed (1.8s)
+  ```
+- **破坏验证（真实输出）**：`ConsoleHistory.vue` 的 `<n-list v-if="validHistory.length > 0">` 改成 `v-if="false"` ⇒
+  ```
+  Error: expect(locator).toBeVisible() failed
+  Locator: locator('.n-card').filter({ hasText: '控制台历史' }).first().locator('.n-list-item').first()
+  Expected: visible
+  ```
+  逐字节还原后 `ConsoleHistory.vue` SHA256 回到 `7BB5E483…AB01DF`，复跑 `1 passed (1.8s)`。
+- **⑥ 边界守住**：只改这一条用例；组件与 store 未动。

@@ -150,16 +150,31 @@ test.describe('Dashboard Page (Vue SPA)', () => {
     expect(text).toMatch(/(早上好|中午好|下午好|晚上好)/);
   });
 
-  test('history card section renders', async ({ page }) => {
+  test('history card 渲染真实回测记录：存在记录时列表结构完整，空态不出现', async ({ page }) => {
     await page.goto('/');
     await page.waitForLoadState('domcontentloaded');
     await page.waitForSelector('.dashboard-page', { timeout: 15000 });
 
-    // ConsoleHistory.vue 是 n-card(title=控制台历史)；隔离环境（清空 localStorage）下给显式空态。
+    // ConsoleHistory.vue 的数据来自 `GET /api/backtest/jobs`（backtest store 的
+    // loadHistoryFromDB），不是 localStorage —— 隔离环境清 localStorage 只清掉
+    // 本地缓存，库里已完成的回测仍会渲染。旧断言直接要「暂无历史记录」，前提早就
+    // 不成立（库里已有 c31722e0 / 2e1f22e9 等完成记录），现在改成判「有记录时
+    // 渲染得对」，同时保留空态**不许**出现的反向断言。
     const card = page.locator('.n-card').filter({ hasText: '控制台历史' }).first();
     await expect(card).toBeVisible();
     await expect(card).toContainText('控制台历史');
-    await expect(card.getByText('暂无历史记录')).toBeVisible();
+
+    const rows = card.locator('.n-list-item');
+    await expect(rows.first()).toBeVisible({ timeout: 15000 });
+    expect(await rows.count()).toBeGreaterThan(0);
+    await expect(card.getByText('暂无历史记录')).toHaveCount(0);
+
+    // 单行结构：标题是「票池 · 策略」，前缀有一枚状态标识，右侧有「查看」。
+    // 这三样任一缺失都说明这一行没渲染完，而不是"样式不同"。
+    const first = rows.first();
+    await expect(first.locator('.n-thing-header__title')).toContainText('·');
+    await expect(first.locator('.n-tag').first()).toBeVisible();
+    await expect(first.getByRole('button', { name: '查看' })).toBeVisible();
   });
 
   test('no naive-ui provider errors in console', async ({ page }) => {
