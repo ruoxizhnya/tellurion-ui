@@ -122,3 +122,277 @@ export async function getRequirements(): Promise<RequirementsResponse> {
 export async function getBoards(): Promise<BoardsResponse> {
   return api.get<BoardsResponse>('/api/compliance/boards')
 }
+
+// ============================================================
+// P2-5: 异常交易检测（POST /api/compliance/abnormal/run）
+//
+// 请求体里的 orders/trades 是**滑窗内的原始流水**（服务端不替你
+// 查库）；页面用 JSON 文本域录入，不臆造行编辑控件。
+// ============================================================
+
+/** 下单流水（pkg/compliance.OrderRecord）。 */
+export interface OrderRecord {
+  order_id: string
+  symbol: string
+  direction: string
+  quantity: number
+  price: number
+  filled_qty: number
+  avg_fill_price: number
+  status: string
+  submitted_at: string
+  updated_at: string
+}
+
+/** 成交流水（pkg/compliance.TradeRecord）。 */
+export interface TradeRecord {
+  trade_id: string
+  order_id: string
+  symbol: string
+  direction: string
+  quantity: number
+  price: number
+  fee: number
+  trade_time: string
+}
+
+export interface AbnormalAlertEvidence {
+  order_id?: string
+  trade_id?: string
+  symbol: string
+  direction: string
+  quantity: number
+  price: number
+  timestamp: string
+  cancelled?: boolean
+  note?: string
+}
+
+/**
+ * 异常告警。注意：后端 `compliance.AbnormalAlert` **没有 JSON tag**，
+ * 序列化后是 Go 字段名（大驼峰），因此这里按实际线上形状建模，
+ * 不要"顺手"改成 snake_case。
+ */
+export interface AbnormalAlert {
+  Category: string
+  AccountID: string
+  Symbol: string
+  DetectedAt: string
+  WindowFrom: string
+  WindowTo: string
+  Severity: string
+  Summary: string
+  Evidence?: AbnormalAlertEvidence[]
+}
+
+export interface AbnormalRunRequest {
+  account_id: string
+  orders: OrderRecord[]
+  trades: TradeRecord[]
+}
+
+export interface AbnormalRunResponse {
+  alerts: AbnormalAlert[]
+  count: number
+  run_at: string
+}
+
+/** 运行 6 类异常交易检测。 */
+export async function runAbnormalDetection(
+  req: AbnormalRunRequest,
+): Promise<AbnormalRunResponse> {
+  return api.post<AbnormalRunResponse>('/api/compliance/abnormal/run', req)
+}
+
+// ============================================================
+// P2-6: 大额交易日报（POST /api/compliance/report/daily）
+// ============================================================
+
+export interface LargeTradeEntry {
+  trade_id: string
+  order_id: string
+  account_id: string
+  symbol: string
+  direction: string
+  quantity: number
+  price: number
+  amount_cny: number
+  trade_time: string
+  flag: string
+  note?: string
+}
+
+export interface AccountCumulative {
+  account_id: string
+  total_amount_cny: number
+  trade_count: number
+  first_trade_at: string
+  last_trade_at: string
+}
+
+export interface LargeTradeReport {
+  schema_version: string
+  generated_at: string
+  trading_date: string
+  single_threshold_cny: number
+  cumulative_threshold_cny: number
+  total_trades: number
+  total_amount_cny: number
+  large_trades: LargeTradeEntry[]
+  cumulative_by_account: AccountCumulative[]
+  excluded_accounts?: string[]
+}
+
+export interface DailyReportRequest {
+  /** YYYY-MM-DD；省略时服务端用当天。 */
+  trading_date?: string
+  trades: TradeRecord[]
+}
+
+export interface DailyReportResponse {
+  path: string
+  report: LargeTradeReport
+}
+
+/** 生成当日大额交易报告（同时落盘，path 为服务端文件路径）。 */
+export async function generateDailyReport(
+  req: DailyReportRequest,
+): Promise<DailyReportResponse> {
+  return api.post<DailyReportResponse>('/api/compliance/report/daily', req)
+}
+
+// ============================================================
+// P2-7: 减持规则（4 条）
+// ============================================================
+
+export type ShareholderType =
+  | 'controlling'
+  | 'director'
+  | 'major_5pct'
+  | 'pre_ipo'
+  | 'placement'
+
+export type ReductionMethod = 'auction' | 'block' | 'agreement'
+
+export interface LockupPeriod {
+  start_at: string
+  end_at: string
+  reason: string
+  source: string
+  code: string
+  priority: number
+}
+
+export interface ShareholderProfile {
+  user_id: string
+  symbol: string
+  holder_type: ShareholderType
+  holdings_pct: number
+  holdings_share: number
+  acquired_at: string
+  lockups?: LockupPeriod[]
+  is_controller?: boolean
+  controller_id?: string
+}
+
+export interface ReductionPlan {
+  symbol: string
+  quantity: number
+  method: ReductionMethod
+  at: string
+}
+
+export interface Reduction {
+  symbol: string
+  method: ReductionMethod
+  quantity: number
+  at: string
+  price: number
+}
+
+export interface DivestmentCheckRequest {
+  profile: ShareholderProfile
+  plan: ReductionPlan
+  recent?: Reduction[]
+}
+
+export interface DivestmentCheckResult {
+  allowed: boolean
+  user_id: string
+  symbol: string
+  holder_type: ShareholderType
+  method: ReductionMethod
+  checked_at: string
+  requested_qty: number
+  approved_qty: number
+  window_start: string
+  window_end: string
+  window_cap_pct: number
+  window_used_pct: number
+  window_remain_pct: number
+  hold_pct_after: number
+  reasons: string[]
+  lockups: LockupPeriod[]
+  warnings: string[]
+}
+
+/**
+ * 减持前检查。HTTP 422 表示合规拒绝，但响应体仍是
+ * `DivestmentCheckResult`（与 checkSuitability 同口径：按 allowed 分支）。
+ */
+export async function checkDivestment(
+  req: DivestmentCheckRequest,
+): Promise<DivestmentCheckResult> {
+  return api.post<DivestmentCheckResult>('/api/compliance/divestment/check', req)
+}
+
+export interface OptionItem<T extends string> {
+  id: T
+  label: string
+}
+
+export interface HolderTypesResponse {
+  holder_types: OptionItem<ShareholderType>[]
+  count: number
+}
+
+export async function getDivestmentHolderTypes(): Promise<HolderTypesResponse> {
+  return api.get<HolderTypesResponse>('/api/compliance/divestment/holder-types')
+}
+
+export interface MethodsResponse {
+  methods: OptionItem<ReductionMethod>[]
+  count: number
+}
+
+export async function getDivestmentMethods(): Promise<MethodsResponse> {
+  return api.get<MethodsResponse>('/api/compliance/divestment/methods')
+}
+
+/**
+ * 规则快照。`DivestmentRule` 没有 JSON tag ⇒ 值是大驼峰字段名；
+ * 外层 map 的键是 5 类主体 id。
+ */
+export interface DivestmentRule {
+  HolderType: ShareholderType
+  AuctionWindowDays: number
+  AuctionWindowCapPct: number
+  BlockWindowDays: number
+  BlockWindowCapPct: number
+  AgreementMinPct: number
+  DirectorAnnualCapPct: number
+  PreIPOLockupMonths: number
+  PlacementAuctionMonths: number
+  PlacementStrategicMonths: number
+  PlacementControllerMonths: number
+  Source: string
+}
+
+export interface DivestmentRulesResponse {
+  rules: Record<string, DivestmentRule>
+  generated_at: string
+}
+
+export async function getDivestmentRules(): Promise<DivestmentRulesResponse> {
+  return api.get<DivestmentRulesResponse>('/api/compliance/divestment/rules')
+}

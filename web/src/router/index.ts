@@ -84,6 +84,13 @@ const routes: RouteRecordRaw[] = [
         meta: { title: '风险告警' },
       },
       {
+        // A-10 / F17：合规 9 条端点（适当性 / 异常交易 / 大额日报 / 减持）。
+        path: 'compliance',
+        name: 'compliance',
+        component: () => import('@/pages/Compliance.vue'),
+        meta: { title: '合规' },
+      },
+      {
         // ADR-022 §5: L0 evidence lookup — content_hash -> ingest.raw row.
         path: 'evidence',
         name: 'evidence',
