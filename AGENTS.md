@@ -51,7 +51,7 @@ npx playwright test          # AUD-61 已于 2026-11-10 收口，test.fixme 归�
 
 ## 5. 活在哪、文档在哪
 
-- **本仓台账**：`docs/TASKS.md`（唯一；**有开放项，逐条见 §一**，结案条目在 `docs/archive/`）。**没有单号别开工。**
+- **本仓主台账**：`docs/TASKS.md`（装**跨仓 / 运维 / 台账一致性**类单；**当前 §一 没有开放单**；结案条目在 `docs/archive/`）。**UX 重构功能项**的开放 / 挂起项在子台账 `docs/design/stitch_quantlab_ux_redesign/TASKS.md`（见下条），**不在主台账 §一**。**没有单号别开工。**
 - 文档导航：`docs/README.md`；边界与依赖：`docs/ARCHITECTURE.md`；决策：`docs/adr/`。
 - **前端设计系统**：`docs/design/index.md`（入口）；`docs/design/stitch_quantlab_ux_redesign/` 是重构子项台账（**装 UX 重构功能项**；跨仓 / 运维 / 台账一致性单在主台账 `docs/TASKS.md` §一，两处互不收录）。
 - 跨仓背景（只读）：`tellurion:docs/TASKS.md`。
