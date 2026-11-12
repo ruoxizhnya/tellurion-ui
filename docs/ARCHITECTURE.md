@@ -1,7 +1,7 @@
 ---
 status: active
-last-verified: 2026-11-11
-verified-by: 代码-文档对齐审计（2026-11-11）：AUD-61（e2e 与结构脱节）与 AUD-63（票池读数）均已收口，`test.fixme` 归零；本仓台账无开放项。此前：功能边界固化（三份契约：db / api / dataflow，2026-10-20）
+last-verified: 2026-11-12
+verified-by: 2026-11-12 台账自洽订正（`UI-LEDGER-SELF-CONSISTENCY`）：去掉上一版里「本仓台账没有未做的事」这句过期断言（本仓仍有开放项，见 `docs/TASKS.md` §一）。此前：代码-文档对齐审计（2026-11-11）：AUD-61（e2e 与结构脱节）与 AUD-63（票池读数）均已收口，`test.fixme` 归零。此前：功能边界固化（三份契约：db / api / dataflow，2026-10-20）
 ---
 
 # 架构 — tellurion-ui

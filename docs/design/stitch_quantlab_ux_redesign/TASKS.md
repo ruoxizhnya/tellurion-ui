@@ -1,7 +1,7 @@
 # 重构任务清单（TASKS）— Quant Lab UI
 
-> **版本**: 1.0（2026-10-13）
-> **定位**: 本文件是 UI 重构的**唯一任务台账**。每个任务用 **6 条可判定断言**描述（AGENTS.md §8.5.2 六字段的断言化：一条断言 = 一个可独立判真伪的事实，不是动作描述）。
+> **版本**: 1.0（2026-10-13；2026-11-12 订正台账关系与两处过期缺口，见文末「更新记录」）
+> **定位**: 本文件是 **UX 重构（分组 A/B 与 G 缺口）** 的任务台账，装的是功能项；**跨仓 / 运维 / 台账一致性**类单子在主台账 [`../../TASKS.md`](../../TASKS.md) §一，两处**互不收录**，也不互相索引开放项。判「本仓现在在做什么」只读主台账 §一，再按需下钻本文件。每个任务用 **6 条可判定断言**描述（AGENTS.md §8.5.2 六字段的断言化：一条断言 = 一个可独立判真伪的事实，不是动作描述）。
 > **依据**: [ANNOTATIONS.md](ANNOTATIONS.md)（逐控件处置）· [../user-flows.md](../user-flows.md) v1.1（需求基线）· [obsidian_precision_quant/DESIGN.md](obsidian_precision_quant/DESIGN.md) v2.0（token 真相源）· [ODR-066](../../../../tellurion-docs/docs/archive/odr/odr-066-stitch-design-review-and-boundary-ruling.md)（裁决）
 > **不双写**: 本清单**不**复制进 core 仓 `tellurion/docs/TASKS.md`。core 侧只登记后端缺口（G1–G8）自己的修复任务。
 
@@ -692,7 +692,9 @@ core SYNC-01 的验收第 1、2 条要防的形状，本任务不能替它绕过
 
 ## B-05 因子研究页的 AI 腿（F12）
 
-1. 因子列表 / IC / 十分位收益 / 计算触发全部走 `core` `/api/factor/*` 5 条端点 —— **这部分现在就能做**。
+> **⚠️ 2026-11-12 订正（原第 1 条前提已失效）**：原文写「因子列表 / IC / 十分位收益 / 计算触发全部走 `core` `/api/factor/*` 5 条端点 —— 这部分现在就能做」，该前提**不成立**：core 侧 `/api/factors/{name}` 已退役（返回 **410**），`/api/factor*` 的其余读面也不存在；IC / 十分位收益的真相源在 **analytics**（`ic_analysis` / `factor_returns`，归属见 ADR-037）。当前 UI 里唯一的 factor 端点消费是 [`web/src/api/factor.ts:20`](../../../web/src/api/factor.ts) 调已退役的 `/api/factors/{name}`，对应主台账 `UI-FACTOR-CITATION-RETIRED`。**B-05 维持挂起**，重开条件：analytics 提供因子列表 / IC / 分位收益读面，且主台账 `UI-FACTOR-CITATION-RETIRED` 收口。
+
+1. ~~因子列表 / IC / 十分位收益 / 计算触发全部走 `core` `/api/factor/*` 5 条端点 —— **这部分现在就能做**。~~（见上方订正：端点已退役 / 不存在，需等 analytics 读面）
 2. 六维裁决面板复用 A-05 组件，不自造。
 3. "变异建议 / 一键派生变异"依赖基因池与 ai 层，延后；界面画 disabled。
 4. 不实现 Polars / Parquet / L2 分区 / Barra CNE6（栈错位与幻觉项），grep 为 0。
@@ -722,7 +724,7 @@ core SYNC-01 的验收第 1、2 条要防的形状，本任务不能替它绕过
 | G6 | 采纳记录（决定 / 理由 / 概率快照） | B-02 / B-03 + **成功指标测量** | 无 |
 | G7 | `/api/explore/*`、`/api/tools/*` 未入 openapi 契约 | B-01~B-06 | 反代可用，契约待补 |
 | G8 | 行情侧推送 | — | **明确不做**（ODR-066 B3）；sync 作业 SSE 已存在 |
-| **G9** | **ai-service 镜像构建失败（`go mod tidy`）** | **整个分组 B** | 存量，2026-10-13 实测；解锁分组 B 的前置 |
+| **G9** | ~~ai-service 镜像构建失败（`go mod tidy`）~~ **已证伪（2026-11-12）**：ai-service 镜像可构建，本机全栈下 `ai-service` 在 `127.0.0.1:8086` healthy 运行 | ~~整个分组 B~~ 分组 B 的真实前置改为 **G7 契约缺口 + B-05 因子读面缺失 + promote 闸门 a 腿裁决** | **不再是缺口**；分组 B 仍挂起，但理由已换成上面三条 |
 
 ---
 
@@ -734,7 +736,7 @@ A-04                 （导航/顶栏统一 —— 后续所有新页都依赖�
 A-05 → A-06 → A-07   （三个横切组件，新页复用）
 A-08 → A-09          （两个"整屏重做"，收益最大）
 A-10 → A-11          （补屏与字体）
-分组 B               ← 等 G9 + G1~G7
+分组 B               ← 等 G7（契约）+ B-05（analytics 因子读面）+ promote a 腿裁决（G9 已证伪，不再拦路）
 ```
 
 ## 更新记录
@@ -747,3 +749,5 @@ A-10 → A-11          （补屏与字体）
 | 2026-10-14 (2) | **A-03 完成**（8 文件扫页 + 三组棘轮基线全部收缩为空 ⇒ 永久门禁）。三处新登缺陷：① `NavTiles` 的 `.tile-icon` 整条规则**从未生效**（scoped 属性打不到 `h()` 造的 VNode），改 `:deep()` 后图标才真的着色；② `class-name` 不是 NIcon 的 prop，会落成字面属性且**不报错**，正确写法是 `class`；③ visual 基线不可复现的三个根因里 **V-1（页头秒级时钟）已用 `page.clock.setFixedTime` 修掉**（刻意不用 `clock.install` —— 那会冻结待触发的 setTimeout，把依赖轮询的页面打成空态），**V-2 盲等 `waitForTimeout`、V-3 `data-sync` 渲染活后台状态（纳秒作业 ID / 限流告警）另立待办**，属测试设计决策，不在扫页里顺手改。教训：**颜色改动的验收不能只看 grep** —— 断言 1/2/8 全是静态的，三个缺陷里两个静态断言永远抓不到 |
 | 2026-10-14 (3) | **A-03 自审第二轮**，四处直接修掉：① §0.2.2 声称的"等重量 alpha"实测**并不等量**（`primary-soft` 只有旧值 0.78×）—— 根因是我把合成后的绝对亮度当成 ΔL 记进文档、且从上次扫描输出里挑数而没当场重跑，这是"估算当实测"第三次犯，已按实测重解为 0.10 / 0.16 并连带重生成 12 张基线；② `palette.test.ts` 抬头一直写着三方对账，实际**从不核对 DESIGN.md** —— 补守卫后上线即抓到 7 处真漂移（`--q-series-1..6` + `--q-ai-light` 实现里有、基准里从未立项）；③ `BacktestHistory` 三条 `.pnl-*` 规则**永不匹配**（模板不产该类名，真正用的是 `TradeTable.vue`），我扫页时机械替换的是死代码；④ 用脚本扫完 A-01~A-03 全部 10 个文件的 scoped 选择器，另抓到一处**谎报**：侧栏 Redis/Postgres 状态点写死 `online`、`.offline` 规则永不命中 ⇒ 界面恒久宣称基础设施在线却什么都没查，登记为 **A-04 断言 7**（并补断言 8：12 项归并到 9 项）。四个盲点同一条教训：**静态 grep 命中 ≠ 该样式在页面上起作用** |
 | 2026-10-14 (7) | **A-07 完成**（详见该节）。三件事值得单独记：① 三值口径收进 `utils/runStatus.ts` 一份表，**动了别人的断言** —— `BacktestEngine.test.ts` 与 `backtest-engine.spec.ts` 各有一条在断屏幕上出现原始 Code（`empty_universe`），那是被本任务**故意**改掉的行为，不是为了让测试变绿；② 断言 1 的机械腿第一版 `\bstatus\b` 是**假护栏**（注释就能骗绿），改成"必须真的读 status"并用探针文件双向破坏验证；③ 真数据抓到无效响应的实情：指标键是**缺席**而非零值，同时带着 `sortino_ratio=1.79e+308`（MaxFloat64）—— 我原先写在 `ConsoleHistory` 注释里的"invalid 保留数字（它算出来了）"因此**不准确**，已按实测改写。另：`pickJob` 被**共享限流**打成无关处变红，只给 429 加退避（其他码照旧响），同类 flake 按归属登记给 AUD-61；④ **更正我自己写过的假结论** —— A-06 台账那句"全量 playwright 116 passed / 0 failed"是把 `npx playwright test \| tail -30` 的输出当结论（管道给的是 `tail` 的退出码，截断又切掉了红清单）。不截断重跑实测 **61 failed / 116 passed / 2 skipped**（退出码 1），该 61 条经逐类取证（死选择器 / strict-mode 撞 async 默认态 / 纯 API 用例的指标假设 / 共享限流）**均非 A-06~A-07 引入**，已登记给 AUD-61 |
+
+| 2026-11-12 | **台账关系与两处过期缺口订正（主台账 `UI-LEDGER-SELF-CONSISTENCY`）**：① 抬头「本文件是 UI 重构的唯一任务台账」改成「装 UX 重构功能项，跨仓/运维/一致性单在主台账 §一，两处互不收录也不互相索引开放项」，消除与主台账的「唯一」之争（D13）；② **B-05** 第 1 条前提证伪并划掉 —— `core` 的 `/api/factors/{name}` 已退役为 **410**、其余 `/api/factor*` 读面不存在，IC/分位收益真相源在 analytics（ADR-037）；B-05 维持挂起并重写重开条件。当前 UI 唯一的 factor 端点消费仍是 `web/src/api/factor.ts:20`（对应主台账 `UI-FACTOR-CITATION-RETIRED`）；③ **G9**「ai-service 镜像构建失败」**证伪**：镜像可构建，本机全栈下 `ai-service` 在 `127.0.0.1:8086` healthy；分组 B 仍挂起，但拦路项换成 G7 契约缺口 + B-05 因子读面 + promote a 腿裁决。A 组判定与 B-01/B-02/B-06/G1~G4 的功能判定**未改**（按单约束只订正过期项）。 |

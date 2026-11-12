@@ -1,7 +1,7 @@
 ---
 status: active
-last-verified: 2026-11-11
-verified-by: 2026-11-11 全面审查 W7 台账立单（A5 授权）——新立 5 条六字段单（`UI-NPM-AUDIT-FIX` P0 / `UI-COPILOT-GATE-SURFACE` P1 / `UI-SCREEN-CONSUMER` P1 / `UI-HEALTHCHECK` P3 / `UI-LEDGER-SELF-CONSISTENCY` P3），证据坐标引 ODR-068/069/072/073（`tellurion-docs:docs/archive/odr/`）；同轮撤掉与下文两条 ⬜ 自相矛盾的「无开放项」boilerplate（W1-F6），并给既有 `UI-FACTOR-CITATION-RETIRED` 补审查确认指针（W2-F7，dedup 不新立单）。本轮只立单不修复；W5-F6 弱探针（`nc -z`）经实测属 strategy 非 analytics，见 ODR-072 订正注记。此前：2026-11-10 晚 AUD-61 收口——4 条视觉基线在原生三服务栈（真 PG 16.15 `127.0.0.1:5433` 库 `tellurion_ui_e2e` + data `:8081` + analysis `:8085` + vite `:5173`）上先取「实际截图」逐张按 DESIGN.md v2.0 核对（画布 `#090a0c` / 表面阶梯 / 三档文字 / `#2563eb` 填充按钮 / 4-8px 圆角 / Inter），再 `--update-snapshots` 重生成、整份 `visual-regression.spec.ts` 复跑 **12 passed**、`show-trace` 无红；破坏验证（临时 `addStyleTag` 隐藏 `.nav-tiles`）→ 该条 10932 px（2%）红，逐字节还原后 **1 passed**；`e2e/tests` 现存 `test.fixme` = **0**，AUD-61 由 🔶 翻 ✅。此前：2026-11-10 晚 AUD-61 ① 批数据腿收口——真 PG（库 `tellurion_e2e`）播 262 根 600519.SH 日线后，`POST /api/backtest` 真引擎 200 `completed`（13 笔交易），`backtest history` 用例删 fixme 后真栈 **1 passed**。此前：2026-11-10 AUD-63 收口补充——core `/api/market/index` 改为本地供数后「有读数」支真栈跑通，AUD-63 由 🔶 翻 ✅。此前：AUD-61 ① 批清 11 条 fixme（14 passed / EXIT=0）。
+last-verified: 2026-11-12
+verified-by: 2026-11-12 W7 收口批次（A4 授权）——`UI-NPM-AUDIT-FIX`（audit high 清零）/`UI-RUNBOOK-GAP`（新增 runbook）/`UI-SCREEN-CONSUMER`（count 5xx 降级）/`UI-HEALTHCHECK`（镜像 HEALTHCHECK）四单收口并归档，`UI-COPILOT-GATE-SURFACE` b 腿落地（a 腿待角色裁决）、`UI-LEDGER-SELF-CONSISTENCY` 订正 AGENTS.md / ARCHITECTURE.md 与子台账 B-05/G9 并写明主/子台账分工（已归档）；`UI-FACTOR-CITATION-RETIRED` 仍待产品裁决「下线抽屉」或「保留退役提示」。此前：2026-11-11 全面审查 W7 台账立单（A5 授权）——新立 5 条六字段单，证据坐标引 ODR-068/069/072/073（`tellurion-docs:docs/archive/odr/`）；同轮撤掉与下文两条 ⬜ 自相矛盾的「本仓当前没有未做项」boilerplate（W1-F6），并给既有 `UI-FACTOR-CITATION-RETIRED` 补审查确认指针（W2-F7，dedup 不新立单）。此前：2026-11-10 晚 AUD-61 收口——4 条视觉基线在原生三服务栈上逐张核对后重生成、整份 `visual-regression.spec.ts` 复跑 **12 passed**；破坏验证（隐藏 `.nav-tiles`）→ 2% 红，逐字节还原后复绿；`e2e/tests` 现存 `test.fixme` = **0**。此前：2026-11-10 AUD-63 收口补充——core `/api/market/index` 改为本地供数后「有读数」支真栈跑通。
 ---
 
 # TASKS — tellurion-ui 未完成项
@@ -12,7 +12,9 @@ verified-by: 2026-11-11 全面审查 W7 台账立单（A5 授权）——新立 
 
 ## 一、未做 / 挂起 / 外部依赖
 
-> 本节 = 既有 1 单（`UI-FACTOR-CITATION-RETIRED`）+ 全面审查 W7 新立 4 单中的 1 单（`UI-LEDGER-SELF-CONSISTENCY`）。W7 的 `UI-NPM-AUDIT-FIX`、`UI-RUNBOOK-GAP`、`UI-HEALTHCHECK`、`UI-SCREEN-CONSUMER` 已于 2026-11-12 收口并移入归档；`UI-COPILOT-GATE-SURFACE` 的 b 腿已落、a 腿待角色裁决，仍留在本节。**订正**：原「本仓当前无未做」 boilerplate 与下文 ⬜ 自相矛盾（W1-F6），已撤；主台账与子台账（`docs/design/stitch_quantlab_ux_redesign/`）的关系见 `UI-LEDGER-SELF-CONSISTENCY`。此前已收口单的正文与施工记录全部在归档文件里。
+> 本节 = 既有 1 单（`UI-FACTOR-CITATION-RETIRED`，待产品裁决）+ `UI-COPILOT-GATE-SURFACE` 的 a 腿（b 腿已落，a 腿待角色裁决）。全面审查 W7 新立的 5 单中，`UI-NPM-AUDIT-FIX`、`UI-RUNBOOK-GAP`、`UI-HEALTHCHECK`、`UI-SCREEN-CONSUMER`、`UI-LEDGER-SELF-CONSISTENCY` 已于 2026-11-12 收口并移入归档；此前已收口单的正文与施工记录同样全部在归档文件里。**本节有两单在等裁决（见各条「重开条件」），不是没人做。**
+>
+> **主/子台账分工（D13，2026-11-12 定）**：本文件装**跨仓 / 运维 / 一致性**类单，是「本仓现在在做什么」的唯一入口；`docs/design/stitch_quantlab_ux_redesign/TASKS.md` 装 **UX 重构功能项**（A/B 组与 G 缺口）。两处**互不收录、也不互相索引开放项**；某条单只出现在一处，出现第二处即视为重复立单。
 
 ### UI-FACTOR-CITATION-RETIRED · 因子引用抽屉仍在调用已退役的 `GET /api/factors/:name` [P2] ⬜
 
@@ -36,16 +38,6 @@ verified-by: 2026-11-11 全面审查 W7 台账立单（A5 授权）——新立 
 - **⑥ 边界**：本仓 `web/src/pages/Copilot.vue` + `docs/runbook.md`；a 腿的 core 反代归 `tellurion`、strategy 角色策略归 `tellurion-strategy`（须先裁）；后端闸门行为归 agent（不动）。
 - **owner**：待定
 - **施工记录（2026-11-12，b 腿）**：新增 `web/src/utils/copilot.ts` 作为终态文案的唯一口径（按 `build_error` 分 `promote_gate` / `sandbox_unavailable` / `asset_register` / `chain_trace` / `unknown`，**认不出就不补解释**），`Copilot.vue` 改用它；进度文案改为 `LLM → 静态检查 → 沙箱编译 → 资产登记 → 人工 promote 闸门（这条链不会自动跑回测）`。用例 `web/src/pages/Copilot.test.ts`（4 例，真组件 + 假后端）钉住三条判据。破坏验证：把失败分支改回「一律追加沙箱未启用」⇒ 2 例红（`闸门拦下` / `认不出原因`），逐字节还原后 4 例绿。**a 腿未做**：仍待裁「人 promote 走什么身份」（service token 签发 vs admin 代调），裁决前不给 strategy 加档、不落按钮。
-
-### UI-LEDGER-SELF-CONSISTENCY · 主台账「无开放项」自相矛盾 + 子台账过期项 + broker frontmatter 漂移 [P3] ⬜
-
-- **① 目标**：消除台账自相矛盾，让读者（含 agent）一眼判对本仓状态：主台账 boilerplate 与开放项一致、主/子台账关系写明、子台账过期项订正、broker frontmatter 不再描述已归档单。
-- **② 上下文（2026-11-11 全面审查 W1-F6 + D13，证据 ODR-068 `tellurion-docs:docs/archive/odr/odr-068-audit-wave1-product-governance.md`）**：① 本仓 `docs/TASKS.md:15` 原「无开放项」与两条 ⬜（`:17`/`:28`）矛盾（**本轮立单已撤该 boilerplate**，本单核验其余一致性）；② `AGENTS.md:54`「截至 2026-11-11 无开放项」同句须订正；③ 子台账 `docs/design/stitch_quantlab_ux_redesign/` 的 B-05（因子端点过期）/ G9（镜像构建失败已被证伪）过期项须订正，主台账「无开放项」与子台账开放 B/G 项的关系须写明（D13）；④ `tellurion-broker:docs/TASKS.md` frontmatter 仍描述已归档的 `SVC-BROKER-G3`（W1-F6）。W1-F7 观察窗功能缺口已 dedup 到子台账 B-01/B-02/B-06/G1~G4（**不新立功能单**，逐行证据补在施工时）。
-- **③ 要求**：① 订正 `AGENTS.md:54` 为「有开放项，见 docs/TASKS.md」；② 子台账 B-05/G9 过期项订正（B-05 因子端点已退役 410、G9 镜像构建失败前提已证伪），写明主/子台账关系（主台账装跨仓/运维单，子台账装 UX 重构功能项）；③ broker frontmatter 的 SVC-BROKER-G3 描述改指归档（跨仓，归本单同批）；④ 核验主台账不再有「无开放项」与 ⬜ 并存。
-- **④ 约束与非目标**：不新立 W1-F7 观察窗功能单（已 dedup 子台账）；不改子台账 B-01/B-02/B-06/G1~G4 的功能判定（只补证据，施工时做）；不动主任 2026-11-12 ✅ 条目（`UI-VISUAL-BASELINE`）；不改代码。
-- **⑤ 验收**：`grep -n "无开放项" docs/TASKS.md AGENTS.md` 不再与开放项矛盾；子台账 B-05/G9 有过期订正注记；broker frontmatter 指归档；主/子台账关系成文。
-- **⑥ 边界**：本仓 `docs/TASKS.md` + `AGENTS.md` + 子台账 + `tellurion-broker:docs/TASKS.md` frontmatter（跨仓同批）；观察窗功能实现归子台账 B/G（不在本单）。
-- **owner**：待定
 
 ## 二、跨仓指针（不在本仓，勿双写）
 

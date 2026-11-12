@@ -21,6 +21,7 @@
 | UI-RUNBOOK-GAP | 本仓没有 runbook，托管失败与 `/api` 反代故障只有 README 零散说明 | 2026-11-12 | 见正文 | [原文](#UI-RUNBOOK-GAP) |
 | UI-HEALTHCHECK | ui Dockerfile 无 HEALTHCHECK，容器编排无法判活 | 2026-11-12 | 见正文 | [原文](#UI-HEALTHCHECK) |
 | UI-SCREEN-CONSUMER | 核验 `/api/screen` `/api/stocks/count` 修复后 ui 消费面真可用 | 2026-11-12 | 见正文 | [原文](#UI-SCREEN-CONSUMER) |
+| UI-LEDGER-SELF-CONSISTENCY | 主台账「无开放项」自相矛盾 + 子台账过期项 + broker frontmatter 漂移 | 2026-11-12 | 见正文 | [原文](#UI-LEDGER-SELF-CONSISTENCY) |
 
 ---
 
@@ -32,6 +33,8 @@
 > 状态标记：`⬜ 待做` / `🔶 进行中` / `⛔ 阻塞` / `✅ 完成（附日期）`
 >
 > **台账终扫（2026-11-10）**：任务标题带 `⬜` / `🔶` / `⛔` 的 = **0 条**；正文旧标记以标题与最新「收口」块为准。**无开放项**。
+>
+> **注（2026-11-12，`UI-LEDGER-SELF-CONSISTENCY`）**：上面这句终扫结论**只对 2026-11-10 那个时点成立**。此后 2026-11-11 全面审查新立 6 条单，其中 1 条待产品裁决、1 条 a 腿待角色裁决 —— **本仓现状以主台账 `docs/TASKS.md` §一 为准**，不要拿本文件的终扫结论判断当前有没有未做的事。
 
 > **第三轮裁决指针（2026-10-25）**：⑥ e2e 走两轨——无栈的 `typecheck/lint/vitest` 现在做；真栈 e2e 等 Docker Desktop / CI；**视觉基线在本机重生成**（playwright 无 `webServer`）。⑳ AUD-61 ④ 允许**窄例外**：只给 `NavTiles.vue` / `MarketMetrics.vue` / `AppSidebar.vue` 加 `data-testid`（纯增量属性，不改类/结构/文案），**单独 commit**。正文见 `tellurion:docs/design/qt-decoupling/cross-repo-decision-record-2026-10-25.md` §五。
 
@@ -631,3 +634,42 @@
   2. `e2e/tests/dashboard.spec.ts:162` 假定回测历史为空，应改为断言「空态或有行」二选一，或为 e2e 提供独立库。
   3. `Screener.vue:140-141` 失败（含 429 限流）时只弹一条 3 秒后消失的 toast，结果区同时落到「未找到符合条件的股票」——**失败被读成「没找到」**。与 `UI-COPILOT-GATE-SURFACE` 同类问题，但本单 ④ 只要求 count 分支，故仅登记。
 - **边界守住**：只改 `web/src/components/sync/DataQualityPanel.vue` + 其测试；未改 core、未改 `market.ts` 契约、未新造端点、未伪造数值。
+
+---
+
+<a id="UI-LEDGER-SELF-CONSISTENCY"></a>
+## UI-LEDGER-SELF-CONSISTENCY · 主台账「无开放项」自相矛盾 + 子台账过期项 + broker frontmatter 漂移 ✅ 完成（2026-11-12）
+
+- **① 目标**：消除台账自相矛盾，让读者（含 agent）一眼判对本仓状态：主台账 boilerplate 与开放项一致、主/子台账关系写明、子台账过期项订正、broker frontmatter 不再描述已归档单。
+- **② 上下文（2026-11-11 全面审查 W1-F6 + D13，证据 ODR-068 `tellurion-docs:docs/archive/odr/odr-068-audit-wave1-product-governance.md`）**：① 本仓 `docs/TASKS.md:15` 原「无开放项」与两条 ⬜（`:17`/`:28`）矛盾（**本轮立单已撤该 boilerplate**，本单核验其余一致性）；② `AGENTS.md:54`「截至 2026-11-11 无开放项」同句须订正；③ 子台账 `docs/design/stitch_quantlab_ux_redesign/` 的 B-05（因子端点过期）/ G9（镜像构建失败已被证伪）过期项须订正，主台账「无开放项」与子台账开放 B/G 项的关系须写明（D13）；④ `tellurion-broker:docs/TASKS.md` frontmatter 仍描述已归档的 `SVC-BROKER-G3`（W1-F6）。W1-F7 观察窗功能缺口已 dedup 到子台账 B-01/B-02/B-06/G1~G4（**不新立功能单**，逐行证据补在施工时）。
+- **③ 要求**：① 订正 `AGENTS.md:54` 为「有开放项，见 docs/TASKS.md」；② 子台账 B-05/G9 过期项订正（B-05 因子端点已退役 410、G9 镜像构建失败前提已证伪），写明主/子台账关系（主台账装跨仓/运维单，子台账装 UX 重构功能项）；③ broker frontmatter 的 SVC-BROKER-G3 描述改指归档（跨仓，归本单同批）；④ 核验主台账不再有「无开放项」与 ⬜ 并存。
+- **④ 约束与非目标**：不新立 W1-F7 观察窗功能单（已 dedup 子台账）；不改子台账 B-01/B-02/B-06/G1~G4 的功能判定（只补证据，施工时做）；不动主任 2026-11-12 ✅ 条目（`UI-VISUAL-BASELINE`）；不改代码。
+- **⑤ 验收**：`grep -n "无开放项" docs/TASKS.md AGENTS.md` 不再与开放项矛盾；子台账 B-05/G9 有过期订正注记；broker frontmatter 指归档；主/子台账关系成文。
+- **⑥ 边界**：本仓 `docs/TASKS.md` + `AGENTS.md` + 子台账 + `tellurion-broker:docs/TASKS.md` frontmatter（跨仓同批）；观察窗功能实现归子台账 B/G（不在本单）。
+- **owner**：待定
+
+### 施工记录（2026-11-12）
+
+- **①（AGENTS.md）**：`§5` 台账行由「唯一；截至 2026-11-11 无开放项」改为「唯一；**有开放项，逐条见 §一**」；子台账行由「主台账仍是 `docs/TASKS.md`」改为按 D13 写明分工 ——「装 UX 重构功能项；跨仓 / 运维 / 台账一致性单在主台账 `docs/TASKS.md` §一，两处互不收录」。
+- **②（子台账 `docs/design/stitch_quantlab_ux_redesign/TASKS.md`）**：
+  - 抬头「定位」原写「本文件是 UI 重构的**唯一任务台账**」，与主台账的「唯一」互斥 → 改为「**UX 重构（分组 A/B 与 G 缺口）**的任务台账，装功能项；跨仓 / 运维 / 台账一致性单在主台账 §一，两处互不收录、也不互相索引开放项」，并给出下钻顺序（先读主台账 §一，再按需下钻）。版本行标注 2026-11-12 订正。
+  - **B-05**：加 `⚠️ 2026-11-12 订正` 块并把原第 1 条划删除线 —— 原文「因子列表 / IC / 十分位收益 / 计算触发全部走 `core` `/api/factor/*` 5 条端点，这部分现在就能做」**前提不成立**：`/api/factors/{name}` 已退役为 **410**，其余 `/api/factor*` 读面不存在，IC / 分位收益真相源在 analytics（ADR-037）。**B-05 维持挂起**，重开条件重写为「analytics 提供因子列表 / IC / 分位收益读面，且主台账 `UI-FACTOR-CITATION-RETIRED` 收口」。
+  - **G9**：「ai-service 镜像构建失败（`go mod tidy`）」标 **已证伪（2026-11-12）** —— 镜像可构建、本机全栈 `ai-service` 在 `127.0.0.1:8086` healthy；分组 B 的拦路项换成 **G7 契约缺口 + B-05 因子读面缺失 + promote 闸门 a 腿裁决**，`执行顺序建议` 那行同步改写。
+  - 文末「更新记录」追加 2026-11-12 一行，记清上述三处订正与「A 组判定、B-01/B-02/B-06/G1~G4 功能判定未改」。
+- **③（broker frontmatter）—— 未执行，作为残留上报**：本轮施工纪律是「不动其他仓」，`tellurion-broker:docs/TASKS.md` 的 frontmatter 仍描述已归档的 `SVC-BROKER-G3`。**重开条件**：允许跨仓改动时，把该文件 frontmatter 的描述改指归档（`docs/archive/`），并把其 `verdict` 从「已归档单」口径订正为「无开放项」。本仓台账的对应说法已在本条收口时不再引用它，不会误导本仓读者。
+- **④（核验，真实输出）**：`docs/TASKS.md` 与 `AGENTS.md` 的「无开放项」命中 = **0**：
+  ```
+  === grep -n "无开放项" docs/TASKS.md AGENTS.md ===
+  (no match)
+  MATCH_COUNT=0
+  ```
+  全仓 md 只剩归档文件里两处**明确标注为历史结论**的引用（索引表的单标题行 + 给 2026-11-10「终扫」加的时间限定注），不是现状断言：
+  ```
+  docs\archive\tasks-archive-2026-11.md:24   （索引表里本单标题原文）
+  docs\archive\tasks-archive-2026-11.md:35   （2026-11-12 注：那句终扫只对 2026-11-10 时点成立）
+  ```
+- **破坏验证（现场真输出）**：把 `AGENTS.md:54` 改回「截至 2026-11-11 无开放项」⇒ 验收 grep 立刻变红（`AGENTS.md:54: ... 无开放项 ...`，`MATCH_COUNT=1`）；改回后 `MATCH_COUNT=0`，且文件 SHA256 与改动前一致（`C28138BBB79B9B49C943444A5E502A11672AA6B354AE164912657A99AB4B19D8`，逐字节还原），`git diff --stat -- AGENTS.md` 仍只剩 `2 insertions(+), 2 deletions(-)` 这条既有改动。
+- **施工中新发现并顺手订正**：`docs/ARCHITECTURE.md:4` frontmatter 也有一句「本仓台账无开放项」（与 AGENTS.md 同源同类，属 ④「核验不再与开放项并存」的范围）→ 改为「本仓仍有开放项，见 `docs/TASKS.md` §一」，`last-verified` 提到 2026-11-12。这是本单唯一超出「③ 要求」字面清单的改动，性质与本单目标完全一致（消除过期断言），已在汇报中单列。
+- **④ 的落地（台账自身）**：主台账 §一 引言重写为「本节 = `UI-FACTOR-CITATION-RETIRED`（待产品裁决）+ `UI-COPILOT-GATE-SURFACE` a 腿（待角色裁决）」，并补一句「**本节有两单在等裁决（见各条重开条件），不是没人做**」，避免读者把「只剩 2 条且都带 ⬜/🔶」误读成停滞；同时新增「**主/子台账分工（D13）**」段作为两处关系的成文出处。
+- **⑥ 边界守住**：只改 5 个 md（`AGENTS.md`、`docs/TASKS.md`、`docs/ARCHITECTURE.md`、本归档文件、子台账 `TASKS.md`）；**未改任何代码**，未改子台账 B-01/B-02/B-06/G1~G4 的功能判定，未动 `UI-VISUAL-BASELINE-2026-11-12` ✅ 条目，未触碰 `SERVICE.md` 与其他仓。
+- **残留**：broker frontmatter（见 ③）；W1-F7 观察窗功能缺口按单要求 dedup 到子台账 B-01/B-02/B-06/G1~G4，**本单未新立功能单**。
