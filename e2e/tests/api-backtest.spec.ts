@@ -181,8 +181,35 @@ test.describe('Backend API — Backtest Result Persistence', () => {
     expect(typeof report.total_return).toBe('number');
     expect(typeof report.annual_return).toBe('number');
     expect(typeof report.sharpe_ratio).toBe('number');
-    expect(typeof report.max_drawdown).toBe('number');
-    expect(typeof report.calmar_ratio).toBe('number');
+    // max_drawdown / calmar_ratio 在契约里同样带 `omitempty`
+    // （tellurion-contracts:engine/contracts.go），权益全程不回撤时两者都是 0、
+    // 序列化缺席是契约行为。但缺席不等于「有没有都行」：必须用权益曲线证明峰值
+    // 回撤确实是 0，不能把断言放宽成接受任意缺席。
+    const peakDrawdown = (curve: Array<{ total_value: number }>) => {
+      let peak = 0;
+      let worst = 0;
+      for (const point of curve) {
+        peak = Math.max(peak, point.total_value);
+        if (peak > 0) worst = Math.max(worst, (peak - point.total_value) / peak);
+      }
+      return worst;
+    };
+
+    expect(Array.isArray(report.portfolio_values)).toBeTruthy();
+    expect(report.portfolio_values.length).toBeGreaterThan(0);
+
+    if (report.max_drawdown !== undefined) {
+      expect(typeof report.max_drawdown).toBe('number');
+    } else {
+      expect(peakDrawdown(report.portfolio_values)).toBe(0);
+    }
+
+    if (report.calmar_ratio !== undefined) {
+      expect(typeof report.calmar_ratio).toBe('number');
+    } else {
+      // calmar = 年化收益 / 最大回撤；零回撤时分母为 0，契约里缺席。
+      expect(peakDrawdown(report.portfolio_values)).toBe(0);
+    }
     expect(typeof report.total_trades).toBe('number');
 
     // win_rate 在契约里带 `json:"win_rate,omitempty"`
