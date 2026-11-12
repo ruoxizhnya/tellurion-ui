@@ -39,7 +39,13 @@ docker run --rm -i -v "$PWD/e2e/fixtures:/fx:ro" -e PGPASSWORD=postgres postgres
 ```
 
 夹具内容：`600519.SH` / `600000.SH` / `600036.SH` 的日线 531 行
-（2023-10-09 .. 2024-06-28）、三只票的 `market.stocks`、SSE 交易日历 264 行。
+（2023-10-09 .. 2024-06-28）、三只票的 `market.stocks`、SSE 交易日历 297 行
+（2023-10-09 .. 2024-07-31）。
+
+日历比行情多出一个月是**刻意的**：日历是参考表，生产部署里它覆盖到同步日之后。
+core 的 `verifyCalendarCoverage` 会向 `end_date` 之后探 30 个自然日判断覆盖边界，
+日历若停在行情末日，`end_date` 落在这个窗口里的回测会被误判成「日历没同步」而 409
+（F3，2026-11-13）。补日历而不是改用例日期——后者等于把假约束写进用例。
 真实链路仍有一条 opt-in 测试（`tellurion-data`：
 `TUSHARE_ONLINE=1 go test ./internal/transport/tushare -run TestLive`），
 **不设为 CI 必过**。

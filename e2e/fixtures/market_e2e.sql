@@ -7,8 +7,17 @@
 --   market.ohlcv_daily_qfq  531 = 600000.SH / 600519.SH / 600036.SH × 177 个交易日
 --                             区间 2023-10-09 .. 2024-06-28，data_type=ohlcv_daily
 --   market.stocks             3 = 上述三只（全市场 5580 行的子集，仅保留夹具标的）
---   market.trading_calendar 264 = SSE，2023-10-09 .. 2024-06-28（同步结果
---                              274 行 = 2023-10-01 .. 2024-06-30 中按区间裁剪）
+--   market.trading_calendar 297 = SSE，2023-10-09 .. 2024-07-31（同步结果
+--                              274 行 = 2023-10-01 .. 2024-06-30 中按区间裁剪，
+--                              再补 33 行到 2024-07-31，见下）
+--
+-- 日历尾部为什么要补到 2024-07-31（F3，2026-11-13）：
+--   交易日历是参考表，生产部署里它覆盖到同步日之后，不会在 OHLCV 窗口末尾截断。
+--   core 的 verifyCalendarCoverage（pkg/backtest/engine.go）会向 end_date 之后探
+--   30 个自然日判断「日历是否覆盖到边界」，探测为空即 DATA_QUALITY 409。夹具停在
+--   2024-06-28 时，任何 end_date 落在最后一个月的回测都会被误判成「日历没同步」。
+--   补到 2024-07-31 正好覆盖 end_date=2024-06-30 的 30 日探测；2024 年 7 月无 A 股
+--   节假日，工作日即交易日。没有改用例日期，也没有放宽断言。
 --
 -- 用途：e2e 专用库（DATABASE_NAME=tellurion_e2e）装载后，读面/回测/选股用例
 -- 不依赖 Tushare 配额，也不再靠「库里恰好有数据」。真实链路保留 opt-in 测试：
@@ -22,7 +31,7 @@ BEGIN;
 
 DELETE FROM market.ohlcv_daily_qfq WHERE symbol IN ('600000.SH','600519.SH','600036.SH');
 DELETE FROM market.stocks WHERE symbol IN ('600000.SH','600519.SH','600036.SH');
-DELETE FROM market.trading_calendar WHERE exchange = 'SSE' AND trade_date BETWEEN DATE '2023-10-09' AND DATE '2024-06-28';
+DELETE FROM market.trading_calendar WHERE exchange = 'SSE' AND trade_date BETWEEN DATE '2023-10-09' AND DATE '2024-07-31';
 
 -- ── market.stocks ────────────────────────────────────────────────
 INSERT INTO market.stocks (symbol,name,exchange,industry,market_cap,list_date,delist_date,status,created_at,updated_at) VALUES ('600000.SH','浦发银行','SSE','银行',NULL,'1999-11-10',NULL,'active','2026-11-11 18:27:04.003855+01','2026-11-11 18:27:04.003855+01');
@@ -294,6 +303,39 @@ INSERT INTO market.trading_calendar (trade_date,exchange,is_trading_day) VALUES 
 INSERT INTO market.trading_calendar (trade_date,exchange,is_trading_day) VALUES ('2024-06-26','SSE','t');
 INSERT INTO market.trading_calendar (trade_date,exchange,is_trading_day) VALUES ('2024-06-27','SSE','t');
 INSERT INTO market.trading_calendar (trade_date,exchange,is_trading_day) VALUES ('2024-06-28','SSE','t');
+INSERT INTO market.trading_calendar (trade_date,exchange,is_trading_day) VALUES ('2024-06-29','SSE','f');
+INSERT INTO market.trading_calendar (trade_date,exchange,is_trading_day) VALUES ('2024-06-30','SSE','f');
+INSERT INTO market.trading_calendar (trade_date,exchange,is_trading_day) VALUES ('2024-07-01','SSE','t');
+INSERT INTO market.trading_calendar (trade_date,exchange,is_trading_day) VALUES ('2024-07-02','SSE','t');
+INSERT INTO market.trading_calendar (trade_date,exchange,is_trading_day) VALUES ('2024-07-03','SSE','t');
+INSERT INTO market.trading_calendar (trade_date,exchange,is_trading_day) VALUES ('2024-07-04','SSE','t');
+INSERT INTO market.trading_calendar (trade_date,exchange,is_trading_day) VALUES ('2024-07-05','SSE','t');
+INSERT INTO market.trading_calendar (trade_date,exchange,is_trading_day) VALUES ('2024-07-06','SSE','f');
+INSERT INTO market.trading_calendar (trade_date,exchange,is_trading_day) VALUES ('2024-07-07','SSE','f');
+INSERT INTO market.trading_calendar (trade_date,exchange,is_trading_day) VALUES ('2024-07-08','SSE','t');
+INSERT INTO market.trading_calendar (trade_date,exchange,is_trading_day) VALUES ('2024-07-09','SSE','t');
+INSERT INTO market.trading_calendar (trade_date,exchange,is_trading_day) VALUES ('2024-07-10','SSE','t');
+INSERT INTO market.trading_calendar (trade_date,exchange,is_trading_day) VALUES ('2024-07-11','SSE','t');
+INSERT INTO market.trading_calendar (trade_date,exchange,is_trading_day) VALUES ('2024-07-12','SSE','t');
+INSERT INTO market.trading_calendar (trade_date,exchange,is_trading_day) VALUES ('2024-07-13','SSE','f');
+INSERT INTO market.trading_calendar (trade_date,exchange,is_trading_day) VALUES ('2024-07-14','SSE','f');
+INSERT INTO market.trading_calendar (trade_date,exchange,is_trading_day) VALUES ('2024-07-15','SSE','t');
+INSERT INTO market.trading_calendar (trade_date,exchange,is_trading_day) VALUES ('2024-07-16','SSE','t');
+INSERT INTO market.trading_calendar (trade_date,exchange,is_trading_day) VALUES ('2024-07-17','SSE','t');
+INSERT INTO market.trading_calendar (trade_date,exchange,is_trading_day) VALUES ('2024-07-18','SSE','t');
+INSERT INTO market.trading_calendar (trade_date,exchange,is_trading_day) VALUES ('2024-07-19','SSE','t');
+INSERT INTO market.trading_calendar (trade_date,exchange,is_trading_day) VALUES ('2024-07-20','SSE','f');
+INSERT INTO market.trading_calendar (trade_date,exchange,is_trading_day) VALUES ('2024-07-21','SSE','f');
+INSERT INTO market.trading_calendar (trade_date,exchange,is_trading_day) VALUES ('2024-07-22','SSE','t');
+INSERT INTO market.trading_calendar (trade_date,exchange,is_trading_day) VALUES ('2024-07-23','SSE','t');
+INSERT INTO market.trading_calendar (trade_date,exchange,is_trading_day) VALUES ('2024-07-24','SSE','t');
+INSERT INTO market.trading_calendar (trade_date,exchange,is_trading_day) VALUES ('2024-07-25','SSE','t');
+INSERT INTO market.trading_calendar (trade_date,exchange,is_trading_day) VALUES ('2024-07-26','SSE','t');
+INSERT INTO market.trading_calendar (trade_date,exchange,is_trading_day) VALUES ('2024-07-27','SSE','f');
+INSERT INTO market.trading_calendar (trade_date,exchange,is_trading_day) VALUES ('2024-07-28','SSE','f');
+INSERT INTO market.trading_calendar (trade_date,exchange,is_trading_day) VALUES ('2024-07-29','SSE','t');
+INSERT INTO market.trading_calendar (trade_date,exchange,is_trading_day) VALUES ('2024-07-30','SSE','t');
+INSERT INTO market.trading_calendar (trade_date,exchange,is_trading_day) VALUES ('2024-07-31','SSE','t');
 
 -- ── market.ohlcv_daily_qfq ───────────────────────────────────────
 INSERT INTO market.ohlcv_daily_qfq (symbol,trade_date,open,high,low,close,volume,turnover,trade_days,created_at,visible_at) VALUES ('600000.SH','2023-10-09','7.08','7.08','7','7.03','27763130','195214392','0','2026-11-11 18:26:37.965793+01','2023-10-09 02:00:00+02');
