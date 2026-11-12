@@ -54,7 +54,7 @@
       >
         <n-space vertical>
           <n-text depth="3" style="font-size: 12px">
-            方向只作用于**后续**尝试，已跑完的 #{{ seq }} 不会被追溯改写。
+            方向只作用于「后续」尝试，已跑完的 #{{ seq }} 不会被追溯改写。
           </n-text>
           <n-input
             v-model:value="direction"

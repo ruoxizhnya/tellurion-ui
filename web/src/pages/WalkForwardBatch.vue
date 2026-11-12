@@ -10,7 +10,7 @@
       <n-tab-pane name="walkforward" tab="走向验证">
         <n-card title="滚动分段回测（纯计算，不落库）" embedded>
           <n-alert type="default" :bordered="false" class="hint">
-            REV-20：train / test 两段用**同一策略、同一参数**各跑一段，报告是
+            REV-20：train / test 两段用「同一策略、同一参数」各跑一段，报告是
             「分时段稳健性概览」，不是参数优化的过拟合度量。
           </n-alert>
           <n-grid :cols="3" :x-gap="12">
