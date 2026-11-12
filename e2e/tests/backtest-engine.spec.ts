@@ -441,7 +441,12 @@ test.describe('Backtest Engine — Complete Workflow Tests', () => {
 
   test('responsive layout on different viewport sizes', async ({ page }) => {
     await page.setViewportSize({ width: 768, height: 1024 });
-    await navigateToBacktest(page);
+    // 768px 侧栏折叠成图标轨（`.nav-item` 的文字节点不渲染），按文本点侧栏
+    // 在这条视口下天然点不到——那是布局事实，不是导航坏了。这条用例测的是
+    // 768 下的布局，直接深链进路由，把导航方式从被测对象里摘出去。
+    await page.goto('/backtest');
+    await page.waitForLoadState('domcontentloaded');
+    await page.waitForSelector('.bt-page', { timeout: 20000 });
 
     const btPage = page.locator('.bt-page');
     await expect(btPage).toBeVisible();
