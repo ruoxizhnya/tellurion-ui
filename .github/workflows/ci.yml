@@ -40,6 +40,12 @@ jobs:
       - name: Test
         run: npm test
 
+      # X-CI-RACE-STATICCHECK（ui 腿）：生产构建门。typecheck 是 `vue-tsc --noEmit`，
+      # 与 `build` 里的 `vue-tsc -b` + `vite build` 不是同一条路径——只有这里能
+      # 挡住「类型过但打包炸」（缺资源、入口/别名错、体积超限等）。
+      - name: Build
+        run: npm run build
+
   e2e:
     name: Playwright e2e (smoke)
     runs-on: ubuntu-latest

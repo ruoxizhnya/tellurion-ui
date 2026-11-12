@@ -27,6 +27,7 @@
 | UI-E2E-HISTORY-EMPTY | dashboard 用例假定历史为空，而库里已有真实回测记录 | 2026-11-12 | 见正文 | [原文](#UI-E2E-HISTORY-EMPTY) |
 | UI-FACTOR-CITATION-RETIRED | 因子引用抽屉死调已退役的 `GET /api/factors/:name`，现改为退役说明页 | 2026-11-12 | 见正文 | [原文](#UI-FACTOR-CITATION-RETIRED) |
 | UI-COPILOT-GATE-SURFACE | Copilot 把 promote 闸门拦下误报成「沙箱未启用」，且无人类 promote 操作面（b 腿文案 + a 腿放行按钮） | 2026-11-12 | 见正文 | [原文](#UI-COPILOT-GATE-SURFACE) |
+| X-CI-RACE-STATICCHECK（ui 腿） | CI 在前端 job 补生产构建门 `npm run build` | 2026-11-12 | 见本条 | [施工记录](#X-CI-RACE-STATICCHECK-ui) |
 
 ---
 
@@ -864,3 +865,14 @@
 
 两条同时满足后，在原生三服务栈上补一条 e2e：登录用户点「放行这个版本」→ 200 → `GET .../promotions` 出现一行 `X-Actor` = 该用户名。若只想验拒绝面（401/403/409），在 dev 栈即可跑，不需要编译器。
 
+
+---
+
+<a id="X-CI-RACE-STATICCHECK-ui"></a>
+### X-CI-RACE-STATICCHECK（ui 腿）· CI 补生产构建门（跨仓伞 `tellurion:X-CI-RACE-STATICCHECK`）
+
+> **施工记录（2026-11-12）**：
+> - **改了什么**：`.github/workflows/ci.yml` 的前端 job 在 `Test` 之后新增 `Build` 步（`npm run build`）。**不新增** `-race` / `staticcheck`——本仓无 Go 代码，这两门由 Go 仓各自承担；ui 腿的对应物是「打包路径真跑一遍」。
+> - **为什么不靠 `typecheck`**：`typecheck` 是 `vue-tsc --noEmit`，`build` 是 `vue-tsc -b && vite build`，不是同一条路径。前者挡不住打包期才会暴露的问题（入口/别名解析、静态资源缺失、chunk 输出异常等）。
+> - **验收（真实执行）**：`npm run build` 在 `web/` 下退出码 0，`vite build` 6.96s 完成，产物正常输出到 `dist/`（最大 chunk `index` 368.77 kB / gzip 115.42 kB）。
+> - **边界**：只加一步构建门；不动 lint/typecheck/test 现有口径，不动 e2e job（其「无后端栈故不跑用例」的现状与注释保持原样）。
