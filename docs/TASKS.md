@@ -37,7 +37,7 @@ verified-by: 2026-11-11 全面审查 W7 台账立单（A5 授权）——新立 
 - **owner**：待定
 - **重开条件**：出现第二次「页面故障但无法判断是前端还是后端」的排障经历，或接手人变更。
 
-### UI-COPILOT-GATE-SURFACE · Copilot 把 promote 闸门拦下误报成「沙箱未启用」，且无人类 promote 操作面 [P1] ⬜
+### UI-COPILOT-GATE-SURFACE · Copilot 把 promote 闸门拦下误报成「沙箱未启用」，且无人类 promote 操作面 [P1] 🔶（b 腿 ✅ 2026-11-12；a 腿待角色裁决）
 
 - **① 目标**：让主任在 Copilot 看到的终态文案**诚实**（闸门拦下 ≠ 沙箱未启用），并有一条**可操作的人工 promote 路径**，使 ADR-023「人是闸门」在产品面落地，而不是呈现为「永远失败」。
 - **② 上下文（2026-11-11 全面审查 W6-F2 ★H，证据 ODR-073 `tellurion-docs:docs/archive/odr/odr-073-audit-wave6-service-repos-frontend.md`；裁决 D3=b 先行 + a 立案）**：后端闸门 fail-closed **正确**（agent `copilot.go:666-669` / `stopAtGate:708-709` 终态 `sandbox_rejected`，`api-schema.md:92/:168-172` 诚实成文四成因；`generated`/`backtest_complete` 是契约刻意保留的预留态）。缺口在 UI 与人类侧：① `web/src/pages/Copilot.vue:89-92` 对**一切** `sandbox_rejected` 追加「（沙箱未启用：需配置 copilot.working_dir…）」——对今天占主导的**闸门拦下**路径是假话；② `:71` 进度文案「生成中（LLM → 沙箱编译 → **回测**）」承诺不存在的回测跳（agent 今天不跑回测，`copilot.go:660`）；③ `:78-84` 仍处理 `backtest_complete`（白名单保留是契约要求，但进度文案撒谎）；④ 全 ui 仓 grep `promote|promote_gate|blocked_reason` **零命中**，唯一 promote 端点 = strategy `POST .../versions/{hash}/promote` 只认 `service` + `X-Actor`，主任以管理员身份调也不通。
@@ -46,6 +46,7 @@ verified-by: 2026-11-11 全面审查 W7 台账立单（A5 授权）——新立 
 - **⑤ 验收**：b 腿——组件测试断言「闸门拦下」终态文案不含「沙箱未启用」、含「待人工 promote」；runbook 有成文 curl promote 步骤且真栈跑通一次（A4 授权）；破坏验证 = 把文案改回一律「沙箱未启用」⇒ 用例红，还原复绿。a 腿——角色裁决落定后另验收（按钮经反代 promote 成功 + 审计留痕）。`npm run build`/`test` 绿。
 - **⑥ 边界**：本仓 `web/src/pages/Copilot.vue` + `docs/runbook.md`；a 腿的 core 反代归 `tellurion`、strategy 角色策略归 `tellurion-strategy`（须先裁）；后端闸门行为归 agent（不动）。
 - **owner**：待定
+- **施工记录（2026-11-12，b 腿）**：新增 `web/src/utils/copilot.ts` 作为终态文案的唯一口径（按 `build_error` 分 `promote_gate` / `sandbox_unavailable` / `asset_register` / `chain_trace` / `unknown`，**认不出就不补解释**），`Copilot.vue` 改用它；进度文案改为 `LLM → 静态检查 → 沙箱编译 → 资产登记 → 人工 promote 闸门（这条链不会自动跑回测）`。用例 `web/src/pages/Copilot.test.ts`（4 例，真组件 + 假后端）钉住三条判据。破坏验证：把失败分支改回「一律追加沙箱未启用」⇒ 2 例红（`闸门拦下` / `认不出原因`），逐字节还原后 4 例绿。**a 腿未做**：仍待裁「人 promote 走什么身份」（service token 签发 vs admin 代调），裁决前不给 strategy 加档、不落按钮。
 
 ### UI-SCREEN-CONSUMER · 核验 `/api/screen` `/api/stocks/count` 修复后 ui 消费面真可用 [P1] ⬜
 

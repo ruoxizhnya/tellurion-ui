@@ -44,6 +44,7 @@ import { ref, nextTick } from 'vue'
 import { NCard, NInput, NButton, useMessage } from 'naive-ui'
 import { generateStrategy, pollCopilotJob } from '@/api/copilot'
 import { backtestValidityNote } from '@/utils/runStatus'
+import { copilotAcceptedText, describeCopilotRejection } from '@/utils/copilot'
 
 const message = useMessage()
 const inputText = ref('')
@@ -68,7 +69,7 @@ async function sendMessage() {
     // ① 修复：请求字段是 description（此前发 {prompt}，输入被静默吞掉）。
     const started = await generateStrategy({ description: text })
     const lastMsg = messages.value[messages.value.length - 1]
-    lastMsg.content = `已受理（job ${started.job_id.slice(0, 8)}…），生成中（LLM → 沙箱编译 → 回测）...`
+    lastMsg.content = copilotAcceptedText(started.job_id)
     await nextTick()
     scrollToBottom()
 
@@ -83,12 +84,12 @@ async function sendMessage() {
       lastMsg.code = job.generated_code
       lastMsg.language = 'go'
     } else {
-      // 失败终态：如实点名状态与原因。
-      const why = job.build_error || job.backtest_error || ''
-      lastMsg.content = `生成未成功（${job.status}）${why ? `：${why}` : ''}`
-      if (job.status === 'sandbox_rejected') {
-        lastMsg.content +=
-          '\n（沙箱未启用：需在后端配置 copilot.working_dir 后，AI 生成的代码才会真正编译验证）'
+      // 失败终态：如实点名状态与原因。同一个 sandbox_rejected 覆盖四种不同
+      // 原因，补的解释必须只对着**认出来的那一种**说（见 utils/copilot.ts）。
+      const rejected = describeCopilotRejection(job)
+      lastMsg.content = rejected.message
+      if (rejected.hint) {
+        lastMsg.content += `\n（${rejected.hint}）`
       }
       // build_failed 时通常仍有代码可审阅——展示出来而不是只报错。
       if (job.generated_code) {
