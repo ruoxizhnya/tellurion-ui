@@ -77,6 +77,13 @@ const routes: RouteRecordRaw[] = [
         meta: { title: '探索观察' },
       },
       {
+        // B-02 审阅台：按平台宽度 × 因果强度排序候选（近似），并写采纳裁决（G6）。
+        path: 'review',
+        name: 'review',
+        component: () => import('@/pages/ReviewDesk.vue'),
+        meta: { title: '审阅台' },
+      },
+      {
         path: 'data-sync',
         name: 'data-sync',
         component: () => import('@/pages/DataSync.vue'),

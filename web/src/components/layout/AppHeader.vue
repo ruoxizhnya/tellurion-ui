@@ -16,8 +16,9 @@
           {{ currentTime }}
         </n-tag>
         <!--
-          A-04 断言 5：「待审阅 N」的 N 来自 core 聚合读面（G1），该端点尚未提供。
-          这里显式画成 disabled 角标并把依赖写在 tooltip 里 —— 不用恒 0 冒充真实读数。
+          A-04 断言 5：「待审阅 N」读 core 聚合读面 `GET /api/review/pending`（G1 已落地）。
+          契约里 `pending` 只在**全部**已配置源都答话时是数字，任一源不可用就是 null ——
+          所以这里保留「—」这一态，绝不把未知画成 0。
           位置必须在时间 tag 之后：dashboard.spec 用 .n-tag 的 nth(1) 锚定时间。
         -->
         <n-tooltip trigger="hover">
@@ -30,10 +31,10 @@
               aria-disabled="true"
               class="review-badge"
             >
-              待审阅 —
+              {{ pendingText }}
             </n-tag>
           </template>
-          等待 core 聚合读面（G1）；接不上之前不画恒 0 的假数
+          {{ pendingTip }}
         </n-tooltip>
         <n-tooltip trigger="hover">
           <template #trigger>
@@ -91,6 +92,7 @@ import {
   SearchOutline, TrendingUpOutline, TimeOutline,
 } from '@vicons/ionicons5'
 import { useAuthStore } from '@/stores/auth'
+import { getReviewPending, type ReviewPending } from '@/api/review'
 
 const emit = defineEmits(['toggle-sidebar', 'open-command'])
 const message = useMessage()
@@ -106,6 +108,41 @@ const ROLE_LABELS: Record<string, string> = {
   admin: '管理员',
 }
 const roleLabel = computed(() => (auth.role ? ROLE_LABELS[auth.role] || auth.role : ''))
+
+// G1 待审阅数：`pending === null` 是**契约里的「不知道」**（有源不可用或没有源），
+// 必须显示「—」；0 只有后端明确说 0 时才显示。
+const reviewPending = ref<ReviewPending | null>(null)
+const reviewPendingError = ref('')
+
+const pendingText = computed(() =>
+  reviewPending.value?.pending == null ? '待审阅 —' : `待审阅 ${reviewPending.value.pending}`,
+)
+
+const pendingTip = computed(() => {
+  const p = reviewPending.value
+  if (!p) {
+    return reviewPendingError.value ? `取数失败：${reviewPendingError.value}` : '正在读取待审阅数'
+  }
+  if (p.pending != null) {
+    return `共 ${p.pending} 条待审阅${p.as_of ? `（截至 ${p.as_of}）` : ''}`
+  }
+  const down = p.sources.filter((s) => s.status !== 'available').map((s) => s.name)
+  if (!down.length) return '没有已配置的审阅源，读数未知（不写成 0）'
+  return `未知：${down.join('、')} 源不可用 —— 不把部分求和冒充总数`
+})
+
+function loadReviewPending() {
+  getReviewPending().then(
+    (v) => {
+      reviewPending.value = v
+      reviewPendingError.value = ''
+    },
+    (e: unknown) => {
+      reviewPending.value = null
+      reviewPendingError.value = e instanceof Error ? e.message : String(e)
+    },
+  )
+}
 
 function toggleSidebar() { emit('toggle-sidebar') }
 function toggleTheme() { message.info('主题切换功能开发中') }
@@ -124,6 +161,7 @@ function updateClock() {
 onMounted(() => {
   updateClock()
   timer = setInterval(updateClock, 1000)
+  loadReviewPending()
 })
 
 onUnmounted(() => clearInterval(timer))

@@ -3,13 +3,12 @@ import { waitForBackendReady } from '../helpers/api'
 import { isolateTestEnvironment } from '../helpers/isolation'
 
 /**
- * A-04 断言 5：⌘K 命令面板 + 「待审阅」disabled 角标。
+ * A-04 断言 5：⌘K 命令面板 + 「待审阅」读面。
  *
  * 断言口径：
- * - Ctrl/⌘+K 打开面板，列表与侧栏同源（13 项）；
+ * - Ctrl/⌘+K 打开面板，列表与侧栏同源（15 项）；
  * - 过滤后只剩命中项，Enter 真的跳过去；
- * - 「待审阅 N」在 core 聚合读面（G1）就绪前必须是 disabled 形态，不能点了没反应
- *   又看不出原因。
+ * - 「待审阅 N」读 core 聚合读面（G1）；读数未知时显示「—」，绝不写成 0。
  */
 test.describe('⌘K 命令面板', () => {
   test.beforeAll(async () => {
@@ -27,7 +26,7 @@ test.describe('⌘K 命令面板', () => {
 
     await page.keyboard.press('Control+k')
     await expect(page.getByTestId('command-palette')).toBeVisible()
-    await expect(page.locator('[data-testid^="command-item-"]')).toHaveCount(14)
+    await expect(page.locator('[data-testid^="command-item-"]')).toHaveCount(15)
 
     await page.keyboard.press('Escape')
     await expect(page.getByTestId('command-palette')).toHaveCount(0)
@@ -56,10 +55,11 @@ test.describe('⌘K 命令面板', () => {
     await expect(page.getByTestId('command-palette')).toBeVisible()
   })
 
-  test('「待审阅」角标是 disabled 形态，点击不跳转', async ({ page }) => {
+  test('「待审阅」角标显示读数或「—」，点击不跳转', async ({ page }) => {
     const badge = page.getByTestId('header-review-badge')
     await expect(badge).toBeVisible()
-    await expect(badge).toContainText('待审阅')
+    // 有源可用 → 数字；任一源不可用/取数失败 → 「—」。不允许静默画 0。
+    await expect(badge).toHaveText(/待审阅 (\d+|—)/)
     await expect(badge).toHaveAttribute('aria-disabled', 'true')
 
     await badge.click()

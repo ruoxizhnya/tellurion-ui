@@ -3,6 +3,7 @@ import type { Component } from 'vue'
 import {
   AnalyticsOutline,
   BeakerOutline,
+  ClipboardOutline,
   CloudDownloadOutline,
   DocumentTextOutline,
   FlaskOutline,
@@ -34,8 +35,8 @@ export interface NavGroup {
  * （选股器 / 全市场选股 / 选股与市场、数据同步 / 数据通道 / 数据管道 …），
  * 设计稿每屏各写一遍，全站没有一套导航。
  *
- * 分组沿用 §3.2 的四段；`研究主线` 的 审阅台 与 `系统` 整段尚未落地时
- * **不渲染空入口** —— 点了没反应的导航比没有更糟。
+ * 分组沿用 §3.2 的四段；`系统` 整段尚未落地时**不渲染空入口** —— 点了没反应的
+ * 导航比没有更糟。审阅台已随 B-02 落地，故 `研究主线` 两项都在。
  * B-04 已把 策略库 / 编辑器 / Copilot 合成 `/strategy-lab` 一个入口，
  * 旧路径保留为路由别名（URL 不变），不在侧栏重复登记。
  */
@@ -45,6 +46,7 @@ export const NAV_GROUPS: NavGroup[] = [
     title: '研究主线',
     items: [
       { path: '/explore', label: '探索观察', icon: markRaw(FlaskOutline) },
+      { path: '/review', label: '审阅台', icon: markRaw(ClipboardOutline) },
       { path: '/evidence', label: '证据质问', icon: markRaw(DocumentTextOutline) },
     ],
   },

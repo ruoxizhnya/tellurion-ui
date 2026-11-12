@@ -26,6 +26,7 @@ import {
   type AttemptView,
   type ExploreStatus,
 } from '@/api/explore'
+import InterventionBar from '@/components/review/InterventionBar.vue'
 import VerdictPanel from '@/components/validation/VerdictPanel.vue'
 
 // P2-9 裁决的展示口径。
@@ -155,6 +156,8 @@ async function run() {
   try {
     const res = await startExplore({ description: description.value, max_tries: maxTries.value })
     runID.value = res.run_id
+    // 审阅台默认读这一条：开始探索后把 run_id 记住，省得两边各填一次。
+    localStorage.setItem('ql.lastRunId', res.run_id)
     const s = await poll()
     if (s.running) startPolling()
   } catch (e: unknown) {
@@ -278,6 +281,14 @@ onUnmounted(stopTimer)
         </NText>
       </template>
       <VerdictPanel :verdict="verdict" />
+      <NDivider style="margin: 12px 0" />
+      <!-- B-06：人的三只手（指方向 / 追问 / 标记），run 已结束时只改 disabled 不改结构 -->
+      <InterventionBar
+        :run-id="runID"
+        :seq="selected?.seq ?? null"
+        :running="running"
+        @changed="poll"
+      />
     </NCard>
   </div>
 </template>

@@ -154,3 +154,87 @@ export function stopExplore(runID: string): Promise<{ run_id: string; stopping: 
     {},
   )
 }
+
+// ── G2/G3/G4：人的三只手（agent 已实现，经 core `/api/explore/*` 反代到达 UI） ──
+
+/** G2 指方向：只作用于**后续**尝试；run 已结束 → 409（不接受永远不会生效的承诺） */
+export interface SteerRequest {
+  direction: string
+  attempt_seq?: number
+}
+
+export interface SteerDirection {
+  text: string
+  attempt_seq?: number | null
+  at: string
+}
+
+export interface SteerResponse {
+  run_id: string
+  accepted: boolean
+  count: number
+  directions: SteerDirection[]
+  applied_to: string
+}
+
+export function steerRun(runID: string, req: SteerRequest): Promise<SteerResponse> {
+  return api.post<SteerResponse>(`/api/explore/runs/${encodeURIComponent(runID)}/steer`, req)
+}
+
+/** G3 追问：答案只从该次尝试自身的证据拼装，不额外调模型 */
+export interface AttemptEvidence {
+  hypothesis?: string
+  params?: Record<string, unknown>
+  experiment_id?: number
+  num_trials?: number
+  ok?: boolean
+  error?: string
+  sharpe?: number
+  verdict_probability?: number
+  blocking?: number
+  challenges?: string[]
+}
+
+export interface AttemptAnswer {
+  run_id: string
+  seq: number
+  question: string
+  answer: string
+  /** 当前恒为 `evidence`：这是"照实回答"，不是"再生成一段解释" */
+  source: string
+  evidence?: AttemptEvidence
+}
+
+export function askAttempt(runID: string, seq: number, question: string): Promise<AttemptAnswer> {
+  return api.post<AttemptAnswer>(
+    `/api/explore/runs/${encodeURIComponent(runID)}/attempts/${seq}/ask`,
+    { question },
+  )
+}
+
+/** G4 标记：流水标注（不是裁决，不参与校准，同一坐标可重复标记） */
+export type MarkKind = 'derive' | 'promote'
+
+export interface MarkRequest {
+  kind: MarkKind
+  note?: string
+  actor?: string
+}
+
+export interface ExploreMark {
+  id: number
+  run_id: string
+  attempt_seq: number
+  kind: MarkKind
+  note: string
+  actor: string
+  experiment_id: number
+  created_at: string
+}
+
+export function markAttempt(runID: string, seq: number, req: MarkRequest): Promise<ExploreMark> {
+  return api.post<ExploreMark>(
+    `/api/explore/runs/${encodeURIComponent(runID)}/attempts/${seq}/mark`,
+    req,
+  )
+}

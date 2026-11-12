@@ -17,6 +17,7 @@ const ROUTES = [
   '/walkforward',
   '/screener',
   '/explore',
+  '/review',
   '/strategy-lab',
   '/paper-trading',
   '/data-sync',
@@ -33,7 +34,7 @@ test.describe('A-04 导航与顶栏统一', () => {
   })
 
   /**
-   * 断言 1：13 个**导航可达**页面渲染出的侧栏条目集合完全相同。
+   * 断言 1：15 个**导航可达**页面渲染出的侧栏条目集合完全相同。
    *
    * B-04 把 `/copilot`、`/strategy-builder` 收成 `/strategy-lab` 的路由别名：
    * 两个 URL 仍可直达（深链不断），但侧栏不再有对应入口，因此它们不进本清单 ——

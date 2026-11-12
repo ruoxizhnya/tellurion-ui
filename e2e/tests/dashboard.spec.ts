@@ -31,11 +31,13 @@ test.describe('Dashboard Page (Vue SPA)', () => {
     await page.waitForSelector('[data-testid="sidebar-nav"]', { timeout: 10000 });
 
     // AUD-63：侧栏每项的锚点由 AppSidebar.vue 的 navTestId() 生成。
-    // 目标 IA（user-flows.md §3.2）共 14 项：A-10 新增 走向与批量 / 合规 / 系统管理，
-    // B-04 把 策略编辑器 / 策略 Copilot 并入「策略库」一项，A-09 新增 纸交易。
+    // 目标 IA（user-flows.md §3.2）共 15 项：A-10 新增 走向与批量 / 合规 / 系统管理，
+    // B-04 把 策略编辑器 / 策略 Copilot 并入「策略库」一项，A-09 新增 纸交易，
+    // B-02 新增 审阅台。
     const expected = [
       'nav-item-home',
       'nav-item-explore',
+      'nav-item-review',
       'nav-item-evidence',
       'nav-item-backtest',
       'nav-item-backtest-compare',

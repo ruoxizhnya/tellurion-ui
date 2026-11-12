@@ -91,6 +91,8 @@ describe('导航标签与路由标题同源', () => {
   const titleFile: Record<string, string> = {
     '/': 'pages/Dashboard.vue',
     '/explore': 'pages/Explore.vue',
+    // B-02：审阅台
+    '/review': 'pages/ReviewDesk.vue',
     '/evidence': 'pages/Evidence.vue',
     '/backtest': 'components/backtest/BacktestForm.vue',
     '/backtest/compare': 'pages/BacktestCompare.vue',
