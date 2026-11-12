@@ -149,13 +149,16 @@ test.describe('D7-28: Data Sync — Full Workflow (Create → Execute → Comple
 
     // 造一个**异步失败**的作业：`invalid_type` 没有 connector 声明，受理门
     // （202）放行、执行器才报 "connector declaration missing"——不碰配额、结果
-    // 确定。旧版靠 `trading_calendar` 的反序窗口，但那段校验在受理门的
-    // `FetchRequestFromParams` 里（data internal/sync/job.go），直接 400，
-    // 根本拿不到 id。
+    // 确定。注意受理门现在还要「明确取数范围」（ValidateJobScope），空 params
+    // 会直接 400 拿不到 id，所以必须带 symbols/日期。
     const createRes = await ctx.post('/api/sync/jobs', {
       data: {
         job_type: 'invalid_type',
-        params: {},
+        params: {
+          symbols: ['600000.SH'],
+          start_date: '2024-01-01',
+          end_date: '2024-01-31',
+        },
       },
     });
 

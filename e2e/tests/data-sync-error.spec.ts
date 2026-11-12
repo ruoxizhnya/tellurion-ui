@@ -14,14 +14,20 @@ test.describe('D7-30: Data Sync — Failure Retry & Error Handling', () => {
   });
 
   test('API: Unknown job type is accepted then fails loudly in the runner', async () => {
-    // 契约：受理门只校验参数语法，**不**校验 job_type 是否存在——未知类型
-    // 会作为作业失败响亮暴露（connector 未声明该 data_type），而不是 400。
+    // 契约：受理门校验「job_type 非空 + 有明确取数范围」，**不**校验 job_type
+    // 是否存在——未知类型会作为作业失败响亮暴露（connector 未声明该 data_type），
+    // 而不是 400。范围是 2026-11 起新增的门槛（data internal/sync/job.go
+    // ValidateJobScope）：空 params 会被当「无范围的空转」直接拒。
     const ctx = await apiRequest();
 
     const res = await ctx.post('/api/sync/jobs', {
       data: {
         job_type: 'invalid_type',
-        params: {},
+        params: {
+          symbols: ['600000.SH'],
+          start_date: '2024-01-01',
+          end_date: '2024-01-31',
+        },
       },
     });
 
@@ -127,13 +133,17 @@ test.describe('D7-30: Data Sync — Failure Retry & Error Handling', () => {
     test.setTimeout(90000);
     const ctx = await apiRequest();
 
-    // 失败源与上一条同源：`invalid_type` 受理门放行、执行器以
-    // "connector declaration missing" 失败——不碰配额、确定性。旧的
-    // calendar 反序窗口在受理门就 400，会先红在 `createRes.status()`。
+    // 失败源与上一条同源：`invalid_type` 带明确范围时受理门放行、执行器以
+    // "connector declaration missing" 失败——不碰配额、确定性。空 params 在
+    // 受理门就会被 ValidateJobScope 拒成 400，必须带上 symbols/日期。
     const createRes = await ctx.post('/api/sync/jobs', {
       data: {
         job_type: 'invalid_type',
-        params: {},
+        params: {
+          symbols: ['600000.SH'],
+          start_date: '2024-01-01',
+          end_date: '2024-01-31',
+        },
       },
     });
 
