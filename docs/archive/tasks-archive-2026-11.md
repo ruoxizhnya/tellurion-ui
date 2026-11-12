@@ -19,6 +19,7 @@
 | QT-61 | QT-61（ui 腿）· CI 基线归零——SchedulePanel flaky 用例 | 2026-10-21 | `1075c28` | [原文](#QT-61) |
 | UI-NPM-AUDIT-FIX | npm 依赖 5 个 high 漏洞（@vue/server-renderer XSS 等） | 2026-11-12 | 见正文 | [原文](#UI-NPM-AUDIT-FIX) |
 | UI-RUNBOOK-GAP | 本仓没有 runbook，托管失败与 `/api` 反代故障只有 README 零散说明 | 2026-11-12 | 见正文 | [原文](#UI-RUNBOOK-GAP) |
+| UI-HEALTHCHECK | ui Dockerfile 无 HEALTHCHECK，容器编排无法判活 | 2026-11-12 | 见正文 | [原文](#UI-HEALTHCHECK) |
 
 ---
 
@@ -573,3 +574,30 @@
   - 后端路由不存在：`/api/not-exist` 经反代 = `404 page not found`（body 由 core 返回，非 nginx 的 404 页）。
 - **⑤ 三种场景的定位**：后端正常 → 唯一责任仓 = 本仓（SPA 逻辑）；后端停掉 → core（反代 502 + 解析/连接失败证据）；反代配置错误 → 本仓（`direct-core=200` 而 `via-nginx=404`）。三行判据 + 依据写在 §1 分诊表，避免「两边都像坏了」。
 - **⑥ 边界守住**：只新增 `docs/runbook.md` 与 `docs/README.md` 的三处导航行；未改 `deploy/nginx-spa.conf`（反代策略一行未动），未改 `SERVICE.md`，未复制端点清单（runbook 只引用现象需要的少数路径）。
+
+---
+
+<a id="UI-HEALTHCHECK"></a>
+## UI-HEALTHCHECK · ui Dockerfile 无 HEALTHCHECK，容器编排无法判活 ✅ 完成（2026-11-12）
+
+- **① 目标**：给本仓运行镜像一条 HEALTHCHECK，让 compose/编排能判「nginx 真在 serving SPA」而不是「容器进程还在」。
+- **② 上下文（2026-11-11 全面审查 W5-F6，证据 ODR-072 `tellurion-docs:docs/archive/odr/odr-072-audit-wave5-security-reliability-deps.md`）**：本仓 `Dockerfile` **无 `HEALTHCHECK`**（grep 零命中）。本仓是 nginx 托管的 Vue SPA（宿主 8080），无自带业务探针；健康判据应是「nginx 能返回 SPA 入口 / 静态资源」。注意 W5-F6 另一处弱探针（`nc -z`）实属 strategy（见 ODR-072 订正注记），与本仓无关。
+- **③ 要求**：① Dockerfile 加 `HEALTHCHECK`（用镜像内已有二进制，如 `wget -qO- http://127.0.0.1/` 或 nginx 静态入口；缺 curl/wget 则在镜像补或用 nginx 自带能力）；② 探测的是「SPA 真被 serving」，不是反代后端（后端健康归 core，不得把 core `/health` 当本仓探针——与 `UI-RUNBOOK-GAP` ③ 一致）；③ interval/timeout/retries 与兄弟仓同口径。
+- **④ 约束与非目标**：不改 nginx 反代策略；不把后端 `/api/health` 当本仓健康判据；不引入新依赖库；不改 SPA 路由。
+- **⑤ 验收**：`docker build` 后起容器，HEALTHCHECK 在 nginx serving 时 healthy、nginx 停时 unhealthy（破坏验证 = 去掉 HEALTHCHECK ⇒ 编排无法判活，还原复绿）；`grep -n HEALTHCHECK Dockerfile` 非空。
+- **⑥ 边界**：本仓 `Dockerfile`；nginx 反代与后端健康归 core / `UI-RUNBOOK-GAP`。
+- **owner**：待定
+
+### 施工记录（2026-11-12）
+
+- **改动**：`Dockerfile` 末尾新增
+  `HEALTHCHECK --interval=30s --timeout=3s --start-period=10s --retries=3 CMD curl -fsS -o /dev/null http://127.0.0.1:8080/ || exit 1`。
+  三条设计取舍写进了注释：① 探 `/` 不探 `/api/health`（后者要穿反代，反代抖动会把「UI 没事」判成有事）；② 判据是「nginx 在 serving SPA」，不是进程存活、更不是后端健康；③ 参数与兄弟仓同口径（实测 `tellurion-data:Dockerfile:32`、`tellurion-broker:Dockerfile:32`、`tellurion-strategy:Dockerfile:43` 都是 `30s / 3s / 10s / 3`）。curl 在 stage 2 本来就装了（`:37`），未引入新依赖。
+- **验收（真实输出）**：
+  - `docker build -t tellurion-ui:healthprobe .` → `BUILD_EXIT=0`（镜像内重建产物，未用宿主 `web/dist`）。
+  - 起容器接进 `tellurion_default`、映射 `127.0.0.1:18080` → `Up 12 seconds (healthy)`，`docker inspect .State.Health` = `{"Status":"healthy","FailingStreak":0,"ExitCode":0}`。
+  - `docker inspect --format '{{json .Config.Healthcheck}}'` = `{"Test":["CMD-SHELL","curl -fsS -o /dev/null http://127.0.0.1:8080/ || exit 1"],"Interval":30000000000,"Timeout":3000000000,"StartPeriod":10000000000,"Retries":3}`。
+  - 同一容器实测 serving：`/` = `200`（`nginx/1.27.5` / `text/html`）、`/api/health` 经反代 = `200`、`/assets/nope.js` = `404`、深链 `/copilot` = `200`。
+- **破坏验证（现场）**：`docker exec ui-healthprobe sh -c "mv /usr/share/nginx/html/index.html /tmp/index.html"` —— nginx **进程仍活着**，但已不再 serving SPA：`/` 变 `403`，40s 后 `failing=1`，75s 后累计 `unhealthy failing=5`（`docker ps` 显示 `Up 3 minutes (unhealthy)`）。还原文件后 `/` 复 `200`，一个探测周期后回 `healthy failing=0`。即探针反映的是「真在 serving」而不是「容器没死」。
+- **⑥ 边界守住**：只改 `Dockerfile`；未动 `deploy/nginx-spa.conf`、未动 SPA 路由、未改 compose（统一栈的 healthcheck 配置属 core 仓批次，本单不跨仓）。
+- **残留**：探针只覆盖「本机 nginx 能吐 SPA」，不含反代链路的可用性——这是刻意的（③ 明确后端健康归 core），排障入口见 `docs/runbook.md` §1/§3。

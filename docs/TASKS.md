@@ -12,7 +12,7 @@ verified-by: 2026-11-11 全面审查 W7 台账立单（A5 授权）——新立 
 
 ## 一、未做 / 挂起 / 外部依赖
 
-> 本节 = 既有 1 单（`UI-FACTOR-CITATION-RETIRED`）+ 全面审查 W7 新立的 4 单（`UI-COPILOT-GATE-SURFACE` / `UI-SCREEN-CONSUMER` / `UI-HEALTHCHECK` / `UI-LEDGER-SELF-CONSISTENCY`）。W7 的 `UI-NPM-AUDIT-FIX`、`UI-RUNBOOK-GAP` 已于 2026-11-12 收口并移入归档。**订正**：原「本仓当前无未做」 boilerplate 与下文 ⬜ 自相矛盾（W1-F6），已撤；主台账与子台账（`docs/design/stitch_quantlab_ux_redesign/`）的关系见 `UI-LEDGER-SELF-CONSISTENCY`。此前已收口单的正文与施工记录全部在归档文件里。
+> 本节 = 既有 1 单（`UI-FACTOR-CITATION-RETIRED`）+ 全面审查 W7 新立的 4 单（`UI-COPILOT-GATE-SURFACE` / `UI-SCREEN-CONSUMER` / `UI-HEALTHCHECK` / `UI-LEDGER-SELF-CONSISTENCY`）。W7 的 `UI-NPM-AUDIT-FIX`、`UI-RUNBOOK-GAP`、`UI-HEALTHCHECK` 已于 2026-11-12 收口并移入归档。**订正**：原「本仓当前无未做」 boilerplate 与下文 ⬜ 自相矛盾（W1-F6），已撤；主台账与子台账（`docs/design/stitch_quantlab_ux_redesign/`）的关系见 `UI-LEDGER-SELF-CONSISTENCY`。此前已收口单的正文与施工记录全部在归档文件里。
 
 ### UI-FACTOR-CITATION-RETIRED · 因子引用抽屉仍在调用已退役的 `GET /api/factors/:name` [P2] ⬜
 
@@ -45,16 +45,6 @@ verified-by: 2026-11-11 全面审查 W7 台账立单（A5 授权）——新立 
 - **④ 约束与非目标**：不改 core 路由（主任已修，归 CORE-DEAD-PROXY-SCREEN-VERIFY 核验）；不复制 openapi；不在前端伪造 screen/count 数值；不新造端点。
 - **⑤ 验收**：真栈三消费方各一条断言（screen 有读数 / count 502 降级）；组件测试覆盖 502 分支；破坏验证 = 把 502 降级改回硬错误 ⇒ 用例红，还原复绿；`npm run build`/`test` 绿。
 - **⑥ 边界**：本仓 `web/src/api/market.ts` 消费方组件 + 测试；core 反代核验归 `tellurion:CORE-DEAD-PROXY-SCREEN-VERIFY`。
-- **owner**：待定
-
-### UI-HEALTHCHECK · ui Dockerfile 无 HEALTHCHECK，容器编排无法判活 [P3] ⬜
-
-- **① 目标**：给本仓运行镜像一条 HEALTHCHECK，让 compose/编排能判「nginx 真在 serving SPA」而不是「容器进程还在」。
-- **② 上下文（2026-11-11 全面审查 W5-F6，证据 ODR-072 `tellurion-docs:docs/archive/odr/odr-072-audit-wave5-security-reliability-deps.md`）**：本仓 `Dockerfile` **无 `HEALTHCHECK`**（grep 零命中）。本仓是 nginx 托管的 Vue SPA（宿主 8080），无自带业务探针；健康判据应是「nginx 能返回 SPA 入口 / 静态资源」。注意 W5-F6 另一处弱探针（`nc -z`）实属 strategy（见 ODR-072 订正注记），与本仓无关。
-- **③ 要求**：① Dockerfile 加 `HEALTHCHECK`（用镜像内已有二进制，如 `wget -qO- http://127.0.0.1/` 或 nginx 静态入口；缺 curl/wget 则在镜像补或用 nginx 自带能力）；② 探测的是「SPA 真被 serving」，不是反代后端（后端健康归 core，不得把 core `/health` 当本仓探针——与 `UI-RUNBOOK-GAP` ③ 一致）；③ interval/timeout/retries 与兄弟仓同口径。
-- **④ 约束与非目标**：不改 nginx 反代策略；不把后端 `/api/health` 当本仓健康判据；不引入新依赖库；不改 SPA 路由。
-- **⑤ 验收**：`docker build` 后起容器，HEALTHCHECK 在 nginx serving 时 healthy、nginx 停时 unhealthy（破坏验证 = 去掉 HEALTHCHECK ⇒ 编排无法判活，还原复绿）；`grep -n HEALTHCHECK Dockerfile` 非空。
-- **⑥ 边界**：本仓 `Dockerfile`；nginx 反代与后端健康归 core / `UI-RUNBOOK-GAP`。
 - **owner**：待定
 
 ### UI-LEDGER-SELF-CONSISTENCY · 主台账「无开放项」自相矛盾 + 子台账过期项 + broker frontmatter 漂移 [P3] ⬜

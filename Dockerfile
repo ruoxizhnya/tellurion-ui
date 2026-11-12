@@ -40,4 +40,16 @@ RUN apk add --no-cache curl
 # compose 与 k8s 两侧都用这个端口（由 tools/check_deploy_consistency.py 守护）。
 EXPOSE 8080
 
+# ── HEALTHCHECK ─────────────────────────────────────────────────
+# 判据 = 「nginx 真的在 serving SPA」，不是「容器进程还在」，也**不是**后端活着。
+# 本仓没有业务探针（`/health` `/readyz` 都在 core，见 docs/runbook.md §0）；
+# 拿后端的探针当本仓判据，会让 UI 跟着后端的脸色变红变绿——后端挂了但界面
+# 静态页好好地在服务，这锅不该 UI 背（UI-RUNBOOK-GAP ③ 的同一条边界）。
+#
+# 探 `/` 而不是 `/api/health`：后者要穿过 /api 反代，反代抖一下就会把
+# 「UI 没事」判成有事；`/` 命中 index.html（200）就够了。
+# curl 是 stage 2 装的（见上），参数与兄弟仓同口径。
+HEALTHCHECK --interval=30s --timeout=3s --start-period=10s --retries=3 \
+    CMD curl -fsS -o /dev/null http://127.0.0.1:8080/ || exit 1
+
 # nginx 官方镜像自带前台运行的 CMD，不需要 ENTRYPOINT。
