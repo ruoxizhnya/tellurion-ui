@@ -35,7 +35,7 @@ test.describe('⌘K 命令面板', () => {
 
   test('输入过滤后 Enter 跳到目标页', async ({ page }) => {
     await page.keyboard.press('Control+k')
-    await page.getByTestId('command-input').fill('合规')
+    await page.getByTestId('command-input').locator('input').fill('合规')
     await expect(page.locator('[data-testid^="command-item-"]')).toHaveCount(1)
     await expect(page.getByTestId('command-item-compliance')).toBeVisible()
 
@@ -46,7 +46,7 @@ test.describe('⌘K 命令面板', () => {
 
   test('无匹配时给出显式空态而不是空白列表', async ({ page }) => {
     await page.keyboard.press('Control+k')
-    await page.getByTestId('command-input').fill('zzz')
+    await page.getByTestId('command-input').locator('input').fill('zzz')
     await expect(page.getByTestId('command-empty')).toBeVisible()
     await expect(page.locator('[data-testid^="command-item-"]')).toHaveCount(0)
   })

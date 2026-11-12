@@ -7,10 +7,11 @@
     @update:show="(v: boolean) => emit('update:show', v)"
   >
     <div class="command-panel" data-testid="command-palette" @keydown.esc.stop="close">
+      <!-- data-testid 落在 n-input 根节点，e2e 取其中的 input 再 fill -->
       <n-input
         ref="inputRef"
         v-model:value="keyword"
-        :input-props="{ 'data-testid': 'command-input' }"
+        data-testid="command-input"
         placeholder="跳转到页面…（↑↓ 选择，Enter 打开，Esc 关闭）"
         @keydown="onKeydown"
       />
