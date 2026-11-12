@@ -78,6 +78,7 @@ const navGroups = [
     items: [
       { path: '/backtest', label: '回测引擎', icon: markRaw(AnalyticsOutline) },
       { path: '/backtest/compare', label: '多策略对比', icon: markRaw(GitCompareOutline) },
+      { path: '/walkforward', label: '走向与批量', icon: markRaw(StatsChartOutline) },
       { path: '/strategy-lab', label: '策略库', icon: markRaw(BeakerOutline) },
       { path: '/strategy-builder', label: '策略编辑器', icon: markRaw(ConstructOutline) },
       { path: '/copilot', label: '策略 Copilot', icon: markRaw(ChatbubbleEllipsesOutline) },

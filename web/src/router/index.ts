@@ -40,6 +40,13 @@ const routes: RouteRecordRaw[] = [
         meta: { title: '多策略对比' },
       },
       {
+        // A-10：walk-forward 纯计算 + 批量回测（4 条；csv 导出后端 501，不画）。
+        path: 'walkforward',
+        name: 'walkforward',
+        component: () => import('@/pages/WalkForwardBatch.vue'),
+        meta: { title: '走向与批量' },
+      },
+      {
         path: 'screener',
         name: 'screener',
         component: () => import('@/pages/Screener.vue'),
