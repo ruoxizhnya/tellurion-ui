@@ -19,12 +19,12 @@ truth:
   api: docs/api-schema.md
   db: docs/db-schema.md
   dataflow: docs/dataflow.md
-  runbook: null
+  runbook: docs/runbook.md
   tasks: docs/TASKS.md
 
 status: evergreen
-last-verified: 2026-11-11
-verified-by: 2026-11-11 实读 README / AGENTS / ARCHITECTURE / api-schema / db-schema / dataflow / Dockerfile / deploy/nginx-spa.conf；端口与端点数量未写入
+last-verified: 2026-11-12
+verified-by: 2026-11-12 `UI-RUNBOOK-GAP` 收口：`truth.runbook` 由 `null` 改为 `docs/runbook.md`，§6 的 runbook 指引同步指向该文件（本轮无并发会话改本卡片，故直接订正）。此前：2026-11-11 实读 README / AGENTS / ARCHITECTURE / api-schema / db-schema / dataflow / Dockerfile / deploy/nginx-spa.conf；端口与端点数量未写入
 ---
 
 # 服务卡：tellurion-ui
@@ -90,7 +90,7 @@ verified-by: 2026-11-11 实读 README / AGENTS / ARCHITECTURE / api-schema / db-
   2. `/api/health` 是否 200；不是则问题在 core，不在本仓。
   3. 只有某一族操作失败时，看该请求的响应码与 `docs/api-schema.md` 记录的消费面，判断是契约变化还是后端故障。
 - **升级路径**：`owner` → 跨仓争议 → core `docs/TASKS.md`
-- **runbook**：本仓暂无 runbook（缺口已登记，见 `docs/TASKS.md` 的 `UI-RUNBOOK-GAP`）；起停先看 `README.md`「本地开发」。
+- **runbook**：[`docs/runbook.md`](docs/runbook.md)（§1 三十秒分诊先判本仓还是 core；起停见 `README.md`「本地开发」）。
 
 ## 7. 5 分钟后去哪
 
