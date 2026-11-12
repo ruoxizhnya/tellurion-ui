@@ -48,8 +48,8 @@
                   {{ checkResult.allowed ? '允许' : '拒绝' }}
                 </n-tag>
                 <span class="verdict-board">{{ checkResult.board_name || checkResult.board }}</span>
-                <ul v-if="checkResult.reasons.length" class="reason-list">
-                  <li v-for="(r, i) in checkResult.reasons" :key="i">{{ r }}</li>
+                <ul v-if="(checkResult.reasons ?? []).length" class="reason-list">
+                  <li v-for="(r, i) in checkResult.reasons ?? []" :key="i">{{ r }}</li>
                 </ul>
                 <div class="muted">
                   风险等级 {{ checkResult.risk_level }} · 日均资产
@@ -254,11 +254,11 @@
                   {{ dvResult.window_remain_pct.toFixed(3) }}% · 减后持股
                   {{ dvResult.hold_pct_after.toFixed(3) }}%
                 </div>
-                <ul v-if="dvResult.reasons.length" class="reason-list">
-                  <li v-for="(r, i) in dvResult.reasons" :key="i">{{ r }}</li>
+                <ul v-if="(dvResult.reasons ?? []).length" class="reason-list">
+                  <li v-for="(r, i) in dvResult.reasons ?? []" :key="i">{{ r }}</li>
                 </ul>
-                <ul v-if="dvResult.warnings.length" class="reason-list warn">
-                  <li v-for="(w, i) in dvResult.warnings" :key="i">{{ w }}</li>
+                <ul v-if="(dvResult.warnings ?? []).length" class="reason-list warn">
+                  <li v-for="(w, i) in dvResult.warnings ?? []" :key="i">{{ w }}</li>
                 </ul>
               </div>
             </n-card>
@@ -306,6 +306,7 @@ import {
   NTag,
   useMessage,
 } from 'naive-ui'
+import { ApiError } from '@/api/client'
 import {
   checkDivestment,
   checkSuitability,
@@ -386,11 +387,16 @@ async function handleCheck() {
   }
   checking.value = true
   try {
-    // 422 拒绝也返回同一响应体，client 会正常 resolve。
+    // 422 拒绝也带同一响应体，但 client 对非 2xx 会 throw；从 ApiError.body
+    // 取回结构化结果，避免把"拒绝"渲染成"请求失败"。
     checkResult.value = await checkSuitability({ symbol })
   } catch (e) {
-    checkResult.value = null
-    message.error(`适当性检查失败：${errText(e)}`)
+    if (e instanceof ApiError && e.status === 422 && e.body) {
+      checkResult.value = e.body as unknown as CheckResponse
+    } else {
+      checkResult.value = null
+      message.error(`适当性检查失败：${errText(e)}`)
+    }
   } finally {
     checking.value = false
   }
@@ -568,8 +574,12 @@ async function handleDivestment() {
       recent: recent as never,
     })
   } catch (e) {
-    dvResult.value = null
-    dvError.value = `检查失败：${errText(e)}`
+    if (e instanceof ApiError && e.status === 422 && e.body) {
+      dvResult.value = e.body as unknown as DivestmentCheckResult
+    } else {
+      dvResult.value = null
+      dvError.value = `检查失败：${errText(e)}`
+    }
   } finally {
     dvChecking.value = false
   }

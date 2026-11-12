@@ -14,6 +14,7 @@ const ROUTES = [
   '/',
   '/backtest',
   '/backtest/compare',
+  '/walkforward',
   '/screener',
   '/copilot',
   '/explore',
@@ -23,6 +24,8 @@ const ROUTES = [
   '/evidence',
   '/factors',
   '/alerts',
+  '/compliance',
+  '/system-admin',
 ]
 
 test.describe('A-04 导航与顶栏统一', () => {
@@ -30,7 +33,7 @@ test.describe('A-04 导航与顶栏统一', () => {
     expect(await waitForBackendReady(60000)).toBe(true)
   })
 
-  /** 断言 1：12 个页面渲染出的侧栏条目集合完全相同 */
+  /** 断言 1：15 个页面渲染出的侧栏条目集合完全相同 */
   test('全部路由的侧栏条目数组逐字相同', async ({ page }) => {
     let baseline: string[] | null = null
     for (const route of ROUTES) {

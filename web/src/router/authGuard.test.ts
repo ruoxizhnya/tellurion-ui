@@ -113,4 +113,16 @@ describe('authGuard', () => {
 
     expect(mockedStatus).toHaveBeenCalledTimes(1)
   })
+
+  it('A-10 新增页同样受保护（未登录时逐条重定向并带原目标）', async () => {
+    mockedStatus.mockResolvedValue({ auth_enabled: true, bootstrap_required: false })
+
+    for (const path of ['/compliance', '/system-admin', '/walkforward']) {
+      const result = await authGuard(route(path))
+      expect(result, `${path} 未被守卫拦截`).toEqual({
+        name: 'login',
+        query: { redirect: path },
+      })
+    }
+  })
 })

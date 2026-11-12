@@ -94,11 +94,13 @@ export interface BoardsResponse {
 
 /**
  * Check whether the configured user profile is allowed to trade
- * `symbol`. Returns the structured verdict; HTTP 422 from the server
- * is surfaced as a normal resolved response (the client does NOT
- * throw on 4xx — the consumer branches on `result.allowed`).
+ * `symbol`. Returns the structured verdict.
  *
- * Throws only on transport / 5xx failures.
+ * 注意：`api/client.ts` 对非 2xx 一律 throw。HTTP 422（明确拒绝）也是
+ * throw 出来，但 `ApiError.body` 带的是同一个 `CheckResponse` ——
+ * 调用方必须从 body 里取结果，不能把 422 渲染成"请求失败"。
+ *
+ * Throws on transport / 5xx failures and on 422 (with body).
  */
 export async function checkSuitability(req: CheckRequest): Promise<CheckResponse> {
   return api.post<CheckResponse>('/api/compliance/check', req)
@@ -337,8 +339,8 @@ export interface DivestmentCheckResult {
 }
 
 /**
- * 减持前检查。HTTP 422 表示合规拒绝，但响应体仍是
- * `DivestmentCheckResult`（与 checkSuitability 同口径：按 allowed 分支）。
+ * 减持前检查。HTTP 422 表示合规拒绝：client 会 throw，但
+ * `ApiError.body` 仍是 `DivestmentCheckResult`，调用方从 body 取结果。
  */
 export async function checkDivestment(
   req: DivestmentCheckRequest,
