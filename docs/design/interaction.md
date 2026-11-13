@@ -8,22 +8,18 @@
 
 ### 1.1 全局状态
 
-使用 Pinia 管理全局状态：
+使用 Pinia 管理全局状态。当前实际存在的 store 只有三个（`web/src/stores/`）：
 
-```typescript
-// stores/app.ts
-export const useAppStore = defineStore('app', () => {
-  const sidebarCollapsed = ref(false)
-  const apiConnected = ref(true)
-  const currentTheme = ref<'dark' | 'light'>('dark')
+| store | 文件 | 负责 |
+|-------|------|------|
+| `useAuthStore` | `stores/auth.ts` | 登录态 / JWT / 登出 |
+| `useBacktestStore` | `stores/backtest.ts` | 回测历史与结果缓存 |
+| `useSyncStore` | `stores/sync.ts` | 数据同步作业与进度 |
 
-  function toggleSidebar() {
-    sidebarCollapsed.value = !sidebarCollapsed.value
-  }
+没有全局 `app` store：侧栏折叠等纯布局状态由布局组件自身持有。
 
-  return { sidebarCollapsed, apiConnected, currentTheme, toggleSidebar }
-})
-```
+**主题切换已移除**（`UI-THEME-TOGGLE` 2026-11-13 裁决 A：深色是唯一验收基线，
+不提供浅色主题），因此不存在 `currentTheme` 之类的全局字段。
 
 ### 1.2 页面级状态
 

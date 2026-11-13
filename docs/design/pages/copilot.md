@@ -1,5 +1,9 @@
 # Copilot 策略 Copilot 页面设计文档
 
+> **已并入策略库**（B-04 三页合一）：现行入口是「策略库」`/strategy-lab`，
+> `/copilot` 仅保留为路由别名。本文件是历史页面设计记录，现行设计见
+> [策略库](strategy-lab.md)。
+
 > **页面路径**: `/copilot`  
 > **组件文件**: `pages/Copilot.vue`  
 > **状态**: Active

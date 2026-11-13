@@ -75,6 +75,13 @@ jobs:
         working-directory: .
         run: node scripts/check-page-inventory.mjs
 
+      # UI-DESIGN-DOC-CONVERGENCE：docs/design/ 活跃层不得残留 v1 调色板，
+      # index.md 的 token 快照必须与 variables.css 逐值一致，interaction.md 不得
+      # 再出现虚构的 useAppStore。历史档案目录 stitch_quantlab_ux_redesign/ 豁免。
+      - name: Guard（设计文档收敛）
+        working-directory: .
+        run: node scripts/check-design-docs.mjs
+
   e2e:
     name: Playwright e2e (smoke)
     runs-on: ubuntu-latest

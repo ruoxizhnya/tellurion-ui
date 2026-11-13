@@ -167,7 +167,7 @@ interface BacktestResult {
 ### 4.3 EquityChart
 
 **图表配置**:
-- 净值线: 蓝色 `#58a6ff`，左 Y 轴
+- 净值线: 蓝色 `#b4c5ff`，左 Y 轴
 - 股价线: 橙色 `#f0883e`，右 Y 轴，虚线
 - 买入标记: 绿色三角形
 - 卖出标记: 红色叉号
@@ -255,10 +255,10 @@ interface BacktestResult {
 
 ### 6.1 色彩
 
-- 正收益: `#3fb950` (`var(--q-success)`)
-- 负收益: `#f85149` (`var(--q-danger)`)
+- 正收益: `#10b981` (`var(--q-success)`)
+- 负收益: `#ef4444` (`var(--q-danger)`)
 - 主按钮: `#2080f0` (primary)
-- 图表净值线: `#58a6ff`
+- 图表净值线: `#b4c5ff`
 - 图表股价线: `#f0883e`
 
 ### 6.2 动画

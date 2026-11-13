@@ -26,9 +26,8 @@
    - [控制台 Dashboard](pages/dashboard.md)
    - [回测引擎 BacktestEngine](pages/backtest-engine.md)
    - [选股器 Screener](pages/screener.md)
-   - [策略实验室 StrategyLab](pages/strategy-lab.md)
-   - [策略 Copilot](pages/copilot.md)
-   - [数据同步 DataSync](pages/data-sync.md)
+   - [策略库 StrategyHub](pages/strategy-lab.md) — B-04 三页合一（策略库 / 编辑器 / Copilot）；原独立页 [copilot.md](pages/copilot.md) 仅存注记
+   - [数据管理 DataSync](pages/data-sync.md)
 
 **后端架构设计（子目录）**
 
@@ -40,19 +39,23 @@
 
 ### 设计 Token 变量
 
-所有设计值通过 CSS 变量统一管理，定义于 [`web/src/styles/variables.css`](../../web/src/styles/variables.css)：
+**真相源 = [`web/src/styles/variables.css`](../../web/src/styles/variables.css)**，上游基准是
+[DESIGN.md v2.0](stitch_quantlab_ux_redesign/obsidian_precision_quant/DESIGN.md)。下面是
+**2026-11-13 的快照**，仅供速查；与源文件不一致时以源文件为准（CI 的
+`scripts/check-design-docs.mjs` 会核对两者）。
 
 ```css
+/* 快照 2026-11-13，逐字抄自 web/src/styles/variables.css */
 :root {
-  --q-bg: #0d1117;           /* 页面背景 */
-  --q-surface: #161b22;      /* 卡片背景 */
-  --q-surface2: #1c2333;     /* 次级背景 */
-  --q-text: #e6edf3;         /* 主文本 */
-  --q-text2: #8b949e;        /* 次级文本 */
-  --q-primary: #58a6ff;      /* 主题色 */
-  --q-success: #3fb950;      /* 正收益/成功 */
-  --q-danger: #f85149;       /* 负收益/错误 */
-  --q-radius: 10px;          /* 圆角 */
+  --q-bg: #090a0c;           /* 页面背景（canvas） */
+  --q-surface: #111620;      /* 卡片背景（elevation 1） */
+  --q-surface2: #171e2c;     /* 次级背景（elevation 2） */
+  --q-text: #e1e2eb;         /* 主文本 */
+  --q-text2: #c3c6d7;        /* 次级文本 */
+  --q-primary: #b4c5ff;      /* 主色（文字/链接/激活态，不可作填充） */
+  --q-success: #10b981;      /* 正收益/成功 */
+  --q-danger: #ef4444;       /* 负收益/错误 */
+  --q-radius: 8px;           /* 圆角 */
 }
 ```
 
