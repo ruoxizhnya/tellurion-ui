@@ -322,8 +322,10 @@ verdict: 已评估维度 + unassessed + probability（最小值）+ causal?
 
 ### F18 · 行业/宏观研究 + 系统管理（P2）
 
-- 行业：`GET /api/industry/tree`、`/edges`、`/vitality`、`/etf/{etf_code}/constituents`（产业链图谱可视化是重点场景——因果解释的数据底座）。
-- 宏观：`GET /api/macro/series`（时序图）。
+> **当期口径（2026-11-13 裁决 B）**：行业 / 宏观能力**仅以 API 形式提供，UI 不设页面、导航或入口**，也不得在任何界面暗示"产业链有界面"。界面待 **S2 出口后**再评估是否补只读页（`UI-INDUSTRY-ENTRY` 已裁决，记录见主台账）。
+
+- 行业：`GET /api/industry/tree`、`/edges`、`/vitality`、`/etf/{etf_code}/constituents`（后端已可用；产业链图谱可视化为远期设想，非本期承诺）。
+- 宏观：`GET /api/macro/series`（后端已可用；UI 暂无时序图）。
 - 系统管理：认证（`/api/auth/login`、`/refresh`、`/me`、`/status`、`/bootstrap` 首次引导）、管理端（`/auth/admin/users`、`/audit`）。
 - 登录流（保留 `/login`）：布局外、authGuard 守卫、token 刷新（`authToken.ts`）。
 
@@ -397,7 +399,7 @@ verdict: 已评估维度 + unassessed + probability（最小值）+ causal?
 | 数据代理 | `/api/ohlcv` `/screen` `/stocks/count` `/market/index` `/sync/calendar` `/v1/trading/calendar` | 6 | 行情/选股/日历 | F14 |
 | 证据/归档 | `/api/ingest/*` `/api/evidence/*` | 3 | 证据回溯 | F6 |
 | 信号 | `/api/signals` | 1 | 外部信号写入 | F16 |
-| 行业/宏观 | `/api/industry/*` `/api/macro/*` | 6 | 产业链/宏观 | F18 |
+| 行业/宏观 | `/api/industry/*` `/api/macro/*` | 6 | 产业链/宏观（**仅 API，UI 无入口**） | F18 |
 | **ai-service（反代，契约外）** | `/api/explore/*` `/api/tools/*` | 3+ | 探索观察（start/status/stop） | F1/F3/F4 |
 
 ## 附录 C · 后端缺口清单（UX 依赖但 API 尚缺）
