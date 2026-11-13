@@ -58,7 +58,11 @@ export const NAV_GROUPS: NavGroup[] = [
       { path: '/walkforward', label: '走向与批量', icon: markRaw(StatsChartOutline) },
       { path: '/strategy-lab', label: '策略库', icon: markRaw(BeakerOutline) },
       { path: '/paper-trading', label: '纸交易', icon: markRaw(SwapHorizontalOutline) },
-      { path: '/factors', label: '因子研究', icon: markRaw(StatsChartOutline) },
+      // UI-FACTOR-RESEARCH-LABEL：`/factors` 已按 ADR-037 退役为说明页（因子值由 core
+      // 按需求值，无查询入口）。入口按 2026-11-12 产品裁决保留为可见落点，但标签必须
+      // 与内容一致——旧标签「因子研究」会让人以为这里还有因子计算/查询能力。
+      // 路由路径不动（外链与历史深链继续有效）。
+      { path: '/factors', label: '因子证据（已退役）', icon: markRaw(StatsChartOutline) },
       { path: '/screener', label: '选股与市场', icon: markRaw(SearchOutline) },
       { path: '/data-sync', label: '数据管理', icon: markRaw(CloudDownloadOutline) },
     ],

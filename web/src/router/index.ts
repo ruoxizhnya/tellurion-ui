@@ -121,10 +121,12 @@ const routes: RouteRecordRaw[] = [
         // TASKS.md P5-3: factor_cache row -> its evidence coordinates.
         // A-06 改了交接方式：质问**就地开抽屉**，不再一跳去 /evidence；
         // 完整页只剩抽屉里的深链兜底（那条跳是用户主动要的）。
+        // UI-FACTOR-RESEARCH-LABEL：ADR-037 退役后这页只是说明页，标签走 navItems.ts
+        // 的同一份词表（nav-labels.test.ts 逐字校验两处一致），不再是「因子研究」。
         path: 'factors',
         name: 'factors',
         component: () => import('@/pages/FactorCitation.vue'),
-        meta: { title: '因子研究' },
+        meta: { title: '因子证据（已退役）' },
       },
     ],
   },

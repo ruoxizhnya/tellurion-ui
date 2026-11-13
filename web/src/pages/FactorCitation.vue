@@ -5,7 +5,9 @@ import FactorCitation from '@/components/factor/FactorCitation.vue'
 
 <template>
   <div class="factor-citation-page">
-    <NH1>因子研究</NH1>
+    <!-- UI-FACTOR-RESEARCH-LABEL：标题必须与侧栏/标签页同名（nav-labels.test.ts 逐字校验）。
+         这页按 ADR-037 退役后只是说明页，标题里要能看出「已退役」。 -->
+    <NH1>因子证据（已退役）</NH1>
     <FactorCitation />
   </div>
 </template>

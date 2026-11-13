@@ -32,6 +32,7 @@
 | UX-AB-CLOSEOUT | UX 重构 A/B 收尾批（A-09/A-10/A-11/B-01/B-02/B-04/B-06 连同 A-04 断言 5） | 2026-11-12 | `9ca2a61` `97e934d` `efc6cef` `416d598` `319004c` `a540f65` `01b5baa` `08e95f1` + A-10 五连 | [原文](#UX-AB-CLOSEOUT-2026-11-12) |
 | UI-PLAYWRIGHT-TRIAGE-2026-11-13 | 7 条 Playwright 失败逐条分诊（7/7 用例陈旧，产品缺陷 0；W5-1~W5-5 已修；复跑 218 passed / 0 failed / 2 skipped） | 2026-11-13 | `120af41` `ca6f590` `2c84faa` `814e7c1` `5a356f3` | [原文](#UI-PLAYWRIGHT-TRIAGE-2026-11-13) |
 | UI-CI-COVERAGE | 前端覆盖率门：实测 66.50/65.65/51.60/61.35，门 = 下浮 2 点（64/63/49/59），CI Coverage gate + artifact；破坏验证 EXIT=1 | 2026-11-13 | 本批 | [原文](#UI-CI-COVERAGE) |
+| UI-FACTOR-RESEARCH-LABEL | `/factors` 标签三处统一为「因子证据（已退役）」，路由不变；5 张含侧栏基线逐张确认后重录 | 2026-11-13 | 本批 | [原文](#UI-FACTOR-RESEARCH-LABEL) |
 
 ---
 
@@ -1007,3 +1008,51 @@ thresholds: { lines: 64, statements: 63, branches: 49, functions: 59 }
 **证据日志**（临时产物，不入库）：`tellurion-ui/test-results/coverage-run1.log`（基线）、`coverage-gate-green.log`（绿）、`coverage-gate-red.log`（红）、`coverage-destroy.log` / `coverage-destroy2.log`（-5 点下的失灵实测）。
 
 **边界**：改 `web/vitest.config.ts`、`.github/workflows/ci.yml`、`AGENTS.md` §2、`docs/TASKS.md` + 本归档；无源码、无依赖变更。
+
+---
+
+<a id="UI-FACTOR-RESEARCH-LABEL"></a>
+## UI-FACTOR-RESEARCH-LABEL · 「因子研究」入口与退役说明页对齐 [P3] ✅ 完成（2026-11-13）
+
+> 档 2（产品设计）· 来源：01-product-design P2-3 · 顺序 2-5 · 依赖：无（2026-11-12 已裁决保留入口）
+
+- **① 目标**：让导航标签与页面内容一致，停止把"退役说明"呈现为"因子研究能力"。
+- **② 上下文**：`FactorCitation.vue:4-10` 自述 `GET /api/factors/:factor_name` 已按 ADR-037 退役为 410；`navItems.ts:61` 仍以"因子研究"作为一级入口；2026-11-12 产品裁决明确"不删入口，保留可见落点"。
+- **③ 要求**：把导航项与页面标题改为"因子证据（已退役）"或等价表述；保留现有说明、机器码与 ADR 链接；不改路由路径（避免外链失效）。
+- **④ 约束与非目标**：不恢复任何因子查询请求；不显示因子数值；不删入口（除非主任改判并另立清理单）。
+- **⑤ 验收**：导航/标题文案一致；`FactorCitation.test.ts` 仍钉住"不发 `/api/factors`、不撞 410"；无新增控制台错误。
+- **⑥ 边界**：UI 文案与路由展示；core/data 不改。
+
+### 施工记录（2026-11-13）
+
+**改动**（三处手抄 + 词表源头，路由路径不动）：
+
+| 位置 | 改前 | 改后 |
+|---|---|---|
+| `web/src/components/layout/navItems.ts`（侧栏 + ⌘K 共用词表） | `因子研究` | `因子证据（已退役）` |
+| `web/src/router/index.ts`（标签页标题 `meta.title`） | `因子研究` | `因子证据（已退役）` |
+| `web/src/pages/FactorCitation.vue`（页面 H1） | `因子研究` | `因子证据（已退役）` |
+| `docs/design/user-flows.md` §2.1 路由表 / §3.2 导航词表 / §3.3 优先级表 | `因子研究` / `退役候选` | `因子证据（已退役）` / `已退役（ADR-037 + 2026-11-12 裁决，入口保留为说明页）` |
+
+路由 `path: 'factors'` / `name: 'factors'` 未改，历史深链与外链继续有效；页面内退役说明、机器码 `factor_http_surface_retired`、ADR-037 链接均未动（`e2e/evidence-probe.spec.ts:126` 的断言原样通过）。
+
+**测试与验证**：
+
+- `npx vitest run src/components/layout` → 2 files / 13 tests passed（其中 `nav-labels.test.ts` 逐字校验侧栏 ↔ `meta.title` ↔ 页面 H1 三处一致，改名后自然通过；这也说明只改一处会红）。
+- `npm test`（含 `lint:tests`）→ 52 files / **643 tests passed**，EXIT=0。
+- `npm run typecheck` → EXIT=0。
+- 导航相关 e2e：`nav-consistency` + `command-palette` + `cross-navigation` + `dashboard` + `evidence-probe` + `critical-e2e` → **42 passed**（1.2m）。
+- 全站侧栏都渲染该标签 ⇒ 含侧栏的整页视觉基线必然变化。先跑 `visual-regression.spec.ts`：**5 failed / 7 passed**，逐张看 diff 图确认差异像素只落在「因子」这一行标签（`dashboard-sidebar-diff.png` 上 303 px，全在标签字形；`dashboard` 691 px 由同一标签在整页图里的投影 + 侧栏行宽导致），无布局位移、无其他区域差异。确认是过期基线后**只对这 5 张**执行 `--update-snapshots`：
+
+  | 基线 | 结果 |
+  |---|---|
+  | `dashboard-chromium-win32.png` | 重录（侧栏标签变化） |
+  | `dashboard-sidebar-chromium-win32.png` | 重录（元素级，diff 仅在标签） |
+  | `backtest-chromium-win32.png` | 重录（整页含侧栏） |
+  | `stock-screener-chromium-win32.png` | 重录（整页含侧栏） |
+  | `data-sync-chromium-win32.png` | 重录（整页含侧栏） |
+
+  `dashboard-mobile`（375px 侧栏收起）、`backtest-tablet`（768px 图标轨无文字）、`backtest-form` / `dashboard-metric-card`（元素级不含侧栏）与 3 张 ai-* 均**未变**，故未重录。
+  重录后连续两次全量跑 `visual-regression.spec.ts` → **12 passed / 12 passed**（各 1.2m）。
+
+**边界**：只改 UI 文案/文档/视觉基线；core/data 未动；无新增 `/api/factors` 请求（evidence-probe 断言实测通过）。

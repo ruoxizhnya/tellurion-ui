@@ -92,7 +92,7 @@
 | `/data-sync` | 数据同步 | 数据管道管理 |
 | `/alerts` | 风险告警 | 告警历史/统计 |
 | `/evidence` | 证据查询 | content_hash → 原始记录 |
-| `/factors` | 因子证据 | 因子→证据坐标 |
+| `/factors` | 因子证据（已退役） | 因子→证据坐标（ADR-037 后为说明页，无查询入口） |
 | `/login` | 登录 | 布局外，token 认证 |
 
 ### 2.2 重构动机（按产品视角列出的问题）
@@ -126,7 +126,7 @@ Quant Lab
 │   ├── 回测引擎 Backtest           ← 保留 /backtest（F9）
 │   ├── 多策略对比 Compare          ← 保留 /backtest/compare（F10）
 │   ├── 策略库 Strategies           ← 合并 strategy-lab + strategy-builder + Copilot（F11）
-│   ├── 因子研究 Factors            ← 改造 /factors + 因子计算（F12）
+│   ├── 因子证据（已退役）Factors  ← /factors 说明页（ADR-037 退役；F12 不再由 UI 承载）
 │   ├── 选股与市场 Screener         ← 保留 /screener（F14）
 │   └── 数据管理 Data               ← 保留 /data-sync + 数据源状态（F13）
 ├── 监控 Monitoring
@@ -148,9 +148,9 @@ Quant Lab
 | **P0** | 证据质问组件（横切） | 改造 `/evidence` | 从独立页降级为**内嵌侧滑/浮层组件**，数字旁触发 |
 | **P1** | 策略库（合并） | `strategy-lab`+`strategy-builder`+`copilot` | 一个领域一个家：列表/编辑/生成/入策略库 |
 | **P1** | 回测引擎 + 对比 | 保留 | 收口 status 三值、报告导出 |
-| **P1** | 因子研究、数据管理、选股 | 保留/改造 | 仪器面常规 |
+| **P1** | 因子证据、数据管理、选股 | 保留/改造 | 仪器面常规 |
 | **P2** | 监控、执行、合规、行业宏观、系统管理 | 新增 | 后端已有 API，按需启用 |
-| 退役候选 | `/factors` 独立页 | 并入 | 因子证据并入因子研究；若保留只作深链接兜底 |
+| 已退役 | `/factors` 独立页 | ADR-037 + 2026-11-12 裁决 | 因子值由 core 按需求值，UI 无查询入口；入口保留为可见落点（说明页），标签「因子证据（已退役）」 |
 
 > **约束（AGENTS_TEMPLATE）**：新增页面/路由后必须同步更新 `tellurion-docs/docs/ARCHITECTURE.md (frontend)`。
 
