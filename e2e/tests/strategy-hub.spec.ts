@@ -52,6 +52,22 @@ test.describe('B-04 策略库三页合一', () => {
     await expect(page.locator('.copilot-page')).toBeVisible()
   })
 
+  test('策略库页的「新建策略」切到编辑器 tab，而不是点了没反应', async ({ page }) => {
+    await page.goto('/strategy-lab')
+    await page.waitForSelector('[data-testid="strategy-hub"]', { timeout: 15000 })
+
+    // 2026-11-13 主任实测缺陷：该按钮曾只置一个无人消费的 showCreateModal，
+    // 点击后 URL / DOM / 控制台三处都没有变化。新建只发生在编辑器 tab，
+    // 所以入口的正确结果就是「切过去并露出可填写的表单」。
+    const create = page.getByTestId('strategy-create')
+    await expect(create).toBeVisible()
+    await create.click()
+
+    await expect(page).toHaveURL(/\/strategy-lab\?tab=builder/)
+    await expect(page.locator('.builder-page')).toBeVisible()
+    await expect(page.getByPlaceholder('如：动量+价值混合')).toBeVisible()
+  })
+
   test('直达 /copilot 保留别名 URL 并落在 Copilot tab', async ({ page }) => {
     await page.goto('/copilot')
     await page.waitForSelector('.copilot-page', { timeout: 15000 })

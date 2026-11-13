@@ -6,7 +6,10 @@
         <n-input v-model:value="searchQuery" placeholder="搜索策略..." clearable style="width:200px" />
         <n-select v-model:value="filterType" :options="typeOptions" style="width:130px" placeholder="全部类型" clearable />
         <n-select v-model:value="filterPeriod" :options="periodOptions" style="width:120px" placeholder="全部周期" clearable />
-        <n-button type="primary" @click="showCreateModal = true">➕ 新建策略</n-button>
+        <!-- B-04 三页合一后，「新建」的落点是同一 hub 的「编辑器」tab（那里有
+             策略名称 + 因子权重 + 真实 POST /api/strategies）。此前这里把
+             showCreateModal 置 true 却没有任何弹窗消费它，点击等于空操作。 -->
+        <n-button type="primary" data-testid="strategy-create" @click="openBuilder">➕ 新建策略</n-button>
       </n-space>
     </div>
 
@@ -35,6 +38,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { NCard, NButton, NInput, NSelect, NSpace, NTag, NEmpty, useMessage, useDialog } from 'naive-ui'
 import { getStrategies } from '@/api/strategy'
+import { strategyTabLocation } from '@/utils/strategyHub'
 import type { Strategy } from '@/types/api'
 
 const router = useRouter()
@@ -46,7 +50,6 @@ const strategies = ref<Strategy[]>([])
 const searchQuery = ref('')
 const filterType = ref<string | null>(null)
 const filterPeriod = ref<string | null>(null)
-const showCreateModal = ref(false)
 
 const typeOptions = [
   { label: '传统策略', value: 'classic' },
@@ -87,6 +90,14 @@ onMounted(async () => {
     loading.value = false
   }
 })
+
+/**
+ * 「新建策略」= 切到同 hub 的编辑器 tab。新建只发生在编辑器（它才有名称、
+ * 因子权重与保存接口），这里不做第二套表单，也不再留一个点了没反应的按钮。
+ */
+function openBuilder() {
+  router.replace(strategyTabLocation('builder'))
+}
 
 async function runBacktest(strategy: Strategy) {
   router.push({
