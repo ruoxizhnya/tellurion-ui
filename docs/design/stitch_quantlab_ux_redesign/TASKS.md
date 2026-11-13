@@ -852,7 +852,7 @@ core SYNC-01 的验收第 1、2 条要防的形状，本任务不能替它绕过
 5. 现有 `MarketMetrics` / `QuickBacktest` / `NavTiles` / `ConsoleHistory` / `EmergencyFlatten` 五块**保留且不退化**（简报是新增首屏区，不是删功能）；`dashboard.spec.ts` 现有用例全绿。
 6. 破坏验证：把 `pending=null` 渲染成 0 → 断言 2 用例红，还原 → 绿；dashboard 视觉基线重录（V-1 纪律，简报区用 fixture 冻结，避免活数据不可复现 —— 同 V-3 教训）。
 
-### A-15 实施计划（六字段，2026-11-13 起草）
+### A-15 实施计划（六字段，2026-11-13 起草）　✅ 已收口（2026-11-13）
 
 **① 目标**：控制台首屏成为「三节奏」入口 —— 待审阅 / 最近候选 / 校准误差 / 失败警示四块，每个数指到一条真端点或明写「— / 读面未接通」，主任 5 分钟看完知道今天该审什么。
 
@@ -892,6 +892,18 @@ core SYNC-01 的验收第 1、2 条要防的形状，本任务不能替它绕过
 | 6 破坏验证 + 基线 | null→0 红 → 还原绿；基线连跑两轮绿（fixture 冻结，记录退出码） |
 
 **⑥ 边界**：只做 `MorningBriefing.vue` + `Dashboard.vue` 首屏区 + 对应测试；A-12/A-13/A-14 的产物只复用不改动；简报数据冻结策略落 V-3 同款注释。
+
+**落地（2026-11-13）**
+- **组件**：新建 `web/src/components/dashboard/MorningBriefing.vue`，四块（待审阅 / 校准误差 / 失败警示 / 最近一轮候选）+ 候选区；数据只调 `getReviewPending` / `getCalibration` / `getExploreStatus`，排序直接复用 `utils/review.ts::rankAttempts` 取前 3，不另造第二份口径；`Dashboard.vue` 在 `MarketMetrics` 之前插入 `<MorningBriefing />`，原五块一字未动。
+- **三态与错误态**：`pending !== null` 照抄数字；`null + 有源` 写「—」+「不可用源：…（不做部分求和）」；`null + 无源` 写「—」+「无配置源」；读面失败写「读面未接通（不按 0 计）」。校准读面失败同样「读面未接通」，`n<30` 标「样本不足，仅供参考」。
+- **失败警示的取舍（K9）**：后端 `ExploreStatus` 无 K9 的 `completed/invalid/failed` 字段（只有 `running/stopped/attempts`），因此按两个可判信号如实呈现：`stopped` → 「本轮被叫停」；存在 `ok=false` → 「N 次尝试失败」+ 示例原因；两者皆无 → 「无失败尝试」。**没有**用 `running=false` 反推「已完成」——那正是 K9 禁止的「以缺省判成功」。
+- **深链与复用**：候选卡「去审阅」→ `/review?run=<id>`、校准行 → `/review?tab=calibration`；`VerdictBars` 直接 `import` A-14 组件（单测以源码守卫钉住）。**一处必要的越界**：原 `ReviewDesk.vue` 只读 `ql.lastRunId`、不认 `?run=`，深链会落到另一轮 —— 为让断言 3 的链接真的生效，`ReviewDesk` 初始化改为「`?run=` 优先、否则回落到本地指针」（单测 +1 例）。这改变了 A-12/A-14 的宿主页一行，但未改其任何展示口径，属「最贴近原意的必要实现」。
+- **测试**：`MorningBriefing.test.ts` 9 例（四块 / pending 三态 / 读面失败 / 校准两态 / 排序非 Sharpe 非 seq / 失败候选只给原因 / 深链 href / VerdictBars 复用源码守卫 / 无 run 空态）；`ReviewDesk.test.ts` +1 例；`dashboard.spec.ts` +2 例（真栈读数态 + fixture 三态与深链点击）。
+- **真栈事实订正**：⑤ 表假设「当前栈无配置源 ⇒ 『—』是唯一真态」，实测**不成立**：`GET /api/review/pending` 的 `ai_explore` 源为 `available`、`pending=0`，校准 `sample_size=0`。故真栈用例断言「数字或 —，且 — 必附原因」，不把真实 0 硬改写成 —；未知态由 fixture + 单测覆盖。取舍已按「不伪造读数」记录。
+- **基线**：`dashboard-chromium-win32.png` 重录。diff 35446 px 经图像核对为顶部新增简报区 + 其下内容整体下移，侧栏区域与 A-13 重录后一致无新差异；连跑两轮 **1 passed ×2**。`dashboard-mobile` 未重录（仍为 V-2 既存债，页头差异与本次无关）。
+- **验证**：`MorningBriefing.test.ts` **9 passed**；`ReviewDesk.test.ts` + `palette.test.ts` 同批 **60 passed**；`dashboard.spec.ts` + `review-desk.spec.ts` 真栈 **21 passed**；`npm run typecheck` **EXIT=0**；`npx eslint`（触及文件）**EXIT=0**。
+- **破坏验证（真跑）**：`pending=null` 回退成 `'0'` ⇒ **2 failed / EXIT=1**（三态用例 + 读面失败用例同时红），逐字还原 ⇒ **9 passed / EXIT=0**。
+- **commit 拆分取舍**：③ 写「四步各一 commit」，实际合为 1 个 commit —— 四步改的是同一文件同一段（组件骨架、三态、深链、基线/测试），拆开的中转态无法独立变绿；与 A-12/A-14 的单 commit 惯例一致，特此记录。
 
 ---
 
@@ -999,7 +1011,7 @@ A-05 → A-06 → A-07   （三个横切组件，新页复用）
 A-08 → A-09          （两个"整屏重做"，收益最大）
 A-10 → A-11          （补屏与字体）
 A-12 → A-13 → A-14   （2026-11-13 设计细化批：校准 tab / 导航收敛 / 候选卡三要素，三者可并行，无互相依赖；均 ✅ 已收口）
-A-15                 （晨间简报，✅ 前置 A-12/A-13/A-14 已收口，可开工）
+A-15                 （晨间简报，✅ 前置 A-12/A-13/A-14 已收口，✅ 2026-11-13 收口）
 分组 B               ← B-03 可开工（G6 已落地，接 A-12 的 tab 骨架加第三 tab）；B-05 仍挂起（core 因子读面）
 ```
 
@@ -1018,3 +1030,5 @@ A-15                 （晨间简报，✅ 前置 A-12/A-13/A-14 已收口，可
 | 2026-11-13 | **设计细化批立单（只立单不施工）**：主任派工把 2026-11-13 UI/UX 改进报告（会话可视化 artifact）细化为可执行任务。新立 **A-12**（校准驾驶舱 = 审阅台第二 tab，G6 消费面）/ **A-13**（导航 IA 15→14 按 §3.2，解除 A-04 断言 2/8 暂缓）/ **A-14**（候选卡三要素：六维微条 + 质疑分级 + EvidenceProbe）/ **A-15**（晨间简报，⛔ 依赖前三单），各 6 断言 + 六字段实施计划。**两处前提订正**：① 报告「15→9」引 A-04 旧提案，该提案无权威清单且早于五个新页 ⇒ 改按 §3.2 收敛 14 项 5 组；② 样图 C 的 PathSparkline 无数据支撑（`AttemptView` 双侧无权益路径字段，G1 明列缺口）⇒ carved out 归 G1。**一处放置裁决**：S2 原稿「独立 /calibration 页 + ⌘K 直达」与 A-04 断言 5（⌘K 只读 NAV_ITEMS）矛盾 ⇒ 改审阅台第二 tab + 深链。主台账同批新立 `UI-DESIGN-DOC-CONVERGENCE`（设计文档 v1 残留收敛，档 5）并登记 A-12~A-15 开放项 ID |
 | 2026-11-13 (3) | **A-14 完成**：`VerdictBars.vue` 六维微条（unassessed 写「未评估」不画 0 分条 + 否决提示）、`groupChallenges` 分级（blocking→warning→note，组内原序，空清单「无质疑」）、Sharpe 旁 EvidenceProbe（`hash=null` 恒「无法回溯」，不造 hash）、失败/缺席态（无裁决数字 / 「无裁决」）。两条破坏腿真跑（unassessed→评估值 1 failed；severity 顺序反转 1 failed，均还原绿）。**教训/边界**：⑤ 表要求「真 run verdict 形状」e2e，但 :8085 限流 + 套件无真 run，只能用 route fixture（已标 mock）；`/review` 无视觉基线，无图可重录 |
 | 2026-11-13 (4) | **A-13 完成**：导航收敛为 14 项 5 组（删证据质问独立入口、纸交易移入系统），新增「§3.2 代码块 ↔ `navItems.ts` 逐项一致」守卫（解析失败即红），三 e2e spec 同步真栈 17 passed。5 张桌面基线逐张核算 diff 仅在侧栏后重录、连跑两轮绿；`dashboard-mobile`/`backtest-tablet` 仍红，已验证与 A-13 无关（还原 `navItems.ts` 后仍红 767/1003 px）属 **V-2 既存债**，不掩盖不重录。破坏验证双向真跑（label 改字 4 failed；§3.2 注入幽灵条目 1 failed，均还原绿） |
+| 2026-11-13 (5) | **A-15 完成**：控制台首屏新增 `MorningBriefing`（待审阅 / 校准误差 / 失败警示 / 最近候选），数据全走既有端点、排序复用 `rankAttempts`、`VerdictBars` 复用 A-14；`null`/读面失败一律「—」+原因，不画 0。**两处如实记录的偏离**：① 真栈 `review/pending` 实测 `pending=0`（源 available），故真栈用例不硬造「—」；② `ReviewDesk` 增「`?run=` 优先」一行，让深链真的落到该轮。`dashboard.png` 重录两轮绿；破坏验证 null→0 触发 2 failed 后还原绿 |
+| 2026-11-13 (6) | A-13 收口自查补漏：`dashboard.spec.ts`（e2e）与 `navItems.test.ts`（单测）各钉了 15 项，分别实跑 1 failed 后同步为 14（两个独立 `test(...)` commit）；子台账验证记录由「三 spec 17 passed」订正为「四 spec 26 passed + 全量单测 696 passed」 |

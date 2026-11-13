@@ -74,7 +74,53 @@ const REVIEW_PENDING_FIXTURE = {
   sources: [{ name: 'review', status: 'available', pending: 2 }],
 };
 
+/**
+ * A-15 晨间简报的三块读数也必须冻结（V-3 教训：活数据不进基线）。
+ * `ql.lastRunId` 由 init script 在每次导航前写入 —— 不写就会落到「还没有探索记录」
+ * 的空态，基线看着绿，实际简报的候选区一行像素都没覆盖。
+ */
+const CALIBRATION_FIXTURE = {
+  sample_size: 42,
+  hit_rate: 0.61,
+  claimed_rate: 0.7,
+  calibration_error: 0.083,
+  brier_score: 0.21,
+  pending: 1,
+  holdout: { sample_size: 8, hit_rate: 0.5 },
+  entries: [],
+};
+
+const BRIEF_RUN_FIXTURE = {
+  run_id: 'vs-run-brief',
+  running: false,
+  attempts: [
+    {
+      seq: 1, hypothesis: '动量因子在光模块上更稳', params: { lookback: 20 },
+      experiment_id: 1, sharpe: 1.0, ok: true,
+      verdict: {
+        dimensions: { statistical: 0.8, economic: 0.7, robustness: 0.6, bias: 0.5, redundancy: 0.9, causal: 0.4 },
+        unassessed: [], probability: 0.4, weakest: 'causal', geometric_mean: 0.6,
+        blocking: 0, challenges: [], causal: null,
+      },
+    },
+    {
+      seq: 2, hypothesis: '低波因子在银行上更稳', params: { lookback: 60 },
+      experiment_id: 2, sharpe: 0.9, ok: true,
+      verdict: {
+        dimensions: { statistical: 0.7, economic: 0.6, robustness: 0.5, bias: 0.4, redundancy: 0.8, causal: 0.3 },
+        unassessed: [], probability: 0.3, weakest: 'causal', geometric_mean: 0.5,
+        blocking: 1, challenges: [], causal: null,
+      },
+    },
+    {
+      seq: 3, hypothesis: '反转因子在小市值上', params: { lookback: 5 },
+      experiment_id: 3, sharpe: 0, ok: false, error: '数据缺口：交易日不足', verdict: null,
+    },
+  ],
+};
+
 async function fixVolatileApis(page: Page): Promise<void> {
+  await page.addInitScript(() => localStorage.setItem('ql.lastRunId', 'vs-run-brief'));
   await page.route('**/api/backtest**', (route) => {
     const req = route.request();
     const path = new URL(req.url()).pathname;
@@ -88,6 +134,12 @@ async function fixVolatileApis(page: Page): Promise<void> {
   });
   await page.route('**/api/review/pending**', (route) =>
     route.fulfill({ contentType: 'application/json', body: JSON.stringify(REVIEW_PENDING_FIXTURE) }),
+  );
+  await page.route('**/api/pipeline/calibration**', (route) =>
+    route.fulfill({ contentType: 'application/json', body: JSON.stringify(CALIBRATION_FIXTURE) }),
+  );
+  await page.route('**/api/explore/runs/vs-run-brief**', (route) =>
+    route.fulfill({ contentType: 'application/json', body: JSON.stringify(BRIEF_RUN_FIXTURE) }),
   );
 }
 
@@ -110,7 +162,11 @@ test.describe('Visual Regression — Key Pages', () => {
     await page.goto('/');
     await page.waitForLoadState('domcontentloaded');
     await page.waitForSelector('.dashboard-page', { timeout: 15000 });
-    await page.waitForTimeout(500);
+    // A-15：等简报三块读数都落到 fixture 值再截图（等条件，不等时长）
+    await expect(page.getByTestId('brief-pending-value')).toHaveText('2', { timeout: 15000 });
+    await expect(page.getByTestId('brief-calibration-note')).toHaveText('n=42');
+    await expect(page.locator('.recent-item')).toHaveCount(3);
+    await page.waitForTimeout(300);
     await expect(page).toHaveScreenshot('dashboard.png');
   });
 

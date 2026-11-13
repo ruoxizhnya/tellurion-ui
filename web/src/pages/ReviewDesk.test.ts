@@ -178,6 +178,13 @@ describe('B-02 审阅台', () => {
     expect(router.currentRoute.value.query.tab).toBe('calibration')
     expect(w.find('[data-testid="calibration-panel"]').exists()).toBe(true)
   })
+
+  it('A-15：?run= 深链优先于上次记住的 run（晨间简报「去审阅」的落点）', async () => {
+    // beforeEach 已把 ql.lastRunId 写成 run-9；深链必须压过它
+    await mountDesk('/review?run=run-deep')
+
+    expect(exploreApi.getExploreStatus).toHaveBeenCalledWith('run-deep')
+  })
 })
 
 describe('A-14 候选卡三要素', () => {

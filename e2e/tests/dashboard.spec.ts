@@ -199,4 +199,115 @@ test.describe('Dashboard Page (Vue SPA)', () => {
     );
     expect(providerErrors.length).toBe(0);
   });
+
+  /**
+   * A-15 晨间简报（真栈）。
+   *
+   * 真栈上 `/api/review/pending` 的 ai_explore 源是 available，读数就是真实的 0 ——
+   * 这不是「伪造 0」，而是「有源答话、确实没有待审阅」。未知态（源不可用）在
+   * 下面的 fixture 用例与单测里取证；这里只钉「读数只可能是数字或 —，且 — 必有原因」。
+   */
+  test('晨间简报四块可见，读数为数字或「—」且「—」必须给出原因', async ({ page }) => {
+    await page.goto('/');
+    await page.waitForLoadState('domcontentloaded');
+    await page.waitForSelector('[data-testid="morning-briefing"]', { timeout: 15000 });
+
+    for (const id of ['brief-pending', 'brief-calibration', 'brief-failure', 'brief-recent']) {
+      await expect(page.getByTestId(id)).toBeVisible();
+    }
+
+    const pendingValue = page.getByTestId('brief-pending-value');
+    await expect(pendingValue).toHaveText(/^(\d+|—)$/, { timeout: 15000 });
+    if ((await pendingValue.textContent())?.trim() === '—') {
+      await expect(page.getByTestId('brief-pending-note')).toHaveText(
+        /读面未接通|无配置源|不可用源/,
+      );
+    }
+
+    await expect(page.getByTestId('brief-calibration-value')).toHaveText(
+      /^(\d+\.\d 个百分点|—)$/,
+    );
+  });
+
+  /**
+   * A-15 fixture 态：真栈没有「待审阅未知 / 样本不足 / 失败候选」这三种数据，
+   * 用 route 冻结取证（不写库、不改后端）。
+   */
+  test('晨间简报：待审阅未知不画 0、校准样本不足、失败候选只给原因（fixture）', async ({ page }) => {
+    await page.addInitScript(() => localStorage.setItem('ql.lastRunId', 'run-e2e-brief'));
+    await page.route('**/api/review/pending**', (route) =>
+      route.fulfill({
+        contentType: 'application/json',
+        body: JSON.stringify({
+          pending: null,
+          as_of: '2026-11-13T08:00:00Z',
+          sources: [
+            { name: 'ai_explore', status: 'available', pending: 2 },
+            { name: 'adoption', status: 'unavailable', pending: null, error: 'timeout' },
+          ],
+        }),
+      }),
+    );
+    await page.route('**/api/pipeline/calibration**', (route) =>
+      route.fulfill({
+        contentType: 'application/json',
+        body: JSON.stringify({
+          sample_size: 12, hit_rate: 0.5, claimed_rate: 0.6, calibration_error: 0.083,
+          brier_score: 0.2, pending: 0, holdout: { sample_size: 0, hit_rate: 0 }, entries: [],
+        }),
+      }),
+    );
+    await page.route('**/api/explore/runs/run-e2e-brief**', (route) =>
+      route.fulfill({
+        contentType: 'application/json',
+        body: JSON.stringify({
+          run_id: 'run-e2e-brief',
+          running: false,
+          attempts: [
+            {
+              seq: 1, hypothesis: '动量因子在光模块上更稳', params: {}, experiment_id: 1,
+              sharpe: 1.0, ok: true,
+              verdict: {
+                dimensions: { statistical: 0.8, economic: 0.7, robustness: 0.6, bias: 0.5, redundancy: 0.9, causal: 0.4 },
+                unassessed: [], probability: 0.4, weakest: 'causal', geometric_mean: 0.6,
+                blocking: 0, challenges: [], causal: null,
+              },
+            },
+            {
+              seq: 2, hypothesis: '低波因子在银行上更稳', params: {}, experiment_id: 2,
+              sharpe: 2.0, ok: true,
+              verdict: {
+                dimensions: { statistical: 1, economic: 1, robustness: 1, bias: 1, redundancy: 1, causal: 1 },
+                unassessed: [], probability: 1, weakest: 'causal', geometric_mean: 1,
+                blocking: 0, challenges: [], causal: null,
+              },
+            },
+            {
+              seq: 3, hypothesis: '反转因子在小市值上', params: {}, experiment_id: 3,
+              sharpe: 0, ok: false, error: '数据缺口：交易日不足', verdict: null,
+            },
+          ],
+        }),
+      }),
+    );
+
+    await page.goto('/');
+    await page.waitForSelector('[data-testid="morning-briefing"]', { timeout: 15000 });
+
+    await expect(page.getByTestId('brief-pending-value')).toHaveText('—');
+    await expect(page.getByTestId('brief-pending-note')).toContainText('adoption');
+    await expect(page.getByTestId('brief-pending-note')).toContainText('不做部分求和');
+
+    await expect(page.getByTestId('brief-calibration-value')).toHaveText('8.3 个百分点');
+    await expect(page.getByTestId('brief-calibration-note')).toContainText('样本不足');
+
+    // 平台面积排序：seq2（Sharpe 2.0 孤峰但因果满分）= 1.0 > seq1 = 0.4 > seq3 = 0
+    await expect(page.locator('.recent-item')).toHaveCount(3);
+    await expect(page.locator('.recent-item').first()).toHaveAttribute('data-testid', 'brief-candidate-2');
+    await expect(page.getByTestId('brief-candidate-error-3')).toContainText('数据缺口');
+    await expect(page.getByTestId('brief-candidate-3').locator('[data-testid="verdict-bars"]')).toHaveCount(0);
+
+    await page.getByTestId('brief-open-2').click();
+    await expect(page).toHaveURL(/\/review\?run=run-e2e-brief/);
+  });
 });

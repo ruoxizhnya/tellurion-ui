@@ -268,7 +268,10 @@ const activeTab = computed<'review' | 'calibration'>({
   },
 })
 
-const runID = ref(localStorage.getItem(LAST_RUN_KEY) ?? '')
+// A-15：「去审阅」深链带 `?run=<id>`，必须优先于上次记住的 run ——
+// 否则链接看着指到了某一轮，页面却打开另一轮，比不给链接更糟。
+const queryRun = typeof route.query.run === 'string' ? route.query.run : ''
+const runID = ref(queryRun || localStorage.getItem(LAST_RUN_KEY) || '')
 const status = ref<ExploreStatus | null>(null)
 const loading = ref(false)
 const error = ref('')

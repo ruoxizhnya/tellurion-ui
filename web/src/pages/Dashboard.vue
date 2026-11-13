@@ -1,5 +1,9 @@
 <template>
   <div class="dashboard-page">
+    <!-- A-15：晨间简报 = 「看摘要 5 分钟」的首屏落点（待审阅 / 校准误差 / 失败警示 /
+         最近候选），排在市场概览之上；下方五块功能一律保留。 -->
+    <MorningBriefing />
+
     <MarketMetrics
       v-model:selected-date="selectedDate"
       v-model:selected-index="selectedIndex"
@@ -50,6 +54,7 @@ import { getStrategies } from '@/api/strategy'
 import { runBacktest as apiRunBacktest } from '@/api/backtest'
 import type { Strategy, MarketIndex, BacktestResult } from '@/types/api'
 import MarketMetrics from '@/components/dashboard/MarketMetrics.vue'
+import MorningBriefing from '@/components/dashboard/MorningBriefing.vue'
 import QuickBacktest from '@/components/dashboard/QuickBacktest.vue'
 import NavTiles from '@/components/dashboard/NavTiles.vue'
 import ConsoleHistory from '@/components/dashboard/ConsoleHistory.vue'
