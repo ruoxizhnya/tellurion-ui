@@ -958,6 +958,28 @@ Running 220 tests using 1 worker
 - 31 spec / 220 例；`test.fixme` = 0。
 - 2 skipped 为 `auth-login-flow.spec.ts` 的「开启鉴权形态」「引导→登录→登出」两条：当前栈是 open-access 且未提供 `E2E_AUTH_USER` / `E2E_AUTH_PASSWORD`，用例内 `test.skip` 已写明跳过理由（环境条件跳过，非红）。
 
+**补记（2026-11-13 18:20，四条改造提交之后的全量复跑）**
+
+收口后为做回归验证又跑了一次全量，结果 **211 passed / 7 failed / 2 skipped（16.7m）**，7 条全在 data-sync 四件套：
+
+```
+data-sync-error.spec.ts:16    API: Unknown job type is accepted then fails loudly in the runner
+data-sync-error.spec.ts:132   API: Retry count increments on failure
+data-sync-error.spec.ts:204   API: Retry non-failed job returns error
+data-sync-schedule.spec.ts:120 API: Trigger schedule manually
+data-sync.spec.ts:16          API: Create sync job → Execute → Complete → Verify
+data-sync.spec.ts:146         API: Retry a failed sync job
+data-sync.spec.ts:232         SSE: Real-time progress updates
+```
+
+**不是 UI 回归，也不是"用例陈旧"**（与本条表格里 1/5/6/7 的原始失败原因不同：原始是 400 契约错误，这次是**等不到终态**）。取证：
+
+- data-service worker 日志：`syncjob: worker 1f80446cccd8-1 running job=8670799bcbae0497 type=ohlcv_daily` → `succeeded ... fetched=577548 persisted=577548 ... in 14m15.292608311s` → 立刻 `running job=16f09ec55755bc91`（同为 `ohlcv_daily retry=1/3`）。
+- 同一时刻 `GET /api/sync/jobs` 首页 50 条：**43 pending / 0 running / 7 cancelled**，其中像 `a1548b473bc57595`（`600000.SH`，2024-01-01～2024-03-31，范围很窄）这样的作业也一直 pending。
+- 结论：**同步队列是全局的、worker 串行**；前序用例/前一轮留下的全市场级 `ohlcv_daily` 作业在队，后面所有 30s 超时的用例必然红。属 **e2e 测试隔离缺陷 + 外部依赖**，不是 UI 产品缺陷（本轮 UI 改动只有标签文案、文档、CI 配置与覆盖率阈值，不可能影响同步 worker）。
+
+**处置与边界**：按"不得靠加 sleep / 放宽断言掩盖"的规则，**不改用例、不调 wait**。建议另立一单（本仓 e2e 腿）：data-sync 套件要么在 `beforeAll` 用窄 scope 并显式清理/取消遗留 pending，要么由 data-service 提供测试可用的队列隔离开关；data 侧 worker 并发度与"全市场作业不进入共享队列"属跨仓议题。**重开条件**：data-service 队列排空（或提供隔离手段）后，定点复跑上述 7 条应收敛为绿；若仍红再按真缺陷处理。
+
 **台账订正**：`docs/TASKS.md` §一 顶部由"当前没有未做的单"改为**逐条列出当前开放项 ID** + 实测 e2e 健康度段；frontmatter 中 2026-11-12 的"0 张开放单"明确标注为过期时点；`AGENTS.md` §5 删除"§一 当前无开放单"，改为开放项 ID 清单并禁止引用任何时点的"0 open"结论。
 
 **边界**：只改 `docs/TASKS.md`、`AGENTS.md`、本归档；无源码改动（7 条的测试侧修复已在 `120af41`/`ca6f590`/`2c84faa`/`814e7c1`/`5a356f3` 落地），不改后端。
@@ -1001,8 +1023,8 @@ thresholds: { lines: 64, statements: 63, branches: 49, functions: 59 }
 
 | 步骤 | 命令 | 实测 |
 |---|---|---|
-| 绿 | `npm run test:coverage`（门 64/63/49/59） | `All files 65.65 | 51.6 | 61.35 | 66.5`，EXIT=0 |
-| 红 | 移走 `src/api/client.test.ts` 后 `npm run test:coverage` | `All files 63.64 | 49.74 | 58.48 | 64.7`；`ERROR: Coverage for functions (58.48%) does not meet global threshold (59%)`；**EXIT=1** |
+| 绿 | `npm run test:coverage`（门 64/63/49/59） | `All files` statements 65.65 / branches 51.6 / functions 61.35 / lines 66.5，EXIT=0 |
+| 红 | 移走 `src/api/client.test.ts` 后 `npm run test:coverage` | statements 63.64 / branches 49.74 / functions 58.48 / lines 64.7；`ERROR: Coverage for functions (58.48%) does not meet global threshold (59%)`；**EXIT=1** |
 | 还原 | `Move-Item` 移回 | SHA256 `614B3748…79F85` 与移走前一致（`HASH_RESTORED=True`），`git status` 该文件无改动 |
 | 复绿 | 还原后重跑 | EXIT=0（见上）。同轮 `sync.test.ts` 的移走/还原同样逐字节一致 |
 
