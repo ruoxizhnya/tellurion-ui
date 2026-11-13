@@ -40,6 +40,22 @@ jobs:
       - name: Test
         run: npm test
 
+      # UI-CI-COVERAGE：覆盖率门。阈值写在 web/vitest.config.ts（= 2026-11-13 实测
+      # 基线 lines 66.50 / statements 65.65 / branches 51.60 / functions 61.35 下浮 2 点；
+      # 不按 -5 点，因为实测删掉最大的单个测试文件也只掉 2~3 点，-5 会让门失灵）。
+      # 单独一步而不是塞进 `npm test`：红的时候一眼看出是覆盖率门还是用例挂了。
+      - name: Coverage gate
+        run: npm run test:coverage
+
+      # 报告留档，便于定位是哪几行掉出覆盖率；coverage/ 不入库（.gitignore 已忽略）。
+      - name: Upload coverage report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: web-coverage
+          path: web/coverage/
+          retention-days: 7
+
       # X-CI-RACE-STATICCHECK（ui 腿）：生产构建门。typecheck 是 `vue-tsc --noEmit`，
       # 与 `build` 里的 `vue-tsc -b` + `vite build` 不是同一条路径——只有这里能
       # 挡住「类型过但打包炸」（缺资源、入口/别名错、体积超限等）。

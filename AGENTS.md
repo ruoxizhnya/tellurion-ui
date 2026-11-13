@@ -17,6 +17,7 @@ npm run build        # vue-tsc -b && vite build
 npm run lint
 npm run typecheck
 npm test             # lint:tests + vitest run
+npm run test:coverage # 覆盖率门（阈值在 vitest.config.ts，CI 同样执行）
 ```
 
 端到端（需要起齐服务：前端 :5173 / data-service :8081（由 `tellurion-data` 提供）/ analysis :8085）：
@@ -24,8 +25,10 @@ npm test             # lint:tests + vitest run
 ```bash
 cd e2e
 npm ci
-npx playwright test          # AUD-61 已于 2026-11-10 收口，test.fixme 归零；用例应全绿
+npx playwright test          # AUD-61 已于 2026-11-10 收口，test.fixme 归零
 ```
+
+**e2e 健康度按实测写、不要抄历史结论**：2026-11-13 真栈全量 220 例 → **218 passed / 0 failed / 2 skipped**（5.9m），31 spec。2 skipped 是 `auth-login-flow.spec.ts` 的鉴权形态与引导流程（栈为 open-access 且未提供 `E2E_AUTH_USER` / `E2E_AUTH_PASSWORD`，用例内写明环境跳过理由）。改用例前先读该用例的注释，历史上 7 条"红"2026-11-13 已逐条分诊为**用例陈旧**（非产品缺陷），细节见 [归档](docs/archive/tasks-archive-2026-11.md#UI-PLAYWRIGHT-TRIAGE-2026-11-13)。
 
 ## 3. 边界（硬约束）
 

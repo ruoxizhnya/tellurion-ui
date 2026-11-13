@@ -31,6 +31,7 @@
 | X-LOW-CLEANUP（ui 腿） | `scripts/check-no-openapi.mjs`：openapi 不复制守卫 + CI 门 | 2026-11-12 | 见本条 | [施工记录](#X-LOW-CLEANUP-ui) |
 | UX-AB-CLOSEOUT | UX 重构 A/B 收尾批（A-09/A-10/A-11/B-01/B-02/B-04/B-06 连同 A-04 断言 5） | 2026-11-12 | `9ca2a61` `97e934d` `efc6cef` `416d598` `319004c` `a540f65` `01b5baa` `08e95f1` + A-10 五连 | [原文](#UX-AB-CLOSEOUT-2026-11-12) |
 | UI-PLAYWRIGHT-TRIAGE-2026-11-13 | 7 条 Playwright 失败逐条分诊（7/7 用例陈旧，产品缺陷 0；W5-1~W5-5 已修；复跑 218 passed / 0 failed / 2 skipped） | 2026-11-13 | `120af41` `ca6f590` `2c84faa` `814e7c1` `5a356f3` | [原文](#UI-PLAYWRIGHT-TRIAGE-2026-11-13) |
+| UI-CI-COVERAGE | 前端覆盖率门：实测 66.50/65.65/51.60/61.35，门 = 下浮 2 点（64/63/49/59），CI Coverage gate + artifact；破坏验证 EXIT=1 | 2026-11-13 | 本批 | [原文](#UI-CI-COVERAGE) |
 
 ---
 
@@ -958,3 +959,51 @@ Running 220 tests using 1 worker
 **台账订正**：`docs/TASKS.md` §一 顶部由"当前没有未做的单"改为**逐条列出当前开放项 ID** + 实测 e2e 健康度段；frontmatter 中 2026-11-12 的"0 张开放单"明确标注为过期时点；`AGENTS.md` §5 删除"§一 当前无开放单"，改为开放项 ID 清单并禁止引用任何时点的"0 open"结论。
 
 **边界**：只改 `docs/TASKS.md`、`AGENTS.md`、本归档；无源码改动（7 条的测试侧修复已在 `120af41`/`ca6f590`/`2c84faa`/`814e7c1`/`5a356f3` 落地），不改后端。
+
+---
+
+<a id="UI-CI-COVERAGE"></a>
+## UI-CI-COVERAGE · 前端覆盖率门（vitest coverage + CI 步骤）[P2] ✅ 完成（2026-11-13）
+
+> 档 4（测试）· 来源：03-testing P2-2 · 顺序 4-11 · 依赖：core 伞 `X-COVERAGE-FLOOR`
+
+- **① 目标**：前端也有能拦住回退的覆盖率门。
+- **② 上下文**：`package.json` 无 `test:coverage` 脚本，CI 不跑覆盖率；当前只有单测与 e2e 通过性。
+- **③ 要求**：① 加 `test:coverage`（vitest 内置 coverage，如缺 `@vitest/coverage-v8` 属必要依赖，需在提交说明）；② 先测实际覆盖率；③ CI 设门 = 实测 - 5 点；④ 报告输出到 CI artifact 或 `coverage/`（不入库）。
+- **④ 约束与非目标**：不引入第二套测试框架；不把 e2e 计入覆盖率；不追求 100%。
+- **⑤ 验收**：`npm run test:coverage` 产出摘要；CI 使用新阈值；删除一个有断言的测试文件 ⇒ 门红。
+- **⑥ 边界**：UI `package.json` + CI。
+
+### 施工记录（2026-11-13）
+
+**事实订正（先验证再动手）**：本条 ② 的前提「package.json 无 `test:coverage` 脚本」**已过期**。`web/package.json` 已有 `test:coverage`（`vitest run --coverage`），`@vitest/coverage-v8` 已在 devDependencies，`vitest.config.ts` 已有 `coverage.include`（`components/backtest` / `composables` / `stores` / `utils` / `api`）。真正缺的是**阈值门**与 **CI 调用**，本轮只补这两项，未动依赖、未换框架。
+
+**实测基线（52 文件 / 643 例，`npm run test:coverage`）**：
+
+```
+All files          |   65.65 |     51.6 |   61.35 |    66.5 |
+                    statements | branches | functions | lines
+```
+
+**门的设计（对 ③「实测 -5 点」的偏离与理由）**：先按 -5 点设了 `61/60/46/56`，破坏验证时发现它对本仓有效的回退**完全失灵**——删掉最大的单个测试文件 `src/api/client.test.ts`（19KB）后覆盖率只掉到 statements 63.64 / branches 49.74 / functions 58.48 / lines 64.70（-2.01 / -1.86 / -2.87 / -1.80 点），门仍绿；删 `src/stores/sync.test.ts` 也只掉 3.16 / 2.49 / 3.65 / 2.70 点。也就是说 **-5 点缓冲 > 单个测试文件的全部贡献**，与本条自己的验收「删一个有断言的测试文件 ⇒ 门红」直接冲突。故改为**实测 -2 点**，取整向下：
+
+```ts
+thresholds: { lines: 64, statements: 63, branches: 49, functions: 59 }
+```
+
+-2 点仍留出约 34 条 statements 的自然漂移空间（正常小改不会假红），同时任一核心测试文件被删即红。理由已写进 `web/vitest.config.ts` 的注释，避免后人"按 -5 点修回去"。
+
+**CI 落地**：`.github/workflows/ci.yml` 的 `frontend` job 在 `Test` 之后新增两步——`Coverage gate`（`npm run test:coverage`）与 `Upload coverage report`（`actions/upload-artifact@v4`，`web/coverage/`，7 天）。单独一步而不是塞进 `npm test`：红的时候一眼区分「用例挂了」还是「覆盖率掉了」。`coverage/` 本就在 `.gitignore`（第 11 行），不入库。
+
+**破坏验证（真实命令 / 真实退出码）**：
+
+| 步骤 | 命令 | 实测 |
+|---|---|---|
+| 绿 | `npm run test:coverage`（门 64/63/49/59） | `All files 65.65 | 51.6 | 61.35 | 66.5`，EXIT=0 |
+| 红 | 移走 `src/api/client.test.ts` 后 `npm run test:coverage` | `All files 63.64 | 49.74 | 58.48 | 64.7`；`ERROR: Coverage for functions (58.48%) does not meet global threshold (59%)`；**EXIT=1** |
+| 还原 | `Move-Item` 移回 | SHA256 `614B3748…79F85` 与移走前一致（`HASH_RESTORED=True`），`git status` 该文件无改动 |
+| 复绿 | 还原后重跑 | EXIT=0（见上）。同轮 `sync.test.ts` 的移走/还原同样逐字节一致 |
+
+**证据日志**（临时产物，不入库）：`tellurion-ui/test-results/coverage-run1.log`（基线）、`coverage-gate-green.log`（绿）、`coverage-gate-red.log`（红）、`coverage-destroy.log` / `coverage-destroy2.log`（-5 点下的失灵实测）。
+
+**边界**：改 `web/vitest.config.ts`、`.github/workflows/ci.yml`、`AGENTS.md` §2、`docs/TASKS.md` + 本归档；无源码、无依赖变更。
