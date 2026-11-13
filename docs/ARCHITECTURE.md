@@ -34,10 +34,51 @@ analysis-service（:8085）→ data（:8081）/ ai（:8086）/ core 引擎
 | `e2e/` | 端到端用例 | 不做单元测试（vitest 在 web/） |
 | `deploy/` | nginx 配置 | 不含业务 |
 
-### 3.1 页面清单（A-09 / A-10 / B-02 新增页登记于此）
+### 3.1 页面清单（全集 + 增量登记）
 
 > core 侧 `tellurion:docs/ARCHITECTURE.md` 已声明「前端已拆仓」，页面登记
 > 只在本仓维护，不在 core 重复登记（避免两处漂移）。
+
+**两个视角，分工固定，别互相搬正文：**
+
+- **§3.1.1 页面全集**：回答「UI 一共有哪些页面」。**唯一维护处是这张表**；
+  `scripts/check-page-inventory.mjs` 在 CI 里校验它与 `web/src/pages/*.vue`、
+  `web/src/router/index.ts` 三方一致——新增页面不登记、登记了不存在的文件、
+  路由写错，都会红。**新增/删除页面时必须同步改这张表**，否则 CI 过不去。
+- **§3.1.2 增量登记**（A-09 / A-10 / B-02 新增页）：只记端点条数与建模细节，
+  不重复全集表。
+
+#### 3.1.1 页面全集（20 个页面文件 = 17 条路由 + 策略库内嵌 3 个视图）
+
+> 「路由」列写 `—` 的行是**不作为独立路由**的内嵌视图（挂在 `StrategyHub` 的 tab 上）。
+> `/copilot`、`/strategy-builder` 是 `/strategy-lab` 的路由别名，URL 保留但不再单列页面。
+
+<!-- PAGE-INVENTORY:BEGIN -->
+| 路由 | 页面文件 | 一句话用途 |
+|---|---|---|
+| `/login` | `pages/Login.vue` | 登录（`AppLayout` 之外，无侧栏/顶栏；open-access 栈直接放行） |
+| `/` | `pages/Dashboard.vue` | 控制台：主线摘要、导航磁贴、回测历史 |
+| `/explore` | `pages/Explore.vue` | 探索观察：三栏观察（正在试什么/结果流/当前最优）+ 叫停 |
+| `/review` | `pages/ReviewDesk.vue` | 审阅台：候选排序（前端近似，页顶标注）+ 采纳裁决 |
+| `/evidence` | `pages/Evidence.vue` | 证据质问：`content_hash` → 原始记录（也内嵌为数字旁侧滑） |
+| `/backtest` | `pages/BacktestEngine.vue` | 回测引擎：表单、结果读数、回测历史 |
+| `/backtest/compare` | `pages/BacktestCompare.vue` | 多策略对比：绩效差异表 + 权益曲线叠加 |
+| `/walkforward` | `pages/WalkForwardBatch.vue` | 走向分析与批量回测（csv 导出后端 501，页面不画） |
+| `/strategy-lab` | `pages/StrategyHub.vue` | 策略库壳：策略库 / 编辑器 / Copilot 三个 tab（旧路径为别名） |
+| `/paper-trading` | `pages/PaperTrading.vue` | 纸交易观测台：订单、持仓、账户、紧急平仓 + 外部信号流 |
+| `/factors` | `pages/FactorCitation.vue` | 因子证据（已退役）：ADR-037 说明页，无查询入口 |
+| `/screener` | `pages/Screener.vue` | 选股与市场：多因子筛选与排名 |
+| `/data-sync` | `pages/DataSync.vue` | 数据管理：作业队列、调度、数据质量、拆分读数 |
+| `/alerts` | `pages/Alerts.vue` | 风险告警：评估触发、告警历史、按规则分布 |
+| `/compliance` | `pages/Compliance.vue` | 合规：适当性、异常交易、大额日报、减持规则 |
+| `/system-admin` | `pages/SystemAdmin.vue` | 系统管理：鉴权状态、用户、审计、插件 |
+| `/:pathMatch(.*)*` | `pages/NotFound.vue` | 未匹配路径兜底（提示回控制台） |
+| —（策略库 tab `lab`） | `pages/StrategyLab.vue` | 策略列表与状态（策略库 tab） |
+| —（策略库 tab `builder`） | `pages/StrategyBuilder.vue` | 可视化策略编辑器（策略库 tab） |
+| —（策略库 tab `copilot`） | `pages/Copilot.vue` | 自然语言生成策略，异步 job + 失败原因原样展示（策略库 tab） |
+<!-- PAGE-INVENTORY:END -->
+
+#### 3.1.2 增量登记（A-09 / A-10 / B-02 新增页的端点与建模备注）
 
 | 路由 | 页面 | 端点 | 备注 |
 |---|---|---|---|
@@ -82,3 +123,4 @@ tellurion-ui ──(HTTP/SSE)──► analysis-service ──► data / ai / co
 | AUD-61 | e2e 与结构脱节 | ✅ 2026-11-10（`test.fixme` = 0，视觉基线 12 passed） |
 | AUD-63 | 票池读数口径 | ✅ 2026-11-10 |
 | — | 契约变更时同步前端类型 | 持续 |
+

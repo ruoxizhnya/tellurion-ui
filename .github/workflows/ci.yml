@@ -68,6 +68,13 @@ jobs:
         working-directory: .
         run: node scripts/check-no-openapi.mjs
 
+      # UI-PAGE-INVENTORY：§3.1.1 页面全集 ↔ web/src/pages/*.vue ↔ 路由表 三方一致，
+      # 外加 ARCHITECTURE.md 相对链接可解析。新增页面不登记 / 登记了不存在的文件 /
+      # 路由写错 / 文档链接指向空文件，都会在合入前红。
+      - name: Guard（页面全集与路由一致）
+        working-directory: .
+        run: node scripts/check-page-inventory.mjs
+
   e2e:
     name: Playwright e2e (smoke)
     runs-on: ubuntu-latest

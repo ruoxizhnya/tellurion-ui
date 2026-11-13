@@ -33,6 +33,7 @@
 | UI-PLAYWRIGHT-TRIAGE-2026-11-13 | 7 条 Playwright 失败逐条分诊（7/7 用例陈旧，产品缺陷 0；W5-1~W5-5 已修；复跑 218 passed / 0 failed / 2 skipped） | 2026-11-13 | `120af41` `ca6f590` `2c84faa` `814e7c1` `5a356f3` | [原文](#UI-PLAYWRIGHT-TRIAGE-2026-11-13) |
 | UI-CI-COVERAGE | 前端覆盖率门：实测 66.50/65.65/51.60/61.35，门 = 下浮 2 点（64/63/49/59），CI Coverage gate + artifact；破坏验证 EXIT=1 | 2026-11-13 | 本批 | [原文](#UI-CI-COVERAGE) |
 | UI-FACTOR-RESEARCH-LABEL | `/factors` 标签三处统一为「因子证据（已退役）」，路由不变；5 张含侧栏基线逐张确认后重录 | 2026-11-13 | 本批 | [原文](#UI-FACTOR-RESEARCH-LABEL) |
+| UI-PAGE-INVENTORY | ARCHITECTURE §3.1 拆为页面全集（20 行）+ 增量登记；`scripts/check-page-inventory.mjs` 三方一致 + 链接检查，接入 CI | 2026-11-13 | 本批 | [原文](#UI-PAGE-INVENTORY) |
 
 ---
 
@@ -1056,3 +1057,48 @@ thresholds: { lines: 64, statements: 63, branches: 49, functions: 59 }
   重录后连续两次全量跑 `visual-regression.spec.ts` → **12 passed / 12 passed**（各 1.2m）。
 
 **边界**：只改 UI 文案/文档/视觉基线；core/data 未动；无新增 `/api/factors` 请求（evidence-probe 断言实测通过）。
+
+---
+
+<a id="UI-PAGE-INVENTORY"></a>
+## UI-PAGE-INVENTORY · 页面全集入口（ARCHITECTURE §3.1 之外）[P3] ✅ 完成（2026-11-13）
+
+> 档 5（文档与代码一致性）· 来源：04-doc-consistency P3-1 · 顺序 5-7 · 依赖：无
+
+- **① 目标**：给读者一个"UI 共有哪些页面"的完整入口，而不只是增量登记。
+- **② 上下文**：`docs/ARCHITECTURE.md §3.1` 自述"新增页登记于此"，只列 5 行；实测 20 个页面，多数不在该节。该节不是缺陷，但缺少全集视图。
+- **③ 要求**：新增"页面全集"表（路由 → 页面 → 一句话用途），由路由配置生成或人工维护 + 检查脚本；保留原增量登记节并注明两者分工。
+- **④ 约束与非目标**：不改页面实现；不要求每个页面都写详细设计；不把该表做成路由的第二真相（能生成就生成）。
+- **⑤ 验收**：20 个页面全部出现在全集表；路由配置新增页面时检查脚本能提示；链接检查绿。
+- **⑥ 边界**：`tellurion-ui/docs/ARCHITECTURE.md` + 可选 `scripts/`。
+
+### 施工记录（2026-11-13）
+
+**§3.1 拆成两节，分工写死在正文里**（防止后人把两个视角的内容互相搬）：
+
+- **§3.1.1 页面全集**（新增，20 行）：`路由 | 页面文件 | 一句话用途`。20 = 17 条真实路由（含 `/login` 与 `/:pathMatch(.*)*`）+ 3 个不作为路由的内嵌视图（`StrategyLab` / `StrategyBuilder` / `Copilot`，挂在 `StrategyHub` 的 tab 上，路由列写 `—`）。表外注明 `/copilot`、`/strategy-builder` 是 `/strategy-lab` 的路由别名，URL 保留但不单列页面。
+- **§3.1.2 增量登记**（原表保留）：A-09 / A-10 / B-02 新增页的端点条数与建模备注，不再承担"全集"职责。
+- 表格用 `<!-- PAGE-INVENTORY:BEGIN -->` / `<!-- PAGE-INVENTORY:END -->` 包裹，脚本按标记取块，不会误吃文档其他表格。
+
+**为什么人工维护 + 脚本而不是纯生成**：全集的「一句话用途」是给人读的、且需要判断（比如 `/factors` 要写明「已退役」）；纯生成只能得到路由与文件名的映射，价值不足。所以表格人工维护，脚本负责把「人工维护」的漂移在 CI 里挡住——这正是本条 ④「不把该表做成路由的第二真相」的落法：路由表仍是唯一真相，全集表是**被校验的视图**。
+
+**检查脚本 `scripts/check-page-inventory.mjs`（零依赖，Node ESM）**四类断言：
+
+1. `web/src/pages/*.vue`（实测 20 个）↔ 表格「页面文件」列**双向相等**：新增页面不登记、登记了不存在的文件、同一页登记两次，都红；
+2. 每行「路由」必须在 `web/src/router/index.ts` 里有对应 `path:`（或 `alias:`），且路由表确实 import 了该页面文件；写 `—` 的行必须在 `StrategyHub.vue` 里被内嵌（相对 `./X.vue` 与 `@/pages/X.vue` 两种写法都认）；
+3. 「一句话用途」不能为空或 `TODO` / `待补` / `TBD`；
+4. `docs/ARCHITECTURE.md` 里所有相对 Markdown 链接可解析到真实文件（本轮实测 4 条，全绿）。
+
+**接进 CI**：`.github/workflows/ci.yml` 的 `frontend` job 末尾，紧接着 `Guard（openapi 不复制）` 之后加 `Guard（页面全集与路由一致）`（`working-directory: .`，`node scripts/check-page-inventory.mjs`）。放在前端 job 而不是新开 job：它校验的是前端页面与路由，和前端的 lint/typecheck 是同一类门。
+
+**验证（真实命令 / 真实退出码）**：
+
+| 场景 | 命令 | 实测 |
+|---|---|---|
+| 绿 | `node scripts/check-page-inventory.mjs` | `✓ 页面全集一致：20 个页面文件（17 条路由 + 3 个内嵌视图），文档链接 4 条可解析`，EXIT=0 |
+| 破坏 1：新增未登记页 | 临时写 `web/src/pages/ProbeTmp.vue` 再跑 | `✗ web/src/pages/ProbeTmp.vue 没有登记进 §3.1.1 页面全集`，**EXIT=1**；删除后复绿 |
+| 破坏 2：坏链接 | 临时在 ARCHITECTURE.md 追加 `[坏链](design/does-not-exist.md)` 再跑 | `✗ docs/ARCHITECTURE.md 的链接指向不存在的文件：design/does-not-exist.md`，**EXIT=1**；删掉该行后复绿 |
+
+破坏 2 的还原方式为**删除临时追加行**（不是整文件覆盖），复核 `git diff --stat` 为 `+43/-1`，即只有本条预期的 §3.1 改动，无夹带。
+
+**边界**：改 `docs/ARCHITECTURE.md`、`scripts/check-page-inventory.mjs`（新增）、`.github/workflows/ci.yml`、`docs/TASKS.md` + 本归档；**未改任何页面实现**，20 个 `.vue` 文件零改动。
