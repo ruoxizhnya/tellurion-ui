@@ -7,6 +7,7 @@ e2e/node_modules/
 # 测试与报告产物
 e2e/e2e-report/
 e2e/test-results/
+/test-results/
 playwright-report/
 coverage/
 *.tsbuildinfo
@@ -19,6 +20,7 @@ coverage/
 # 编辑器 / 系统
 .vscode/
 .idea/
+.trae/
 .DS_Store
 *.log
 

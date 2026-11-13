@@ -1,5 +1,9 @@
 node_modules/
 e2e-report/
+e2e-report-visual/
 test-results/
+test-results-visual/
 playwright-report/
 *.zip
+# 视觉回归/外显证据截图：可随时重录，不入库
+visual-evidence/
