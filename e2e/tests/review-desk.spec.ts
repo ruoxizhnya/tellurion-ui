@@ -87,7 +87,7 @@ test.describe('B-02 审阅台', () => {
     await page.goto('/review')
     await page.waitForSelector('[data-testid="review-desk"]', { timeout: 15000 })
 
-    await page.getByRole('tab', { name: '校准' }).click()
+    await page.locator('.n-tabs-tab').filter({ hasText: '校准' }).click()
     await expect(page).toHaveURL(/tab=calibration/)
     await expect(page.getByTestId('calibration-panel')).toBeVisible()
   })
