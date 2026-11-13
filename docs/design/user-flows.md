@@ -116,28 +116,42 @@
 
 ### 3.2 建议导航结构
 
+> **2026-11-13（A-13）**：本节代码块是侧栏/⌘K 的**机器可核对真相源** ——
+> `nav-labels.test.ts` 会解析它并与 `web/src/components/layout/navItems.ts` 逐项比对
+> （组名、label、path、顺序），解析失败即红。改导航必须同步改这里。
+
 ```
 Quant Lab
-├── 研究主线（P0，新增/改造）
-│   ├── 审阅台 Review Desk        ← 看摘要 + 四干预 + 拍板（F2/F3/F5/F7）
-│   ├── 探索观察 Explore           ← 改造现 /explore：三栏观察 + 路径回放（F1/F4）
-│   └── 研究日志 Journal           ← 历史 run / 摘要归档 / 采纳记录（可并入审阅台 tab）
+├── 总览 Overview
+│   └── 控制台 Dashboard ← /
+├── 研究主线 Research
+│   ├── 探索观察 Explore ← /explore
+│   └── 审阅台 Review Desk ← /review
 ├── 仪器房 Instruments
-│   ├── 回测引擎 Backtest           ← 保留 /backtest（F9）
-│   ├── 多策略对比 Compare          ← 保留 /backtest/compare（F10）
-│   ├── 策略库 Strategies           ← 合并 strategy-lab + strategy-builder + Copilot（F11）
-│   ├── 因子证据（已退役）Factors  ← /factors 说明页（ADR-037 退役；F12 不再由 UI 承载）
-│   ├── 选股与市场 Screener         ← 保留 /screener（F14）
-│   └── 数据管理 Data               ← 保留 /data-sync + 数据源状态（F13）
+│   ├── 回测引擎 Backtest ← /backtest
+│   ├── 多策略对比 Compare ← /backtest/compare
+│   ├── 走向与批量 Walk-forward ← /walkforward
+│   ├── 策略库 Strategies ← /strategy-lab
+│   ├── 因子证据（已退役） Factors ← /factors
+│   ├── 选股与市场 Screener ← /screener
+│   └── 数据管理 Data ← /data-sync
 ├── 监控 Monitoring
-│   ├── 风险告警 Alerts             ← 保留 /alerts（F15）
-│   └── 策略健康 Health             ← 新增，S4：regime + drift + 周报（F15，P2）
+│   └── 风险告警 Alerts ← /alerts
 └── 系统 System
-    ├── 执行与账户 Execution        ← 新增，paper/Mock（F16，P2）
-    ├── 合规 Compliance             ← 新增（F17，P2）
-    ├── 行业与宏观 Research         ← 新增（F18，P2）
-    └── 系统管理 Admin              ← 插件/数据源/用户/审计（F18 附）
+    ├── 纸交易 Paper trading ← /paper-trading
+    ├── 合规 Compliance ← /compliance
+    └── 系统管理 Admin ← /system-admin
 ```
+
+**未入侧栏（刻意不登记，不是漏了）**：
+
+| 条目 | 原因 |
+|---|---|
+| 证据质问 `/evidence` | A-06 已降级为数字旁的内嵌侧滑（`EvidenceProbe`）；**独立入口移除，深链 `/evidence` 与页面保留**作兜底 |
+| 研究日志 Journal | 并入审阅台 tab（A-12 / B-03 承载），不单独占导航 |
+| 策略健康 Health | P2 未建（后端 `regime + drift + 周报` 未就绪） |
+| 行业与宏观 Research | 2026-11-13 裁决 B：仅 API，无 UI |
+| `/copilot`、`/strategy-builder` | B-04 已合并进 `/strategy-lab`，旧路径仅为路由别名 |
 
 ### 3.3 页面分级与现有路由映射
 

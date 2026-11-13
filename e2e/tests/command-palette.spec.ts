@@ -6,7 +6,7 @@ import { isolateTestEnvironment } from '../helpers/isolation'
  * A-04 断言 5：⌘K 命令面板 + 「待审阅」读面。
  *
  * 断言口径：
- * - Ctrl/⌘+K 打开面板，列表与侧栏同源（15 项）；
+ * - Ctrl/⌘+K 打开面板，列表与侧栏同源（14 项，A-13 收敛后）；
  * - 过滤后只剩命中项，Enter 真的跳过去；
  * - 「待审阅 N」读 core 聚合读面（G1）；读数未知时显示「—」，绝不写成 0。
  */
@@ -26,7 +26,7 @@ test.describe('⌘K 命令面板', () => {
 
     await page.keyboard.press('Control+k')
     await expect(page.getByTestId('command-palette')).toBeVisible()
-    await expect(page.locator('[data-testid^="command-item-"]')).toHaveCount(15)
+    await expect(page.locator('[data-testid^="command-item-"]')).toHaveCount(14)
 
     await page.keyboard.press('Escape')
     await expect(page.getByTestId('command-palette')).toHaveCount(0)

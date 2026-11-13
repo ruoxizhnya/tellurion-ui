@@ -702,7 +702,7 @@ core SYNC-01 的验收第 1、2 条要防的形状，本任务不能替它绕过
 - **验证**：`npx vitest run src/utils/calibration.test.ts src/components/review/CalibrationPanel.test.ts src/pages/ReviewDesk.test.ts` → 24 passed；`src/styles/palette.test.ts` 38 passed（新组件首版 `var(--q-hairline, …)` 兜底被棘轮守卫抓住，已改为既有 token `--q-text3 / --q-border-light / --q-mono`）；`npm run typecheck` EXIT=0；`npx eslint`（触及文件）0 error。
 - **偏离说明**：条目 ⑤ 要求「审阅台视觉基线重录」——`visual-regression.spec.ts` **本来就没有 `/review` 基线**，无图可录，故本次未新增/重录任何基线（新增基线属扩范围，不在此单）。
 
-## A-13 导航 IA 收敛：15 项 4 组 → 14 项 5 组（设计报告 S3，解除 A-04 断言 2/8 暂缓）　🟢 可开工（2026-11-13 立单）
+## A-13 导航 IA 收敛：15 项 4 组 → 14 项 5 组（设计报告 S3，解除 A-04 断言 2/8 暂缓）　✅ 已收口（2026-11-13）
 
 > 来源：2026-11-13 UI/UX 改进报告 S3 · 依赖：无（F11=B-04 ✅ / A-06 ✅，A-04 暂缓条件已满足）。
 > **前提订正（2026-11-13，起草时实测）**：报告原稿写「15→9」，引的是 A-04 旧提案 ——
@@ -761,6 +761,16 @@ core SYNC-01 的验收第 1、2 条要防的形状，本任务不能替它绕过
 | 6 破坏验证 | label 改一字 → 红 → 还原绿（真跑，记录退出码） |
 
 **⑥ 边界**：只做 `navItems.ts` + `nav-labels.test.ts` + 三 e2e spec + `user-flows.md` §3.2 + 基线；页面内容不动；A-04 断言 2/8 的台账改判同步落主台账开放项表（本单 commit 内）。
+
+**落地（2026-11-13）**
+- **navItems.ts**：删除「证据质问」独立入口，重排为 **5 组 14 项**（总览 1 / 研究主线 2 / 仪器房 7 / 监控 1 / 系统 3），纸交易从仪器房移入系统；`NAV_GROUPS`/`NAV_ITEMS` 导出形状、`navTestId`/`commandItemTestId` 命名规则与其余 13 个 label 一字未动（共 14 个 label，仅删 1 项）。
+- **守卫同步**：`nav-labels.test.ts` 新增「14 项 5 组、分组计数 `[1,2,7,1,3]`、组名数组」绝对值断言；数量下限由 `≥9` 改 `≥14`；`titleFile` 删 `/evidence` 行并注释「路由与页面保留作深链兜底」；新增 `navTreeFromDoc()` 解析 §3.2 代码块（解析失败 throw，**不静默返回空数组**）与「§3.2 ↔ navItems.ts 组/序/label/path 逐项一致」用例。
+- **§3.2 文档**：重写为目标 IA 的 14 项 5 组 ASCII 树，抬头声明它是「机器可核对真相源」；补「未入侧栏」表（证据质问深链保留 / 研究日志并入审阅台 tab / 策略健康 P2 未建 / 行业与宏观仅 API / copilot 与 strategy-builder 为别名）。**格式订正**：`因子证据（已退役） Factors` 补一个空格，与其余「中文 English」行一致 —— 否则按空白切 label 会把英文词粘进中文标签（首跑即因此红）。
+- **e2e 三 spec**：`nav-consistency` 的 ROUTES 去掉 `/evidence`、条目数断言由 `≥9` 改 **`=14`（绝对值）**、新增「`/evidence` 深链可达 + 侧栏无该入口」独立用例；`command-palette` 15 → 14（含抬头注释）；`cross-navigation` 复核未从侧栏点证据质问，未改。
+- **视觉基线**：只重录 **5 张桌面基线**（dashboard / dashboard-sidebar / backtest / stock-screener / data-sync）。逐张用像素坐标核算：差异 bbox 全部落在侧栏（`x≤210`、`y≥219`），主内容区 0 px；重录后连跑两轮 **5 passed**。
+- **未重录的两张（如实登记）**：`dashboard-mobile` / `backtest-tablet` 的 diff 含页头区域。把 `navItems.ts` 临时还原到 HEAD 后仍红（**767 / 1003 px**），证明页头差异是 **V-2 既存测试债**（盲等 race + 页头内容漂移），与 A-13 无关；按约束不借重录消除，也不放宽断言，留给 V-2。本次改动贡献的部分（侧栏图标/条目）约 1050 / 1139 px。
+- **验证**：`npx vitest run src/components/layout/nav-labels.test.ts` → **9 passed**；三 e2e spec 真栈实跑 → **17 passed**；5 张重录基线连续两轮 → **5 passed ×2**；`npm run typecheck` **EXIT=0**；`npx eslint`（触及文件）**EXIT=0**。
+- **破坏验证（真跑，记录退出码）**：① `策略库` → `策略库X` ⇒ **4 failed / EXIT=1**（§3.2 一致性 + 三处同源全红），逐字还原 ⇒ **9 passed / EXIT=0**；② §3.2 注入 `幽灵页 Ghost ← /ghost` ⇒ **1 failed / EXIT=1**，还原 ⇒ **9 passed / EXIT=0**。
 
 ## A-14 候选卡三要素补齐：六维微条 + 质疑分级 + 证据质问（设计报告 S5）　✅ 已收口（2026-11-13）
 
@@ -988,8 +998,8 @@ A-04                 （导航/顶栏统一 —— 后续所有新页都依赖�
 A-05 → A-06 → A-07   （三个横切组件，新页复用）
 A-08 → A-09          （两个"整屏重做"，收益最大）
 A-10 → A-11          （补屏与字体）
-A-12 → A-13 → A-14   （2026-11-13 设计细化批：校准 tab / 导航收敛 / 候选卡三要素，三者可并行，无互相依赖）
-A-15                 （晨间简报，⛔ 等 A-12/A-13/A-14 收口）
+A-12 → A-13 → A-14   （2026-11-13 设计细化批：校准 tab / 导航收敛 / 候选卡三要素，三者可并行，无互相依赖；均 ✅ 已收口）
+A-15                 （晨间简报，✅ 前置 A-12/A-13/A-14 已收口，可开工）
 分组 B               ← B-03 可开工（G6 已落地，接 A-12 的 tab 骨架加第三 tab）；B-05 仍挂起（core 因子读面）
 ```
 
@@ -1007,3 +1017,4 @@ A-15                 （晨间简报，⛔ 等 A-12/A-13/A-14 收口）
 | 2026-11-12 (2) | **A-09/A-10/A-11/B-01/B-02/B-04/B-06 关账 + 事实订正**：① A-09 纸交易观测台 `9ca2a61`，外部信号流 `97e934d` 接上 core 新补的 `GET /api/signals` 读面（空流 ≠ 读面未接，已分开画）；② A-10 三个缺屏 5 个 commit 已推，**断言 3 由 5 条订正为 4 条**（walkforward 历史读端点退役、batch CSV 501）；③ A-11 自托管 latin 子集 woff2（ODR-001，91.4 KiB）；④ B-01 `416d598` 只补 seq 升序用例并关账；⑤ B-02 审阅台 + B-06 三干预 `efc6cef`；⑥ B-04 三页合一 `08e95f1`；⑦ **G 表过期判据订正**：G1 聚合读面已实现（派生量仍缺）、G2/G3/G4 已落地（agent 实现 + core 反代）、G6 已落地、G7 已以通配收录，因此 B-02/B-06 从「画 disabled」改为**接真端点**；⑧ **B-05 归口由 analytics 改为 core**（ADR-038；analytics 全仓无因子读端点），UI 保留 disabled 并改为 core 后端任务指针 |
 | 2026-11-13 | **设计细化批立单（只立单不施工）**：主任派工把 2026-11-13 UI/UX 改进报告（会话可视化 artifact）细化为可执行任务。新立 **A-12**（校准驾驶舱 = 审阅台第二 tab，G6 消费面）/ **A-13**（导航 IA 15→14 按 §3.2，解除 A-04 断言 2/8 暂缓）/ **A-14**（候选卡三要素：六维微条 + 质疑分级 + EvidenceProbe）/ **A-15**（晨间简报，⛔ 依赖前三单），各 6 断言 + 六字段实施计划。**两处前提订正**：① 报告「15→9」引 A-04 旧提案，该提案无权威清单且早于五个新页 ⇒ 改按 §3.2 收敛 14 项 5 组；② 样图 C 的 PathSparkline 无数据支撑（`AttemptView` 双侧无权益路径字段，G1 明列缺口）⇒ carved out 归 G1。**一处放置裁决**：S2 原稿「独立 /calibration 页 + ⌘K 直达」与 A-04 断言 5（⌘K 只读 NAV_ITEMS）矛盾 ⇒ 改审阅台第二 tab + 深链。主台账同批新立 `UI-DESIGN-DOC-CONVERGENCE`（设计文档 v1 残留收敛，档 5）并登记 A-12~A-15 开放项 ID |
 | 2026-11-13 (3) | **A-14 完成**：`VerdictBars.vue` 六维微条（unassessed 写「未评估」不画 0 分条 + 否决提示）、`groupChallenges` 分级（blocking→warning→note，组内原序，空清单「无质疑」）、Sharpe 旁 EvidenceProbe（`hash=null` 恒「无法回溯」，不造 hash）、失败/缺席态（无裁决数字 / 「无裁决」）。两条破坏腿真跑（unassessed→评估值 1 failed；severity 顺序反转 1 failed，均还原绿）。**教训/边界**：⑤ 表要求「真 run verdict 形状」e2e，但 :8085 限流 + 套件无真 run，只能用 route fixture（已标 mock）；`/review` 无视觉基线，无图可重录 |
+| 2026-11-13 (4) | **A-13 完成**：导航收敛为 14 项 5 组（删证据质问独立入口、纸交易移入系统），新增「§3.2 代码块 ↔ `navItems.ts` 逐项一致」守卫（解析失败即红），三 e2e spec 同步真栈 17 passed。5 张桌面基线逐张核算 diff 仅在侧栏后重录、连跑两轮绿；`dashboard-mobile`/`backtest-tablet` 仍红，已验证与 A-13 无关（还原 `navItems.ts` 后仍红 767/1003 px）属 **V-2 既存债**，不掩盖不重录。破坏验证双向真跑（label 改字 4 failed；§3.2 注入幽灵条目 1 failed，均还原绿） |

@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
+import { NAV_GROUPS, NAV_ITEMS } from './navItems'
 
 /**
  * 导航标签同源守卫（TASKS.md A-04 断言 1/3）。
@@ -17,6 +18,45 @@ import { describe, expect, it } from 'vitest'
 
 const navSrc = readFileSync(resolve(__dirname, 'navItems.ts'), 'utf8')
 const routerSrc = readFileSync(resolve(__dirname, '../../router/index.ts'), 'utf8')
+
+/**
+ * 解析 `user-flows.md` §3.2 的目标 IA 代码块（A-13 断言 4）。
+ *
+ * 格式约定（与文档里的树一一对应）：
+ * - 顶格 `├── 组名 English` 是分组；
+ * - 缩进 `│   ├── 中文标签 English ← /path` 是入口，label 取第一个空白前的词，
+ *   path 取 `←` 后的第一个词；
+ * - `Quant Lab` 根行与「未入侧栏」表不算导航项。
+ *
+ * **解析失败必须抛错（= 红）**：静默返回空数组会让「逐项一致」变成永远成立的空断言。
+ */
+function navTreeFromDoc(): { title: string; items: { label: string; path: string }[] }[] {
+  const md = readFileSync(resolve(__dirname, '../../../../docs/design/user-flows.md'), 'utf8')
+  const start = md.indexOf('### 3.2')
+  if (start < 0) throw new Error('user-flows.md 找不到 §3.2')
+  const block = md.slice(start).match(/```[a-z]*\r?\n([\s\S]*?)```/)
+  if (!block) throw new Error('§3.2 找不到目标 IA 代码块')
+
+  const groups: { title: string; items: { label: string; path: string }[] }[] = []
+  for (const line of block[1].split(/\r?\n/)) {
+    if (!line.trim() || line.trim() === 'Quant Lab') continue
+    const body = line.replace(/^[│\s]*[├└]──\s*/, '')
+    if (body === line) continue // 不是树节点
+
+    if (/^[├└]──/.test(line)) {
+      groups.push({ title: body.trim().split(/\s+/)[0], items: [] })
+      continue
+    }
+
+    const [labelPart, rest] = body.split('←')
+    if (!rest || groups.length === 0) throw new Error(`§3.2 条目无法解析：${line}`)
+    groups[groups.length - 1].items.push({
+      label: labelPart.trim().split(/\s+/)[0],
+      path: rest.trim().split(/\s+/)[0],
+    })
+  }
+  return groups
+}
 
 /** 侧栏：{ path, label } 列表（按 NAV_GROUPS 声明顺序） */
 function navItems(): { path: string; label: string }[] {
@@ -44,8 +84,35 @@ describe('导航标签与路由标题同源', () => {
   const routeMap = new Map(routes().map((r) => [absolute(r.path), r.title]))
 
   it('侧栏至少渲染出一套标签（解析失败要立刻暴露，而不是静默变绿）', () => {
-    expect(items.length).toBeGreaterThanOrEqual(9)
+    // A-13：下限由 ≥9 提到 ≥14（绝对值，不从现状推导）
+    expect(items.length, 'navItems.ts 解析失败会静默变绿').toBeGreaterThanOrEqual(14)
     expect(routeMap.size).toBeGreaterThanOrEqual(9)
+  })
+
+  /**
+   * A-13 断言 1：14 项 5 组是**绝对值**，不从现状推导 —— 写死数字才能在
+   * 「有人顺手加回一项」时立刻红。
+   */
+  it('A-13：导航收敛为 14 项 5 组，分组计数 [1,2,7,1,3]', () => {
+    expect(NAV_ITEMS).toHaveLength(14)
+    expect(NAV_GROUPS.map((g) => g.items.length)).toEqual([1, 2, 7, 1, 3])
+    expect(NAV_GROUPS.map((g) => g.title)).toEqual(['总览', '研究主线', '仪器房', '监控', '系统'])
+    // 证据质问降级为深链：路由与页面保留，但不再是导航项
+    expect(NAV_ITEMS.map((i) => i.path)).not.toContain('/evidence')
+    expect(NAV_ITEMS.map((i) => i.path)).toContain('/paper-trading')
+  })
+
+  /**
+   * A-13 断言 4：§3.2 的树 ↔ `navItems.ts` 组/序/label/path 逐项一致。
+   * 破坏验证：往 §3.2 注入一条不存在的入口 ⇒ 红；还原 ⇒ 绿。
+   */
+  it('§3.2 目标 IA 与 navItems.ts 逐项一致', () => {
+    const tree = navTreeFromDoc()
+    const actual = NAV_GROUPS.map((g) => ({
+      title: g.title,
+      items: g.items.map((i) => ({ label: i.label, path: i.path })),
+    }))
+    expect(tree).toEqual(actual)
   })
 
   it('侧栏每个入口在路由表里都存在（导航不得指向不存在的路由）', () => {
@@ -93,7 +160,8 @@ describe('导航标签与路由标题同源', () => {
     '/explore': 'pages/Explore.vue',
     // B-02：审阅台
     '/review': 'pages/ReviewDesk.vue',
-    '/evidence': 'pages/Evidence.vue',
+    // A-13：`/evidence` 已从导航移除（A-06 降级为内嵌侧滑），路由与
+    // `pages/Evidence.vue` **保留**作深链兜底，因此本表不再登记它。
     '/backtest': 'components/backtest/BacktestForm.vue',
     '/backtest/compare': 'pages/BacktestCompare.vue',
     '/walkforward': 'pages/WalkForwardBatch.vue',

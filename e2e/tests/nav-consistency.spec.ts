@@ -10,6 +10,11 @@ import { waitForBackendReady } from '../helpers/api'
  * 必须在真实页面上量。
  */
 
+/**
+ * A-13：侧栏可达的 14 条路由（与 `navItems.ts` 逐项对应）。
+ * `/evidence` 已从导航移除（A-06 降级为数字旁内嵌侧滑），路由与页面保留作深链兜底，
+ * 因此不进本清单；它的深链可达性与「侧栏无该入口」由下方独立用例覆盖。
+ */
 const ROUTES = [
   '/',
   '/backtest',
@@ -21,7 +26,6 @@ const ROUTES = [
   '/strategy-lab',
   '/paper-trading',
   '/data-sync',
-  '/evidence',
   '/factors',
   '/alerts',
   '/compliance',
@@ -34,7 +38,7 @@ test.describe('A-04 导航与顶栏统一', () => {
   })
 
   /**
-   * 断言 1：15 个**导航可达**页面渲染出的侧栏条目集合完全相同。
+   * 断言 1：14 个**导航可达**页面渲染出的侧栏条目集合完全相同。
    *
    * B-04 把 `/copilot`、`/strategy-builder` 收成 `/strategy-lab` 的路由别名：
    * 两个 URL 仍可直达（深链不断），但侧栏不再有对应入口，因此它们不进本清单 ——
@@ -50,7 +54,8 @@ test.describe('A-04 导航与顶栏统一', () => {
       const texts = (await labels.allTextContents()).map((s) => s.trim())
       if (baseline === null) {
         baseline = texts
-        expect(texts.length).toBeGreaterThanOrEqual(9)
+        // A-13：绝对值，不从现状推导（曾用 ≥9 下限，会放过"顺手加回一项"）
+        expect(texts.length).toBe(14)
       }
       expect(texts, `${route} 的侧栏与首页不一致`).toEqual(baseline)
     }
@@ -68,6 +73,20 @@ test.describe('A-04 导航与顶栏统一', () => {
       const href = await active.getAttribute('href')
       expect(href, `${route} 高亮了 ${href}`).toBe(route)
     }
+  })
+
+  /**
+   * A-13 断言 1 的另一半：证据质问只降级为**深链**，不是删除。
+   * 侧栏不再有入口（A-06 已改为数字旁内嵌侧滑），但 `/evidence` 直达仍必须可用 ——
+   * 这两件事必须同时成立，否则要么深链被误删、要么旧入口偷偷留在侧栏。
+   */
+  test('证据质问：深链 /evidence 仍可达，侧栏无该入口', async ({ page }) => {
+    await page.goto('/evidence')
+    await page.waitForSelector('.evidence-page', { timeout: 15000 })
+    await expect(page.locator('.evidence-page')).toBeVisible()
+
+    await expect(page.locator('[data-nav-path="/evidence"]')).toHaveCount(0)
+    await expect(page.locator('.nav-item').filter({ hasText: '证据质问' })).toHaveCount(0)
   })
 
   /** 断言 4：顶栏不得出现行情/L2/集群字样（ODR-066 B3 判删项） */
