@@ -766,10 +766,10 @@ core SYNC-01 的验收第 1、2 条要防的形状，本任务不能替它绕过
 - **navItems.ts**：删除「证据质问」独立入口，重排为 **5 组 14 项**（总览 1 / 研究主线 2 / 仪器房 7 / 监控 1 / 系统 3），纸交易从仪器房移入系统；`NAV_GROUPS`/`NAV_ITEMS` 导出形状、`navTestId`/`commandItemTestId` 命名规则与其余 13 个 label 一字未动（共 14 个 label，仅删 1 项）。
 - **守卫同步**：`nav-labels.test.ts` 新增「14 项 5 组、分组计数 `[1,2,7,1,3]`、组名数组」绝对值断言；数量下限由 `≥9` 改 `≥14`；`titleFile` 删 `/evidence` 行并注释「路由与页面保留作深链兜底」；新增 `navTreeFromDoc()` 解析 §3.2 代码块（解析失败 throw，**不静默返回空数组**）与「§3.2 ↔ navItems.ts 组/序/label/path 逐项一致」用例。
 - **§3.2 文档**：重写为目标 IA 的 14 项 5 组 ASCII 树，抬头声明它是「机器可核对真相源」；补「未入侧栏」表（证据质问深链保留 / 研究日志并入审阅台 tab / 策略健康 P2 未建 / 行业与宏观仅 API / copilot 与 strategy-builder 为别名）。**格式订正**：`因子证据（已退役） Factors` 补一个空格，与其余「中文 English」行一致 —— 否则按空白切 label 会把英文词粘进中文标签（首跑即因此红）。
-- **e2e 三 spec**：`nav-consistency` 的 ROUTES 去掉 `/evidence`、条目数断言由 `≥9` 改 **`=14`（绝对值）**、新增「`/evidence` 深链可达 + 侧栏无该入口」独立用例；`command-palette` 15 → 14（含抬头注释）；`cross-navigation` 复核未从侧栏点证据质问，未改。
+- **e2e 四 spec**：`nav-consistency` 的 ROUTES 去掉 `/evidence`、条目数断言由 `≥9` 改 **`=14`（绝对值）**、新增「`/evidence` 深链可达 + 侧栏无该入口」独立用例；`command-palette` 15 → 14（含抬头注释）；`dashboard.spec` 的侧栏条目清单 15 → 14（**收口自查补漏**：条目只点了三个 spec，但控制台用例也钉了 15 项，实跑 1 failed 后同步）；`cross-navigation` 复核未从侧栏点证据质问，未改。
 - **视觉基线**：只重录 **5 张桌面基线**（dashboard / dashboard-sidebar / backtest / stock-screener / data-sync）。逐张用像素坐标核算：差异 bbox 全部落在侧栏（`x≤210`、`y≥219`），主内容区 0 px；重录后连跑两轮 **5 passed**。
 - **未重录的两张（如实登记）**：`dashboard-mobile` / `backtest-tablet` 的 diff 含页头区域。把 `navItems.ts` 临时还原到 HEAD 后仍红（**767 / 1003 px**），证明页头差异是 **V-2 既存测试债**（盲等 race + 页头内容漂移），与 A-13 无关；按约束不借重录消除，也不放宽断言，留给 V-2。本次改动贡献的部分（侧栏图标/条目）约 1050 / 1139 px。
-- **验证**：`npx vitest run src/components/layout/nav-labels.test.ts` → **9 passed**；三 e2e spec 真栈实跑 → **17 passed**；5 张重录基线连续两轮 → **5 passed ×2**；`npm run typecheck` **EXIT=0**；`npx eslint`（触及文件）**EXIT=0**。
+- **验证**：`npx vitest run src/components/layout/nav-labels.test.ts` → **9 passed**；四 e2e spec 真栈实跑 → **26 passed**（nav-consistency 5 / command-palette 5 / cross-navigation 7 / dashboard 9）；5 张重录基线连续两轮 → **5 passed ×2**；`npm run typecheck` **EXIT=0**；`npx eslint`（触及文件）**EXIT=0**。
 - **破坏验证（真跑，记录退出码）**：① `策略库` → `策略库X` ⇒ **4 failed / EXIT=1**（§3.2 一致性 + 三处同源全红），逐字还原 ⇒ **9 passed / EXIT=0**；② §3.2 注入 `幽灵页 Ghost ← /ghost` ⇒ **1 failed / EXIT=1**，还原 ⇒ **9 passed / EXIT=0**。
 
 ## A-14 候选卡三要素补齐：六维微条 + 质疑分级 + 证据质问（设计报告 S5）　✅ 已收口（2026-11-13）
