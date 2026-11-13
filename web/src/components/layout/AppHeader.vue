@@ -70,14 +70,6 @@
             退出登录
           </n-tooltip>
         </template>
-        <n-tooltip trigger="hover">
-          <template #trigger>
-            <n-button quaternary circle size="small" @click="toggleTheme">
-              <template #icon><MoonOutline :size="17" /></template>
-            </n-button>
-          </template>
-          切换主题
-        </n-tooltip>
       </n-space>
     </div>
   </header>
@@ -86,16 +78,15 @@
 <script setup lang="ts">
 import { computed, ref, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { NButton, NTag, NTooltip, NSpace, useMessage } from 'naive-ui'
+import { NButton, NTag, NTooltip, NSpace } from 'naive-ui'
 import {
-  LogOutOutline, MenuOutline, MoonOutline,
+  LogOutOutline, MenuOutline,
   SearchOutline, TrendingUpOutline, TimeOutline,
 } from '@vicons/ionicons5'
 import { useAuthStore } from '@/stores/auth'
 import { getReviewPending, type ReviewPending } from '@/api/review'
 
 const emit = defineEmits(['toggle-sidebar', 'open-command'])
-const message = useMessage()
 const auth = useAuthStore()
 const router = useRouter()
 const apiOnline = ref(true)
@@ -145,7 +136,6 @@ function loadReviewPending() {
 }
 
 function toggleSidebar() { emit('toggle-sidebar') }
-function toggleTheme() { message.info('主题切换功能开发中') }
 
 function handleLogout() {
   // 纯本地动作：后端没有会话表可撤销（见 stores/auth.logout 的注释）。
