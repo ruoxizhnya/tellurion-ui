@@ -6,10 +6,10 @@ import { commandItemTestId, filterNavItems, NAV_ITEMS, navTestId } from './navIt
  * 这里只测**纯函数**（过滤/锚点）；键盘与跳转在 e2e/command-palette.spec.ts 里跑真实 DOM。
  */
 describe('filterNavItems', () => {
-  it('空关键词返回全量导航项（15 项，与侧栏一致）', () => {
-    expect(NAV_ITEMS).toHaveLength(15)
-    expect(filterNavItems('')).toHaveLength(15)
-    expect(filterNavItems('   ')).toHaveLength(15)
+  it('空关键词返回全量导航项（14 项，与侧栏一致）', () => {
+    expect(NAV_ITEMS).toHaveLength(14)
+    expect(filterNavItems('')).toHaveLength(14)
+    expect(filterNavItems('   ')).toHaveLength(14)
   })
 
   it('按标签子串过滤，大小写不敏感、去首尾空格', () => {
