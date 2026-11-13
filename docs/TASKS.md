@@ -1,7 +1,7 @@
 ---
 status: active
 last-verified: 2026-11-13
-verified-by: 2026-11-13 主任裁决落地 `UI-THEME-TOGGLE`（A 移除）与 `UI-INDUSTRY-ENTRY`（B 当期仅 API）；两条条目标 ✅ 已裁决并保留原文记录；视觉基线逐张核对后按需重录；此前：2026-11-13 立单 `UI-E2E-SYNC-ISOLATION`（data-sync e2e 与全局同步队列隔离；只立单不实施，六字段含队列实况与 tushare 代理拒连证据；重开条件 = data 侧提供队列隔离或窄 scope 夹具）；2026-11-13 `UI-PAGE-INVENTORY` 收口（ARCHITECTURE §3.1 拆为「3.1.1 页面全集 20 行 + 3.1.2 增量登记」，新增 `scripts/check-page-inventory.mjs` 接入 CI 守卫步；破坏验证：新建未登记页面 → 1，坏文档链接 → 1，恢复后 0）；2026-11-13 `UI-FACTOR-RESEARCH-LABEL` 收口（侧栏/标签页/页面 H1 三处统一为「因子证据（已退役）」，路由 `/factors` 不变；5 张含侧栏的视觉基线逐张确认差异仅在标签像素后重录，重跑 12 passed；导航相关 6 spec 42 passed；643 例单测绿）；2026-11-13 `UI-CI-COVERAGE` 收口（实测基线 lines 66.50 / statements 65.65 / branches 51.60 / functions 61.35，门 = 下浮 2 点；CI 新增 Coverage gate + 报告 artifact；破坏验证删 `api/client.test.ts` → functions 58.48% 红、退出码 1，逐字节还原后绿）；`UI-PLAYWRIGHT-TRIAGE-2026-11-13` 收口（7 条 Playwright 失败逐条分诊：全部为用例陈旧，产品缺陷 0 条；W5-1~W5-5 已修；真栈全量复跑 218 passed / 0 failed / 2 skipped（16:16 首跑；18:20 改造后复跑受 data-service 队列积压影响 7 条 data-sync 红，见 §一 健康度，非 UI 回归））；此前：2026-11-13 五角审查立单（只立单不施工）——档 2（产品设计）新立 `UI-INDUSTRY-ENTRY` ⏸ / `UI-THEME-TOGGLE` ⏸（均待主任裁决）、`UI-FACTOR-RESEARCH-LABEL` ⬜；档 4（测试）新立 `UI-PLAYWRIGHT-TRIAGE-2026-11-13` ⬜ / `UI-CI-COVERAGE` ⬜；档 5（文档与代码一致性）新立 `UI-PAGE-INVENTORY` ⬜；此前：2026-11-12 跨仓伞 `X-LOW-CLEANUP` 的 ui 腿——新增 `scripts/check-no-openapi.mjs` 守卫（ADR-0001：openapi 只住 core），CI 在前端 job 末尾加 Guard 步；破坏验证：复制一份 `openapi.yaml` ⇒ EXIT=1，删除后 ⇒ EXIT=0；2026-11-12 跨仓伞 `X-CI-RACE-STATICCHECK` 的 ui 腿——前端 CI 在 `Test` 之后补 `Build`（`npm run build`）门，本地真跑退出码 0（vite build 6.96s，产物正常）；本仓无 Go 代码，`-race`/`staticcheck` 由 Go 仓各自承担；2026-11-12 W7 收口批次（A4 授权 + 两处裁决）——`UI-COPILOT-GATE-SURFACE` b 腿 + a 腿全部落地并归档（a 腿按「登录者自己的 JWT」裁决施工，含组件测试与破坏验证；端到端成功态的两条跨仓前置写成归档条目的重开条件）；`UI-NPM-AUDIT-FIX`（audit high 清零，13 条 moderate 的不修理由 + 重开条件已写进归档）/`UI-RUNBOOK-GAP`（新增 runbook，`SERVICE.md` 的 `truth.runbook` 已订正）/`UI-SCREEN-CONSUMER`（count 5xx 降级）/`UI-HEALTHCHECK`（镜像 HEALTHCHECK）四单收口并归档；`UI-LEDGER-SELF-CONSISTENCY` 订正 AGENTS.md / ARCHITECTURE.md 与子台账 B-05/G9 并写明主/子台账分工（已归档）；`UI-FACTOR-CITATION-RETIRED` 按裁决改为退役说明页（保留入口、删除 `api/factor.ts`，已归档）；另三条新发现（选股失败冒充空结果、a08 写死总数、dashboard 假定空历史）同批收口。**台账现状（2026-11-12 时点，已被本轮 2026-11-13 立单覆盖，勿引用）：当日 0 张开放单；UX 子台账开放项见 §一 末表（B-03 / B-05 / V-2 / V-3 / A-04 断言 2·8）。** 2026-11-12 UX 收尾批（ui 仓，不改后端）：`A-09` 纸交易观测台（`9ca2a61`，四块齐备；外部信号流 `97e934d` 接 core 新补的 `GET /api/signals`）、`A-10` 三缺屏（5 commit）、`A-11` 自托管 latin 子集（`01b5baa`，ODR-001，91.4 KiB）、`B-01` seq 升序用例（`416d598`）、`B-02` 审阅台（`efc6cef`，近似版显式标注）、`B-04` 三页合一（`08e95f1`）、`B-06` 三干预（`efc6cef`，接真端点）、`A-04` 断言 5（`319004c`+`a540f65`）；**事实订正**：G1/G2/G3/G4/G6 由「无」改为已落地，A-10 断言 3 由 5→4，B-05 归口由 analytics 改为 core（ADR-038）。此前：2026-11-11 全面审查 W7 台账立单（A5 授权）——新立 5 条六字段单，证据坐标引 ODR-068/069/072/073（`tellurion-docs:docs/archive/odr/`）；同轮撤掉与下文两条 ⬜ 自相矛盾的「本仓当前没有未做项」boilerplate（W1-F6），并给既有 `UI-FACTOR-CITATION-RETIRED` 补审查确认指针（W2-F7，dedup 不新立单）。此前：2026-11-10 晚 AUD-61 收口——4 条视觉基线在原生三服务栈上逐张核对后重生成、整份 `visual-regression.spec.ts` 复跑 **12 passed**；破坏验证（隐藏 `.nav-tiles`）→ 2% 红，逐字节还原后复绿；`e2e/tests` 现存 `test.fixme` = **0**。此前：2026-11-10 AUD-63 收口补充——core `/api/market/index` 改为本地供数后「有读数」支真栈跑通。
+verified-by: 2026-11-13 设计细化批立单（只立单不施工）：主台账新立 `UI-DESIGN-DOC-CONVERGENCE`（档 5，六字段，设计文档 v1 残留收敛）；子台账新立 A-12~A-15（校准驾驶舱 / 导航 IA 15→14 / 候选卡三要素 / 晨间简报，各 6 断言 + 六字段），A-04 断言 2/8 暂缓解除并入 A-13；两处前提订正（15→9 无权威清单改按 §3.2；PathSparkline 无数据归 G1）与一处放置裁决（S2 改审阅台 tab）见子台账更新记录；此前：2026-11-13 主任裁决落地 `UI-THEME-TOGGLE`（A 移除）与 `UI-INDUSTRY-ENTRY`（B 当期仅 API）；两条条目标 ✅ 已裁决并保留原文记录；视觉基线逐张核对后按需重录；此前：2026-11-13 立单 `UI-E2E-SYNC-ISOLATION`（data-sync e2e 与全局同步队列隔离；只立单不实施，六字段含队列实况与 tushare 代理拒连证据；重开条件 = data 侧提供队列隔离或窄 scope 夹具）；2026-11-13 `UI-PAGE-INVENTORY` 收口（ARCHITECTURE §3.1 拆为「3.1.1 页面全集 20 行 + 3.1.2 增量登记」，新增 `scripts/check-page-inventory.mjs` 接入 CI 守卫步；破坏验证：新建未登记页面 → 1，坏文档链接 → 1，恢复后 0）；2026-11-13 `UI-FACTOR-RESEARCH-LABEL` 收口（侧栏/标签页/页面 H1 三处统一为「因子证据（已退役）」，路由 `/factors` 不变；5 张含侧栏的视觉基线逐张确认差异仅在标签像素后重录，重跑 12 passed；导航相关 6 spec 42 passed；643 例单测绿）；2026-11-13 `UI-CI-COVERAGE` 收口（实测基线 lines 66.50 / statements 65.65 / branches 51.60 / functions 61.35，门 = 下浮 2 点；CI 新增 Coverage gate + 报告 artifact；破坏验证删 `api/client.test.ts` → functions 58.48% 红、退出码 1，逐字节还原后绿）；`UI-PLAYWRIGHT-TRIAGE-2026-11-13` 收口（7 条 Playwright 失败逐条分诊：全部为用例陈旧，产品缺陷 0 条；W5-1~W5-5 已修；真栈全量复跑 218 passed / 0 failed / 2 skipped（16:16 首跑；18:20 改造后复跑受 data-service 队列积压影响 7 条 data-sync 红，见 §一 健康度，非 UI 回归））；此前：2026-11-13 五角审查立单（只立单不施工）——档 2（产品设计）新立 `UI-INDUSTRY-ENTRY` ⏸ / `UI-THEME-TOGGLE` ⏸（均待主任裁决）、`UI-FACTOR-RESEARCH-LABEL` ⬜；档 4（测试）新立 `UI-PLAYWRIGHT-TRIAGE-2026-11-13` ⬜ / `UI-CI-COVERAGE` ⬜；档 5（文档与代码一致性）新立 `UI-PAGE-INVENTORY` ⬜；此前：2026-11-12 跨仓伞 `X-LOW-CLEANUP` 的 ui 腿——新增 `scripts/check-no-openapi.mjs` 守卫（ADR-0001：openapi 只住 core），CI 在前端 job 末尾加 Guard 步；破坏验证：复制一份 `openapi.yaml` ⇒ EXIT=1，删除后 ⇒ EXIT=0；2026-11-12 跨仓伞 `X-CI-RACE-STATICCHECK` 的 ui 腿——前端 CI 在 `Test` 之后补 `Build`（`npm run build`）门，本地真跑退出码 0（vite build 6.96s，产物正常）；本仓无 Go 代码，`-race`/`staticcheck` 由 Go 仓各自承担；2026-11-12 W7 收口批次（A4 授权 + 两处裁决）——`UI-COPILOT-GATE-SURFACE` b 腿 + a 腿全部落地并归档（a 腿按「登录者自己的 JWT」裁决施工，含组件测试与破坏验证；端到端成功态的两条跨仓前置写成归档条目的重开条件）；`UI-NPM-AUDIT-FIX`（audit high 清零，13 条 moderate 的不修理由 + 重开条件已写进归档）/`UI-RUNBOOK-GAP`（新增 runbook，`SERVICE.md` 的 `truth.runbook` 已订正）/`UI-SCREEN-CONSUMER`（count 5xx 降级）/`UI-HEALTHCHECK`（镜像 HEALTHCHECK）四单收口并归档；`UI-LEDGER-SELF-CONSISTENCY` 订正 AGENTS.md / ARCHITECTURE.md 与子台账 B-05/G9 并写明主/子台账分工（已归档）；`UI-FACTOR-CITATION-RETIRED` 按裁决改为退役说明页（保留入口、删除 `api/factor.ts`，已归档）；另三条新发现（选股失败冒充空结果、a08 写死总数、dashboard 假定空历史）同批收口。**台账现状（2026-11-12 时点，已被本轮 2026-11-13 立单覆盖，勿引用）：当日 0 张开放单；UX 子台账开放项见 §一 末表（B-03 / B-05 / V-2 / V-3 / A-04 断言 2·8）。** 2026-11-12 UX 收尾批（ui 仓，不改后端）：`A-09` 纸交易观测台（`9ca2a61`，四块齐备；外部信号流 `97e934d` 接 core 新补的 `GET /api/signals`）、`A-10` 三缺屏（5 commit）、`A-11` 自托管 latin 子集（`01b5baa`，ODR-001，91.4 KiB）、`B-01` seq 升序用例（`416d598`）、`B-02` 审阅台（`efc6cef`，近似版显式标注）、`B-04` 三页合一（`08e95f1`）、`B-06` 三干预（`efc6cef`，接真端点）、`A-04` 断言 5（`319004c`+`a540f65`）；**事实订正**：G1/G2/G3/G4/G6 由「无」改为已落地，A-10 断言 3 由 5→4，B-05 归口由 analytics 改为 core（ADR-038）。此前：2026-11-11 全面审查 W7 台账立单（A5 授权）——新立 5 条六字段单，证据坐标引 ODR-068/069/072/073（`tellurion-docs:docs/archive/odr/`）；同轮撤掉与下文两条 ⬜ 自相矛盾的「本仓当前没有未做项」boilerplate（W1-F6），并给既有 `UI-FACTOR-CITATION-RETIRED` 补审查确认指针（W2-F7，dedup 不新立单）。此前：2026-11-10 晚 AUD-61 收口——4 条视觉基线在原生三服务栈上逐张核对后重生成、整份 `visual-regression.spec.ts` 复跑 **12 passed**；破坏验证（隐藏 `.nav-tiles`）→ 2% 红，逐字节还原后复绿；`e2e/tests` 现存 `test.fixme` = **0**。此前：2026-11-10 AUD-63 收口补充——core `/api/market/index` 改为本地供数后「有读数」支真栈跑通。
 ---
 
 # TASKS — tellurion-ui 未完成项
@@ -12,20 +12,24 @@ verified-by: 2026-11-13 主任裁决落地 `UI-THEME-TOGGLE`（A 移除）与 `U
 
 ## 一、未做 / 挂起 / 外部依赖
 
-> **本仓当前开放项（2026-11-13 口径，以本表为准）**：`UI-E2E-SYNC-ISOLATION` ⬜（2026-11-13 新立，只立单未实施）。**已裁决并落地（保留原文记录、不计开放项）**：`UI-INDUSTRY-ENTRY` ✅ 选 B 当期仅 API、不做界面；`UI-THEME-TOGGLE` ✅ 选 A 移除控件（深色为唯一验收基线）。2026-11-13 五角审查新立的 4 条（`UI-PLAYWRIGHT-TRIAGE-2026-11-13` / `UI-CI-COVERAGE` / `UI-FACTOR-RESEARCH-LABEL` / `UI-PAGE-INVENTORY`）已于当日全部收口并归档。2026-11-12 W7 批次的六字段单（含 `UI-COPILOT-GATE-SURFACE` b 腿 + a 腿、`UI-FACTOR-CITATION-RETIRED`、三条 e2e / 失败态新发现）均已收口并移入 [`docs/archive/tasks-archive-2026-11.md`](archive/tasks-archive-2026-11.md)，检索入口见该文件的「检索索引」表。`UI-COPILOT-GATE-SURFACE` 的端到端成功态有两条跨仓前置（core 反代 promote、strategy policy 打开 admin/trader），已写成该归档条目的「重开条件」，**不计入本仓开放项**。
+> **本仓当前开放项（2026-11-13 口径，以本表为准）**：`UI-E2E-SYNC-ISOLATION` ⬜（2026-11-13 新立，只立单未实施）；`UI-DESIGN-DOC-CONVERGENCE` ⬜（2026-11-13 设计细化批新立，档 5，只立单未实施）。**已裁决并落地（保留原文记录、不计开放项）**：`UI-INDUSTRY-ENTRY` ✅ 选 B 当期仅 API、不做界面；`UI-THEME-TOGGLE` ✅ 选 A 移除控件（深色为唯一验收基线）。2026-11-13 五角审查新立的 4 条（`UI-PLAYWRIGHT-TRIAGE-2026-11-13` / `UI-CI-COVERAGE` / `UI-FACTOR-RESEARCH-LABEL` / `UI-PAGE-INVENTORY`）已于当日全部收口并归档。2026-11-12 W7 批次的六字段单（含 `UI-COPILOT-GATE-SURFACE` b 腿 + a 腿、`UI-FACTOR-CITATION-RETIRED`、三条 e2e / 失败态新发现）均已收口并移入 [`docs/archive/tasks-archive-2026-11.md`](archive/tasks-archive-2026-11.md)，检索入口见该文件的「检索索引」表。`UI-COPILOT-GATE-SURFACE` 的端到端成功态有两条跨仓前置（core 反代 promote、strategy policy 打开 admin/trader），已写成该归档条目的「重开条件」，**不计入本仓开放项**。
 >
 > **e2e 健康度（2026-11-13 实测，勿再写"8/8 spec 全绿、0 open"）**：31 spec / 220 例。**16:16 首跑 218 passed / 0 failed / 2 skipped（5.9m）**；**18:20 改造后复跑 211 passed / 7 failed / 2 skipped（16.7m），7 条全在 data-sync 四件套**，根因是 data-service **单 worker 串行 + 全局队列**：队列里排着前序用例留下的全市场级 `ohlcv_daily` 作业（worker 日志 `fetched=577548 ... in 14m15s`），后续窄范围用例 30s 内等不到终态而红；**与 UI 代码无关**（该轮只改了标签文案/文档/CI/覆盖率配置）。这是 e2e 的**测试隔离缺陷 + 外部依赖**，**已立单 `UI-E2E-SYNC-ISOLATION`（只立单未实施）**，处置前不要拿"全绿"当判据。**排空观测（收口后轮询，未动栈）**：pending 52 条里 7 条是全市场级 `ohlcv_daily`（423~500 标的 × 5 年，单条实测 14m15s / 577,548 行，当前跑的那条已超 1 小时），按速率排空约 8~10 小时，定点复跑须等队列恢复后另做。2 skipped 为 `auth-login-flow.spec.ts` 的开鉴权形态与引导流程（当前栈为 open-access 且未提供 `E2E_AUTH_USER` / `E2E_AUTH_PASSWORD`，跳过理由在用例内显式写明）。`test.fixme` = 0。审查报告里的 7 条失败已由 `UI-PLAYWRIGHT-TRIAGE-2026-11-13` 逐条分诊并归档（首跑复现为绿，分类结论见归档的补记）。
 >
 > **主/子台账分工（D13，2026-11-12 定；同日修订「互不索引」条款）**：本文件装**跨仓 / 运维 / 一致性**类单，是「本仓现在在做什么」的唯一入口；`docs/design/stitch_quantlab_ux_redesign/TASKS.md` 装 **UX 重构功能项**（A/B 组与 G 缺口）。两处**互不收录正文**；某条单只在一处写正文，出现第二处即视为重复立单。**但主台账 §一 末尾必须列出子台账开放项的 ID（只列 ID，不搬正文）** —— 否则会出现「主账说 0、子账躺 10 条」的自相矛盾。
 
-### 子台账开放项（只列 ID，正文见 [`design/stitch_quantlab_ux_redesign/TASKS.md`](design/stitch_quantlab_ux_redesign/TASKS.md)，截至 2026-11-12）
+### 子台账开放项（只列 ID，正文见 [`design/stitch_quantlab_ux_redesign/TASKS.md`](design/stitch_quantlab_ux_redesign/TASKS.md)，截至 2026-11-13）
 
 | ID | 状态 | 一句话 |
 |---|---|---|
-| B-03 | 可开工 | 实验日志与采纳台账（G6 已落地：`/api/pipeline/adoption` + `/calibration`） |
+| A-12 | 🟢 可开工 | 校准驾驶舱 = 审阅台第二 tab（G6 消费面，2026-11-13 设计细化批新立） |
+| A-13 | 🟢 可开工 | 导航 IA 15→14 按 §3.2（解除 A-04 断言 2/8 暂缓，2026-11-13 新立） |
+| A-14 | 🟢 可开工 | 候选卡三要素：六维微条 + 质疑分级 + EvidenceProbe（PathSparkline 归 G1，2026-11-13 新立） |
+| A-15 | ⛔ 阻塞 | 晨间简报（依赖 A-12/A-13/A-14，2026-11-13 新立） |
+| B-03 | 可开工 | 实验日志与采纳台账（G6 已落地：`/api/pipeline/adoption` + `/calibration`；接 A-12 tab 骨架加第三 tab） |
 | B-05 | ⏸ 挂起 | 因子读面归 **core**（ADR-038）；analytics 全仓无因子端点，等 core 提供读面并新立单 |
 | V-2 / V-3 | 待做（测试债） | 2 条 responsive 视觉基线仍红；归 AUD-61 执行登记，不在 UX 批次内 |
-| A-04 断言 2/8 | ⏸ 裁决暂缓 | 侧栏 9 项归并（主任 2026-10-14 裁决暂不实施；当前实测 15 项） |
+| ~~A-04 断言 2/8~~ | 暂缓解除 → 并入 A-13 | 前置 F11/A-06 均已 ✅，主任 2026-11-13 派工 = 批准解除；实施载体 = A-13（14 项 5 组，非旧提案 9 项） |
 
 #### 2026-11-13 测试基建（本轮新立）
 
@@ -80,6 +84,29 @@ verified-by: 2026-11-13 主任裁决落地 `UI-THEME-TOGGLE`（A 移除）与 `U
 #### 2026-11-13 五角审查 · 档 5（文档与代码一致性）
 
 > 本档唯一一条 `UI-PAGE-INVENTORY` 已收口并移入归档；档 2 的 `UI-INDUSTRY-ENTRY` / `UI-THEME-TOGGLE` 已于 2026-11-13 裁决并落地（见上）。
+
+#### 2026-11-13 设计细化批（本轮新立）
+
+### UI-DESIGN-DOC-CONVERGENCE · 活跃设计文档收敛到 v2 真相源 [P2] ⬜
+
+> 档 5（文档与代码一致性）· 来源：2026-11-13 UI/UX 改进报告 S1（设计系统漂移审计）· 顺序：可立即开工，与子台账 A-12~A-15 无依赖 · 依赖：无
+
+- **① 目标**：`docs/design/` 活跃层文档不再含 v1 调色板残留与虚构代码示例，token 块与 `variables.css` 逐字一致，导航链接与现行标签一致 —— 设计文档作为「唯一真相源」可信（AGENTS.md §6：docs/design/ 是唯一基准）。
+- **② 上下文与背景证据（2026-11-13 当场 grep 实测，逐条带行号）**：
+  - **v1 token 块**：`docs/design/index.md:47–54` 仍写 v1 八值（`#0d1117/#161b22/#1c2333/#e6edf3/#8b949e/#58a6ff/#3fb950/#f85149`）；现行真相 `web/src/styles/variables.css:12–39` = `#090a0c/#111620/#171e2c/#e1e2eb/#c3c6d7/#b4c5ff/#10b981/#ef4444`（v2「Obsidian Precision Quant」，DESIGN.md 为基准）。
+  - **v1 hex 散落**（活跃层，共 15 处）：`components.md:140,143,144,212`（含已合并的 `/copilot` 磁贴行）；`principles.md:16,31,32,88`；`pages/backtest-engine.md:170,258,259,261`；`pages/strategy-lab.md:128,130,132`。
+  - **虚构代码示例**：`interaction.md:15–24` 的 `useAppStore`（含 `currentTheme: ref<'dark'|'light'>`）—— `web/src/stores/` 实测只有 auth/backtest/sync 三个 store，**app store 不存在**；主题切换已按 `UI-THEME-TOGGLE` 裁决 A 移除（2026-11-13），该示例双重失效。
+  - **失效导航链接**：`index.md:30` 链向 `pages/copilot.md`（文件存在，但「策略 Copilot」是漂移别名 —— 现行入口是「策略库」`/strategy-lab`，copilot 只是路由别名）；`index.md:31`「数据同步 DataSync」是漂移别名（现行标签「数据管理」）。
+  - **豁免边界**：`stitch_quantlab_ux_redesign/**` 是历史设计档案 + 台账，其旧 hex 是**刻意保留的扫页证据**（A-01/A-02 断言基线、DESIGN.md:98 候选值记录），**不在本单收敛范围**，守卫必须排除该目录。
+- **③ 要求**：
+  1. `index.md:47–54` token 块改为指向 `variables.css` 的指针 + 现行八值逐字抄录（或明写「真相源 = variables.css，此处仅为快照」并附核对日期）；
+  2. 15 处 v1 hex 按语义替换为 v2 对应值（成功/失败/主色/背景/文字），**不机械全局替换** —— `principles.md:16` 的「正收益绿/负收益红」语义保留，只换值；
+  3. `interaction.md` 删除虚构 `useAppStore` 示例，改为指向真实 store 清单（auth/backtest/sync）与「主题切换已移除（UI-THEME-TOGGLE 裁决 A）」的事实句；
+  4. `index.md:30–31` 链接标签改为现行导航词（策略库 / 数据管理），`pages/copilot.md` 文件保留但顶部加「已并入策略库」注记；
+  5. 新增守卫脚本 `scripts/check-design-docs.mjs`（接入 CI Guard 步，同 `check-no-openapi.mjs` 模式）：活跃层 grep v1 八值 = 0、token 块与 variables.css 一致、`interaction.md` 不出现 `useAppStore`；**排除 `stitch_quantlab_ux_redesign/**`**。
+- **④ 约束与非目标**：不改 `web/src` 任何代码（本单纯文档 + 守卫）；不动 `stitch_quantlab_ux_redesign/**`（历史证据）；不改 DESIGN.md（它是 v2 基准，本单是让其他文档对齐它）；不新增跨仓相对链接（跨仓引用写 `repo:path`）；守卫不得用「放宽 grep」变绿。
+- **⑤ 验收**：`node scripts/check-design-docs.mjs` 退出码 0；破坏验证双向 —— 注入一个 `#58a6ff` 到 `principles.md` → 退出码 1，还原 → 0；把 token 块改回 v1 值 → 退出码 1，还原 → 0；`npm run lint` / `typecheck` 不受影响（纯 .md + .mjs）；守卫脚本自身有夹具测试（同 `check-page-inventory.mjs` 先例）。
+- **⑥ 边界**：`tellurion-ui/docs/design/`（活跃层）+ `scripts/check-design-docs.mjs` + CI Guard 步；子台账 A-12~A-15 是 UX 功能项，不在本单；DESIGN.md 与 variables.css 只读不改。
 
 ## 二、跨仓指针（不在本仓，勿双写）
 

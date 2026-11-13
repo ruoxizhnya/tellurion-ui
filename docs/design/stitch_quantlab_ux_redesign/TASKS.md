@@ -634,6 +634,235 @@ core SYNC-01 的验收第 1、2 条要防的形状，本任务不能替它绕过
 5. 等宽数字在表格中不横向跳动：`font-variant-numeric: tabular-nums` 在数据单元上生效，有一条计算样式断言。
 6. 字体变更不使 `npm run build` 产物体积无谓膨胀 >200KB（若自托管需报告实际增量）。**实测 woff2 合计 93,556 B ≈ 91.4 KiB**（Inter 400/500/600 + JetBrains Mono 400，latin 子集），未超预算。
 
+## A-12 校准驾驶舱：审阅台第二 tab（设计报告 S2，G6 消费面）　🟢 可开工（2026-11-13 立单）
+
+> 来源：2026-11-13 UI/UX 改进报告（会话可视化 artifact `quantlab-ui-ux-improvement-plan-r1.html` 样图 B）·
+> 依赖：G6 已落地（无阻塞）· 与 B-03 共用 `/review` tab 骨架，先落本单、B-03 后加第三 tab。
+> **放置裁决（2026-11-13，起草时定）**：报告原稿写「独立 `/calibration` 页 + ⌘K 直达」，**不采用** ——
+> `CommandPalette.vue:63` 只读 `NAV_ITEMS`（A-04 断言 5），独立页必须新增导航项，与 A-13 收敛方向矛盾。
+> 改为审阅台第二 tab + 深链 `/review?tab=calibration`，同 §3.2「研究日志可并入审阅台 tab」模式。
+> 代价明写：偏离已交付报告的独立页放置；校准入口藏在 tab 里，靠 A-15 晨间简报的链接保可达。
+
+1. `/review` 出现「候选审阅 / 校准驾驶舱」双 tab，深链 `/review?tab=calibration` 直达第二 tab；`NAV_ITEMS` 数量不变（**不新增导航项、不新增路由**），⌘K 与侧栏同源的 A-04 断言 5 守卫不退化。
+2. 校准面板消费真端点 `GET /api/pipeline/calibration`（`api/pipeline.ts:56`），渲染 `sample_size / hit_rate / claimed_rate / calibration_error / brier_score` 五数；`entries` 为空数组时显示**显式空态**（「还没有采纳记录」），不画假图、不把空样本渲染成 0%。
+3. 可靠性图：横轴声称置信度分箱、纵轴实际命中率，带对角参考线与每箱样本数 n；`is_holdout=true` 的条目单独成列，不与主样本混算。
+4. 三态如实：`outcome_hit=null` → 「待回填」（不计入命中率分母、不画成未命中）；`pending=null` → 「—」（不画成 0）；小样本（n<30）显式标注「样本不足，仅供参考」。
+5. 二值措辞守卫：本面板组件源码 grep `VALIDATED|VERIFIED|已验证|已认证` 为 0（校准 ≠ 认证，B-05 断言 5 同源）；每条用户可见字符串不夹 markdown。
+6. B-02 候选审阅 tab 不退化（`review-desk.spec.ts` 现有用例全绿）；破坏验证：把空态分支改成渲染 0% → 断言 2 用例红，还原 → 绿。
+
+### A-12 实施计划（六字段，2026-11-13 起草）
+
+**① 目标**：主任在审阅台看见「当时声称的把握，后来实际命中多少」—— 校准误差 + 可靠性图 + holdout 分离的真实读面，屏幕上每个数都能指到 `getCalibration` 的一个字段或明写「待回填 / —」。
+
+**② 上下文（2026-11-13 当场实测，不是引用断言）**
+
+| 事实 | 证据 |
+|---|---|
+| G6 端点已落地 | agent `docs/api-schema.md` §1.3：`POST /api/pipeline/adoption` + `GET /api/pipeline/calibration`；ai-service 本机 `127.0.0.1:8086` healthy（B-01 关账记录） |
+| 前端 API 层已就绪、**零渲染消费** | `api/pipeline.ts:56 getCalibration` / `:45 Calibration` / `:32 CalibrationEntry`（含 `is_holdout` / `outcome_hit: boolean\|null` / `claimed_confidence`）；grep `getCalibration` 在 `web/src` 只命中 api 层 |
+| 宿主页无 tab 结构 | `pages/ReviewDesk.vue` 单屏：approx-banner(:5) / controls(:11–24) / ranked-list(:30–89) / adopt modal(:92–130)；`router/index.ts:81–82` review 路由不解析 query |
+| 放置矛盾 | `CommandPalette.vue:63` `filterNavItems` 只读 `NAV_ITEMS` ⇒ 独立页必增导航项，与 A-13 收敛矛盾（见上方放置裁决） |
+| 空态是今天唯一真态（**实测**） | 2026-11-13 curl `GET :8085/api/pipeline/calibration` → `{"sample_size":0,…,"pending":0,"entries":[]}`（EXIT=0）⇒ 真后端 e2e 只能验空态；注意 `pending` 今天是数字 0 不是 null，「—」态必须走 fixture。非空态走 route 拦截 fixture 并**显式标 mock** |
+
+**③ 要求（五步，每步一个可独立测试通过的 commit）**
+
+1. **tab 骨架**：`ReviewDesk.vue` 加 `n-tabs`（候选审阅 / 校准驾驶舱），解析 route query `tab`（缺省 = 候选审阅）；现有 ranked-list 的 DOM 结构与 `data-testid` **一个不动**（B-02 e2e 选择器不变）。
+2. **面板组件**：新建 `components/review/CalibrationPanel.vue`，消费 `getCalibration`：五数摘要 + 可靠性图（Chart.js，复用现有图表封装，**不引新依赖**）+ entries 表（claimed / hit / 待回填三态）。分箱是纯函数，落 `utils/calibration.ts` 并带单测。
+3. **三态与空态**（断言 2/4）：`entries=[]` → 显式空态；`pending=null` → 「—」；`outcome_hit=null` → 待回填徽标；n<30 → 「样本不足」标注。
+4. **e2e**：真后端空态一条 + route 拦截 fixture 非空态一条（分箱 / holdout 分离 / 待回填各断言一次）；fixture 数据形状逐字段对齐 `Calibration` 类型，不造后端没有的字段。
+5. **破坏验证 + 基线**：断言 6 的改坏腿真跑；审阅台视觉基线因 tab 新增重录（V-1 `setFixedTime` 纪律，逐张看 diff 再录）。
+
+**④ 约束与非目标**
+
+- **不做**：不新增 `NAV_ITEMS` 项、不新增 `/calibration` 路由（深链是 query 不是路由）；不做写操作（采纳写入归 B-02 弹窗 / B-03 台账）；不改 `getCalibration` 契约；不引入新图表库。
+- **措辞硬约束**：无 `VALIDATED` / `VERIFIED` / 「已验证」/「已认证」；`calibration_error` 不得包装成「评分」或「等级」；小样本必须标注，不得只画漂亮图。
+- **不退化**：B-02 候选审阅的排序 / 采纳 / 四干预 e2e 全绿；`InterventionBar` 不动。
+- 大对象 `shallowRef`；DOM 访问前 `await nextTick()`；字符串不夹 markdown（A-05/A-06 老坑）。
+
+**⑤ 验收（断言 → 取证方式，写清哪条用真数据、哪条只能 mock）**
+
+| 断言 | 取证 |
+|---|---|
+| 1 双 tab + 深链 + 导航不变 | e2e 真后端：`/review?tab=calibration` 直达；守卫 = 本单 commit 的 diff 不触 `navItems.ts`（与 A-13 并行时不依赖对方的项数） |
+| 2 真端点 + 空态 | e2e **真后端**（今天 entries 恒空 ⇒ 空态是唯一能真跑的态）；非空态走 route 拦截 fixture，**显式标 mock** |
+| 3 可靠性图 + holdout | 单测（分箱纯函数：claimed 分箱 × 命中率 × n，反例：holdout 混入主样本 → 红）+ fixture e2e |
+| 4 待回填 / — / 小样本 | 单测三态渲染各一条；`pending=null` 与 `outcome_hit=null` 用 fixture |
+| 5 措辞 grep | 守卫用例：面板组件源码 grep 四词 0 命中（破坏验证：注入一个 VERIFIED → 红） |
+| 6 不退化 + 破坏验证 | `review-desk.spec.ts` 全绿；空态分支改渲染 0% → 断言 2 红 → 还原绿 |
+
+**⑥ 边界**：只做 `ReviewDesk.vue` tab 骨架 + `CalibrationPanel.vue` + `utils/calibration.ts` + api 消费层；采纳写面与台账归 B-03；晨间简报的校准链接归 A-15。
+
+## A-13 导航 IA 收敛：15 项 4 组 → 14 项 5 组（设计报告 S3，解除 A-04 断言 2/8 暂缓）　🟢 可开工（2026-11-13 立单）
+
+> 来源：2026-11-13 UI/UX 改进报告 S3 · 依赖：无（F11=B-04 ✅ / A-06 ✅，A-04 暂缓条件已满足）。
+> **前提订正（2026-11-13，起草时实测）**：报告原稿写「15→9」，引的是 A-04 旧提案 ——
+> A-04 记录自己写明「'9 项'没有权威清单」，且该清单早于审阅台 / 走向与批量 / 纸交易 / 合规 /
+> 系统管理五个新页、还用着已退役标签「因子研究」。**照抄 9 会孤儿化审阅台（P0 中枢）**。
+> 本单改按 `user-flows.md` §3.2 目标 IA 收敛为 **14 项 5 组**（15 − 证据质问独立入口）。
+> **治理**：A-04 断言 2/8 的暂缓理由「等 F11/A-06 落地后再动」两条前置均已 ✅（B-04 `08e95f1` /
+> A-06 因子证据降级），主任 2026-11-13 派工细化设计 = 批准解除暂缓，本单即实施载体。
+
+1. `NAV_ITEMS` 由 15 → **14**：删「证据质问」独立入口（页面已按 A-06 降级为内嵌侧滑，`/evidence` 路由与页面**保留**作深链兜底）；分组改为 **总览 1 / 研究主线 2（探索观察、审阅台）/ 仪器房 7（回测引擎、多策略对比、走向与批量、策略库、因子证据（已退役）、选股与市场、数据管理）/ 监控 1（风险告警）/ 系统 3（纸交易、合规、系统管理）** —— 纸交易从仪器房移入系统（§3.2「执行与账户」域）。
+2. 三处标签同源守卫全绿：14 项的侧栏 label == 路由 `meta.title` == 页面 H1 逐字相同；`nav-labels.test.ts` 的 `titleFile` 表同步删 `/evidence` 行（注释写明深链保留）；五个漂移别名（回测分析 / 探索观测 / 因子工厂 / 全市场选股 / 数据通道）仍为 0。
+3. ⌘K 命令面板与侧栏读同一份 `NAV_ITEMS`（14 项），`command-palette.spec.ts` 的数量断言同步更新；A-04 断言 5 不变式不退化。
+4. `user-flows.md` §3.2 同步登记：**走向与批量**补进仪器房、**纸交易**补进系统（执行与账户）、证据质问注明「独立入口移除，深链保留」；新增守卫用例断「§3.2 树 ↔ `navItems.ts` 逐项一致」（解析失败必须红，不许静默绿）。
+5. 导航三 spec（`nav-consistency` / `command-palette` / `cross-navigation`）更新后全绿；含侧栏的 5 张视觉基线逐张核对 diff 仅在侧栏区域后重录（V-1 `setFixedTime` 纪律）。
+6. 破坏验证双向：任一 label 改一个字 → `nav-labels.test.ts` 红，还原 → 绿；§3.2 守卫用例注入一个不存在的条目 → 红，还原 → 绿。
+
+### A-13 实施计划（六字段，2026-11-13 起草）
+
+**① 目标**：侧栏按 §3.2 目标 IA 收敛为 14 项 5 组，证据质问降为深链，⌘K 同源不变，三处标签守卫与 §3.2 一致性守卫全绿 —— 「导航是任务组织不是工具清单」落到机器可核对。
+
+**② 上下文（2026-11-13 当场实测）**
+
+| 事实 | 证据 |
+|---|---|
+| 现状 15 项 4 组 | `navItems.ts:43–78`：总览 1 / 研究主线 3（含证据质问 :50）/ 仪器房 8 / 监控 3；`/factors` 标签已是「因子证据（已退役）」(:65)，**不是**旧提案的「因子研究」 |
+| ⌘K 只读 NAV_ITEMS | `CommandPalette.vue:63` `filterNavItems` ⇒ 删条目自动从 ⌘K 消失，无需第二处改动 |
+| 守卫现状 | `nav-labels.test.ts`：`titleFile` 15 行、`items.length ≥ 9` 下限、别名零、NavTiles 同源；`navTestId`/`commandItemTestId` 命名规则(:97–106)不动 |
+| §3.2 目标树 | `user-flows.md:119–140`：研究主线含「研究日志（可并入审阅台 tab）」⇒ 不入侧栏（A-12/B-03 承载）；监控含「策略健康（P2 未建）」、系统含「行业与宏观（2026-11-13 裁决 B 仅 API）」⇒ 均不入侧栏 |
+| 暂缓前置已满足 | A-04 断言 2/8 暂缓理由「等 F11/A-06」：B-04 ✅ `08e95f1`（2026-11-12）、A-06 ✅（因子证据降级）；主台账子台账开放项表同步改判 |
+| 受影响的 e2e | `nav-consistency.spec.ts` / `command-palette.spec.ts` / `cross-navigation.spec.ts` 存在；`visual-regression.spec.ts` 5 张含侧栏 |
+
+**③ 要求（五步，每步一个可独立测试通过的 commit）**
+
+1. **navItems.ts**：删证据质问项、按 ① 的 5 组重排（纸交易移入系统组）；`NAV_GROUPS`/`NAV_ITEMS` 导出形状与 `navTestId` 规则不动；分组注释「四段」改「五段」。
+2. **守卫同步**：`nav-labels.test.ts` `titleFile` 删 `/evidence` 行、数量下限由 `≥9` 改 **`≥14`（绝对值，不从现状推导）**；`/evidence` 路由保留的事实写进注释。
+3. **e2e 三 spec 更新**：14 项断言、⌘K 14 项、cross-navigation 不再从侧栏点证据质问（深链用例保留）。
+4. **§3.2 登记 + 一致性守卫**：`user-flows.md` 补走向与批量 / 纸交易、注明证据质问深链；新守卫用例解析 §3.2 树与 `navItems.ts` 逐项比对（解析失败 = 红）。
+5. **基线重录 + 破坏验证**：5 张含侧栏基线逐张看 diff（只允许侧栏区域变化）后重录；断言 6 双向破坏腿真跑。
+
+**④ 约束与非目标**
+
+- **不做**：不删 `/evidence` 路由与页面（A-06 侧滑的深链兜底）；不新增任何导航项（策略健康未建 / 行业与宏观仅 API / 研究日志并入 tab，三者都不进侧栏）；不改任何页面 H1 文案（三处同源是既有事实，本单只动分组与删一项）；不动 `NAV_ITEMS` 导出形状。
+- **措辞**：14 个 label 一字不改（除删除证据质问）；五个漂移别名保持 0。
+- **不退化**：`NavTiles` 同源守卫、`authGuard` 路由行为、B-02/B-04 页面 e2e 全绿。
+- 视觉基线**不得**整批 `--update-snapshots` 盲录 —— 逐张核对 diff 区域（UI-VISUAL-BASELINE-2026-11-12 的判定纪律）。
+
+**⑤ 验收（断言 → 取证方式）**
+
+| 断言 | 取证 |
+|---|---|
+| 1 14 项 5 组 | 单测断 `NAV_ITEMS.length === 14` 与分组计数 `[1,2,7,1,3]`（绝对值）；`/evidence` 路由仍可达（e2e 深链） |
+| 2 三处同源 | `npx vitest run nav-labels` 全绿（真源码解析，非 mock） |
+| 3 ⌘K 同源 | `command-palette.spec.ts` 真浏览器 14 项 |
+| 4 §3.2 一致 | 新守卫用例真跑；注入不存在条目 → 红 → 还原绿 |
+| 5 三 spec + 基线 | 三 spec 全绿（真栈）；5 张基线重录后连跑两轮绿 |
+| 6 破坏验证 | label 改一字 → 红 → 还原绿（真跑，记录退出码） |
+
+**⑥ 边界**：只做 `navItems.ts` + `nav-labels.test.ts` + 三 e2e spec + `user-flows.md` §3.2 + 基线；页面内容不动；A-04 断言 2/8 的台账改判同步落主台账开放项表（本单 commit 内）。
+
+## A-14 候选卡三要素补齐：六维微条 + 质疑分级 + 证据质问（设计报告 S5）　🟢 可开工（2026-11-13 立单）
+
+> 来源：2026-11-13 UI/UX 改进报告样图 C · 依赖：无（G2/G3/G4 已落地，verdict 契约已在 `api/explore.ts`）。
+> **前提订正（2026-11-13，起草时实测）**：报告样图 C 含「路径缩略图（PathSparkline）」，
+> **本单不做** —— `AttemptView`（UI 类型与 agent wire `docs/api-schema.md:89` 双侧核对）
+> **没有权益路径字段**，G1 缺口表明确列「路径缩略图数据」未提供。画它只能造假数据，
+> 违愿景原则 4。**该项归 G1**：后端补字段后另立单，不在本单夹带。
+> 本单只做**今天数据支撑得起**的三要素：六维微条、质疑分级、Sharpe 证据质问。
+
+1. 候选卡渲染六维微条：按 `DIMENSION_ORDER` 固定六维顺序（`api/explore.ts`），每维显示 assessed 值；`unassessed` 维显式标「未评估」并触发一票否决提示，**不画成 0 分**；综合概率用 `assessedProbability`（min 口径），与卡片现有 `P` 标签同值。
+2. 质疑清单按 severity 分组：**blocking 在前**、warning 次之、note 最后，组内保持原序；空清单显示「无质疑」而不是空白；分级标签与 `InterventionBar` 现有措辞一致。
+3. Sharpe 数字旁挂 `EvidenceProbe`（`components/evidence/EvidenceProbe.vue`）：`hash=null`（今天恒 null，`AttemptView` 无证据坐标字段）→ 点击前屏幕上就显示「无法回溯」，同 `MetricsCards.vue:6–14` 先例（如实标注，不是占位）；**不造假 hash**。
+4. 失败尝试（`ok=false`）不渲染裁决微条与概率（K9/B-01 断言 5 同源），只显示失败原因；`verdict` 缺席的成功尝试显示「无裁决」而不是 0 分。
+5. 现有排序 / 采纳 / 四干预不退化：`rankAttempts`（`utils/review.ts`）不动，`review-desk.spec.ts` 与 `ReviewDesk.test.ts` 全绿。
+6. 破坏验证：把 `unassessed` 维渲染成 0 → 断言 1 用例红，还原 → 绿；把 blocking 排到 note 后 → 断言 2 用例红，还原 → 绿。
+
+### A-14 实施计划（六字段，2026-11-13 起草）
+
+**① 目标**：审阅台候选卡从「一个 P 值 + 平铺质疑」升级为「六维微条 + 分级质疑 + 可质问的 Sharpe」，每个视觉元素都能指到 verdict 契约的一个字段或明写「无法回溯 / 无裁决」。
+
+**② 上下文（2026-11-13 当场实测）**
+
+| 事实 | 证据 |
+|---|---|
+| verdict 契约已就绪 | `api/explore.ts`：`Verdict{dimensions,unassessed?,probability,weakest?,geometric_mean,blocking,challenges,causal?}`；`DIMENSION_ORDER` 固定六维；`assessedProbability`(:81) min 口径 + unassessed 否决；`weakestDimension`(:91) |
+| 路径数据**不存在** | `AttemptView{seq,hypothesis,params,experiment_id,sharpe,ok,error?,verdict?}` 无权益路径；agent wire（`tellurion-agent:docs/api-schema.md:89`）同样没有 ⇒ PathSparkline 归 G1，本单不做 |
+| 证据坐标**不存在** | `AttemptView` 无 evidence hash 字段 ⇒ `EvidenceProbe :hash="null"` 恒「无法回溯」；先例 `MetricsCards.vue:6–14`（注释：「回测指标今天一律没有坐标…那是如实标注，不是占位」） |
+| 宿主现状 | `ReviewDesk.vue:30–89` ranked-list：P 标签 + `challengesOf` 平铺列表（无分组）+ 平台面积/因果强度/综合分；`utils/review.ts` 的 `rankAttempts` 是排序真相，不动 |
+| 质疑分级契约 | `Challenge{dimension,severity,message}`，severity ∈ blocking/warning/note（`api/explore.ts`） |
+
+**③ 要求（四步，每步一个可独立测试通过的 commit）**
+
+1. **六维微条组件**：新建 `components/review/VerdictBars.vue`，props 收 `Verdict`；按 `DIMENSION_ORDER` 渲染，unassessed 维「未评估」+ 否决提示；纯展示，概率计算仍走 `assessedProbability`（不在组件里重算）。
+2. **质疑分组**：`challengesOf` 输出按 severity 分组（blocking → warning → note），组内原序；空态「无质疑」。
+3. **EvidenceProbe 接线**：Sharpe 标签旁挂 `<EvidenceProbe :hash="null" …>`，label 写明「Sharpe 证据」；点击行为复用现有侧滑（A-06），不新增路由。
+4. **失败/缺席态 + 破坏验证**：`ok=false` 不渲染微条；`verdict` 缺席显示「无裁决」；断言 6 双向破坏腿真跑；候选卡视觉基线重录（V-1 纪律）。
+
+**④ 约束与非目标**
+
+- **不做**：PathSparkline（G1 缺数据，carved out 见上方订正）；不改 `rankAttempts` 排序口径；不改 `assessedProbability` 的 min/否决语义；不造假 hash / 假路径；不引入新依赖。
+- **措辞**：「未评估」≠「0 分」；「无法回溯」是如实标注不是错误态；失败尝试不出现任何裁决数字（K9）。
+- **不退化**：B-02 采纳弹窗（理由 + 概率快照缺一不可）、`InterventionBar` 四干预、`review-desk.spec.ts` 全绿。
+- 大对象 `shallowRef`；字符串不夹 markdown。
+
+**⑤ 验收（断言 → 取证方式，写清哪条用真数据、哪条只能 mock）**
+
+| 断言 | 取证 |
+|---|---|
+| 1 六维微条 | 单测（fixture verdict：六维全 assessed / 含 unassessed / 全 unassessed 三态）；真后端 e2e 一条（真 run 的 verdict 形状） |
+| 2 质疑分组 | 单测（乱序输入 → blocking 在前，反例断言）；空清单 → 「无质疑」 |
+| 3 EvidenceProbe | 单测断 `hash=null` 时屏幕文本含「无法回溯」（真组件渲染，非 mock）；e2e 点击开侧滑 |
+| 4 失败/缺席态 | 单测两条（`ok=false` 无微条；verdict 缺席 → 「无裁决」） |
+| 5 不退化 | `review-desk.spec.ts` + `ReviewDesk.test.ts` 全绿（真栈 + 单测） |
+| 6 破坏验证 | unassessed→0 红 / blocking 排后红，各还原绿（记录退出码） |
+
+**⑥ 边界**：只做 `VerdictBars.vue` + `ReviewDesk.vue` 卡片区 + 对应单测/e2e；路径缩略图归 G1（后端补字段后另立单）；排序与概率口径不动。
+
+## A-15 晨间简报：控制台首屏改为三节奏入口（设计报告 S4）　⛔ 阻塞（依赖 A-12 / A-13 / A-14）
+
+> 来源：2026-11-13 UI/UX 改进报告样图 A · 依赖：**A-12**（校准 tab 深链）/ **A-13**（审阅台入口）/
+> **A-14**（候选卡组件复用）· 三单收口后开工。
+> 定位：主任「看摘要 5 分钟」节奏的落点 —— 打开控制台第一屏就知道「今天该审什么、上次声称的把握命中没有、有没有失败需要处置」，而不是先看到一堆工具磁贴。
+
+1. `Dashboard.vue` 首屏新增「晨间简报」区（`MarketMetrics` 之上）：待审阅数（`getReviewPending`）+ 最近 run 摘要（`rankAttempts` 前 3）+ 校准误差一行（`getCalibration`，链接到 `/review?tab=calibration`）+ 失败 run 警示（K9 三态）。
+2. 待审阅数三态如实：`pending` 为数字 → 显示；`pending=null`（任一源不可用）→ 「—」+ 不可用源名（`api/review.ts` 契约：不做部分求和）；无配置源 → 「—」。**不画成 0**。
+3. 最近 run 摘要复用 A-14 的 `VerdictBars` 与 `utils/review.ts::rankAttempts`（不自造排序）；每条带「去审阅」深链 `/review?run=<id>`；失败 run 显示失败原因、**不渲染裁决**。
+4. 校准一行只读 `calibration_error` + `sample_size`，n<30 标「样本不足」；点击跳 A-12 深链；`getCalibration` 失败 → 「读面未接通」，不画成 0。
+5. 现有 `MarketMetrics` / `QuickBacktest` / `NavTiles` / `ConsoleHistory` / `EmergencyFlatten` 五块**保留且不退化**（简报是新增首屏区，不是删功能）；`dashboard.spec.ts` 现有用例全绿。
+6. 破坏验证：把 `pending=null` 渲染成 0 → 断言 2 用例红，还原 → 绿；dashboard 视觉基线重录（V-1 纪律，简报区用 fixture 冻结，避免活数据不可复现 —— 同 V-3 教训）。
+
+### A-15 实施计划（六字段，2026-11-13 起草）
+
+**① 目标**：控制台首屏成为「三节奏」入口 —— 待审阅 / 最近候选 / 校准误差 / 失败警示四块，每个数指到一条真端点或明写「— / 读面未接通」，主任 5 分钟看完知道今天该审什么。
+
+**② 上下文（2026-11-13 当场实测）**
+
+| 事实 | 证据 |
+|---|---|
+| 宿主页现状 | `Dashboard.vue`：MarketMetrics(:3) / QuickBacktest(:12) / NavTiles(:24) / ConsoleHistory(:26) / EmergencyFlatten(:38)；无简报区 |
+| 待审阅契约 | `api/review.ts`：`ReviewPending{pending:number\|null,as_of?,sources[]}`；注释明写「pending 只有在所有源都答话时才是数字…UI 必须保留『—』这一态」 |
+| 排序复用 | `utils/review.ts::rankAttempts`（高原面积 × 因果强度，B-02 已破坏验证）；A-14 的 `VerdictBars` 组件 |
+| 校准复用 | A-12 的 `getCalibration` 消费层与深链 `/review?tab=calibration` |
+| 视觉基线教训 | V-3：活后台状态不可复现 ⇒ 简报区 e2e/基线用 route 拦截 fixture 冻结（`setFixedTime` + 固定 pending/run 数据），真后端只验「—」态与错误态 |
+
+**③ 要求（四步，每步一个可独立测试通过的 commit）**
+
+1. **简报组件**：新建 `components/dashboard/MorningBriefing.vue`，四块布局；数据层复用 `getReviewPending` / `getExploreStatus`（最近 run）/ `getCalibration`，不在组件里造第二份 API。
+2. **三态与错误态**（断言 2/4）：pending 三态、校准失败「读面未接通」、失败 run 警示（K9）。
+3. **深链与复用**（断言 3）：「去审阅」跳 `/review?run=<id>`；校准行跳 A-12 深链；`VerdictBars` 直接 import A-14 组件。
+4. **基线 + 破坏验证**：dashboard 基线重录（简报区 fixture 冻结）；断言 6 破坏腿真跑；`dashboard.spec.ts` 新增简报用例（真后端「—」态 + fixture 数字态）。
+
+**④ 约束与非目标**
+
+- **不做**：不删现有五块；不新增端点；不做写操作（简报只读）；不引入新依赖；不在简报里做「AI 推荐」措辞（校准是估计不是裁决）。
+- **措辞**：「—」≠ 0；「读面未接通」≠「没有数据」；失败 run 不出现裁决数字。
+- **不退化**：`dashboard.spec.ts` / `NavTiles` 同源守卫 / `EmergencyFlatten` 二次确认 e2e 全绿。
+- 大对象 `shallowRef`；DOM 访问前 `await nextTick()`；字符串不夹 markdown。
+
+**⑤ 验收（断言 → 取证方式，写清哪条用真数据、哪条只能 mock）**
+
+| 断言 | 取证 |
+|---|---|
+| 1 四块首屏 | e2e fixture（冻结 pending/run/calibration）断四块可见；真后端一条验「—」态 |
+| 2 pending 三态 | 单测三条（数字 / null+源名 / 无源）；真后端 e2e（当前栈无配置源 ⇒ 「—」是唯一真态） |
+| 3 深链 + 复用 | e2e 点击「去审阅」落 `/review?run=…`；单测断 `VerdictBars` import 自 A-14 |
+| 4 校准一行 | 单测（n<30 标注 / 失败 → 读面未接通）；fixture e2e |
+| 5 不退化 | `dashboard.spec.ts` 全绿（真栈） |
+| 6 破坏验证 + 基线 | null→0 红 → 还原绿；基线连跑两轮绿（fixture 冻结，记录退出码） |
+
+**⑥ 边界**：只做 `MorningBriefing.vue` + `Dashboard.vue` 首屏区 + 对应测试；A-12/A-13/A-14 的产物只复用不改动；简报数据冻结策略落 V-3 同款注释。
+
 ---
 
 # 分组 B · 🔴 延后（依赖 ai-service 或后端缺口）
@@ -739,7 +968,9 @@ A-04                 （导航/顶栏统一 —— 后续所有新页都依赖�
 A-05 → A-06 → A-07   （三个横切组件，新页复用）
 A-08 → A-09          （两个"整屏重做"，收益最大）
 A-10 → A-11          （补屏与字体）
-分组 B               ← 等 G7（契约）+ B-05（analytics 因子读面）+ promote a 腿裁决（G9 已证伪，不再拦路）
+A-12 → A-13 → A-14   （2026-11-13 设计细化批：校准 tab / 导航收敛 / 候选卡三要素，三者可并行，无互相依赖）
+A-15                 （晨间简报，⛔ 等 A-12/A-13/A-14 收口）
+分组 B               ← B-03 可开工（G6 已落地，接 A-12 的 tab 骨架加第三 tab）；B-05 仍挂起（core 因子读面）
 ```
 
 ## 更新记录
@@ -754,3 +985,4 @@ A-10 → A-11          （补屏与字体）
 | 2026-10-14 (7) | **A-07 完成**（详见该节）。三件事值得单独记：① 三值口径收进 `utils/runStatus.ts` 一份表，**动了别人的断言** —— `BacktestEngine.test.ts` 与 `backtest-engine.spec.ts` 各有一条在断屏幕上出现原始 Code（`empty_universe`），那是被本任务**故意**改掉的行为，不是为了让测试变绿；② 断言 1 的机械腿第一版 `\bstatus\b` 是**假护栏**（注释就能骗绿），改成"必须真的读 status"并用探针文件双向破坏验证；③ 真数据抓到无效响应的实情：指标键是**缺席**而非零值，同时带着 `sortino_ratio=1.79e+308`（MaxFloat64）—— 我原先写在 `ConsoleHistory` 注释里的"invalid 保留数字（它算出来了）"因此**不准确**，已按实测改写。另：`pickJob` 被**共享限流**打成无关处变红，只给 429 加退避（其他码照旧响），同类 flake 按归属登记给 AUD-61；④ **更正我自己写过的假结论** —— A-06 台账那句"全量 playwright 116 passed / 0 failed"是把 `npx playwright test \| tail -30` 的输出当结论（管道给的是 `tail` 的退出码，截断又切掉了红清单）。不截断重跑实测 **61 failed / 116 passed / 2 skipped**（退出码 1），该 61 条经逐类取证（死选择器 / strict-mode 撞 async 默认态 / 纯 API 用例的指标假设 / 共享限流）**均非 A-06~A-07 引入**，已登记给 AUD-61 |
 
 | 2026-11-12 (2) | **A-09/A-10/A-11/B-01/B-02/B-04/B-06 关账 + 事实订正**：① A-09 纸交易观测台 `9ca2a61`，外部信号流 `97e934d` 接上 core 新补的 `GET /api/signals` 读面（空流 ≠ 读面未接，已分开画）；② A-10 三个缺屏 5 个 commit 已推，**断言 3 由 5 条订正为 4 条**（walkforward 历史读端点退役、batch CSV 501）；③ A-11 自托管 latin 子集 woff2（ODR-001，91.4 KiB）；④ B-01 `416d598` 只补 seq 升序用例并关账；⑤ B-02 审阅台 + B-06 三干预 `efc6cef`；⑥ B-04 三页合一 `08e95f1`；⑦ **G 表过期判据订正**：G1 聚合读面已实现（派生量仍缺）、G2/G3/G4 已落地（agent 实现 + core 反代）、G6 已落地、G7 已以通配收录，因此 B-02/B-06 从「画 disabled」改为**接真端点**；⑧ **B-05 归口由 analytics 改为 core**（ADR-038；analytics 全仓无因子读端点），UI 保留 disabled 并改为 core 后端任务指针 |
+| 2026-11-13 | **设计细化批立单（只立单不施工）**：主任派工把 2026-11-13 UI/UX 改进报告（会话可视化 artifact）细化为可执行任务。新立 **A-12**（校准驾驶舱 = 审阅台第二 tab，G6 消费面）/ **A-13**（导航 IA 15→14 按 §3.2，解除 A-04 断言 2/8 暂缓）/ **A-14**（候选卡三要素：六维微条 + 质疑分级 + EvidenceProbe）/ **A-15**（晨间简报，⛔ 依赖前三单），各 6 断言 + 六字段实施计划。**两处前提订正**：① 报告「15→9」引 A-04 旧提案，该提案无权威清单且早于五个新页 ⇒ 改按 §3.2 收敛 14 项 5 组；② 样图 C 的 PathSparkline 无数据支撑（`AttemptView` 双侧无权益路径字段，G1 明列缺口）⇒ carved out 归 G1。**一处放置裁决**：S2 原稿「独立 /calibration 页 + ⌘K 直达」与 A-04 断言 5（⌘K 只读 NAV_ITEMS）矛盾 ⇒ 改审阅台第二 tab + 深链。主台账同批新立 `UI-DESIGN-DOC-CONVERGENCE`（设计文档 v1 残留收敛，档 5）并登记 A-12~A-15 开放项 ID |
