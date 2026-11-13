@@ -634,7 +634,7 @@ core SYNC-01 的验收第 1、2 条要防的形状，本任务不能替它绕过
 5. 等宽数字在表格中不横向跳动：`font-variant-numeric: tabular-nums` 在数据单元上生效，有一条计算样式断言。
 6. 字体变更不使 `npm run build` 产物体积无谓膨胀 >200KB（若自托管需报告实际增量）。**实测 woff2 合计 93,556 B ≈ 91.4 KiB**（Inter 400/500/600 + JetBrains Mono 400，latin 子集），未超预算。
 
-## A-12 校准驾驶舱：审阅台第二 tab（设计报告 S2，G6 消费面）　🟢 可开工（2026-11-13 立单）
+## A-12 校准驾驶舱：审阅台第二 tab（设计报告 S2，G6 消费面）　✅ 已收口（2026-11-13）
 
 > 来源：2026-11-13 UI/UX 改进报告（会话可视化 artifact `quantlab-ui-ux-improvement-plan-r1.html` 样图 B）·
 > 依赖：G6 已落地（无阻塞）· 与 B-03 共用 `/review` tab 骨架，先落本单、B-03 后加第三 tab。
@@ -691,6 +691,16 @@ core SYNC-01 的验收第 1、2 条要防的形状，本任务不能替它绕过
 | 6 不退化 + 破坏验证 | `review-desk.spec.ts` 全绿；空态分支改渲染 0% → 断言 2 红 → 还原绿 |
 
 **⑥ 边界**：只做 `ReviewDesk.vue` tab 骨架 + `CalibrationPanel.vue` + `utils/calibration.ts` + api 消费层；采纳写面与台账归 B-03；晨间简报的校准链接归 A-15。
+
+**落地（2026-11-13）**
+- **tab 骨架**：`ReviewDesk.vue` 加 `n-tabs`（候选审阅 / 校准），tab 状态住 URL query（`?tab=calibration` 深链，`router.replace` 只改 query，**未新增路由、未动 `navItems.ts`**）；原 ranked-list / adopt modal 的 DOM 与 `data-testid` 一个未改，只整体挪进第一个 pane。
+- **面板**：新建 `components/review/CalibrationPanel.vue`，消费 `getCalibration`：五数摘要（`sample_size / hit_rate / claimed_rate / calibration_error / brier_score`，误差单位写「个百分点」，无「评分/等级」包装）、可靠性散点图（Chart.js，复用 `chartPalette`，主样本 + holdout 两条线 + 对角参考线，tooltip 带 n）、分箱表、entries 表（命中 / 未命中 / 待回填三态）。取不到 2d 上下文（happy-dom）时跳过绘图，读数与表格照常，不吞错。
+- **纯函数**：`utils/calibration.ts`：`binIndex` / `splitHoldout` / `binCalibration`（10 等分箱，1.0 归末箱；`outcome_hit=null` 只计 pending、不进分母；只返回非空箱；`CALIBRATION_MIN_SAMPLE = 30`）。
+- **三态**：`entries=[]` → 「还没有采纳记录」显式空态 + 「还没有已回填条目」图表说明；`pending=null` → 「待回填：—」；`outcome_hit=null` → 「待回填」徽标；`n<30` → 「样本不足（n=… < 30），仅供参考」；`holdout` 为空 → 「—」。
+- **测试**：`utils/calibration.test.ts`（6 例）、`components/review/CalibrationPanel.test.ts`（11 例，含源码措辞守卫四词零命中）、`pages/ReviewDesk.test.ts` 补 router 注入 + 2 例深链/回写 query，原 5 例断言未放宽。e2e `review-desk.spec.ts` 新增 4 例：深链直达、读数或失败态二选一、点 tab 写 query、fixture 非空态（分箱 50% / holdout 0% 分离 / 待回填 1 条 / 样本不足）。**真后端当前台账为空，非空态只能 fixture 取证，测试注释已显式标 mock。**
+- **破坏验证**：把空态分支改成恒渲染空表 ⇒ `CalibrationPanel.test.ts` 1 failed（空态用例），逐字还原 ⇒ 11 passed。措辞守卫注入未做（组件里未出现四词，改源码需另造词，按同一断言可直接观察到红）。
+- **验证**：`npx vitest run src/utils/calibration.test.ts src/components/review/CalibrationPanel.test.ts src/pages/ReviewDesk.test.ts` → 24 passed；`src/styles/palette.test.ts` 38 passed（新组件首版 `var(--q-hairline, …)` 兜底被棘轮守卫抓住，已改为既有 token `--q-text3 / --q-border-light / --q-mono`）；`npm run typecheck` EXIT=0；`npx eslint`（触及文件）0 error。
+- **偏离说明**：条目 ⑤ 要求「审阅台视觉基线重录」——`visual-regression.spec.ts` **本来就没有 `/review` 基线**，无图可录，故本次未新增/重录任何基线（新增基线属扩范围，不在此单）。
 
 ## A-13 导航 IA 收敛：15 项 4 组 → 14 项 5 组（设计报告 S3，解除 A-04 断言 2/8 暂缓）　🟢 可开工（2026-11-13 立单）
 
@@ -986,3 +996,4 @@ A-15                 （晨间简报，⛔ 等 A-12/A-13/A-14 收口）
 
 | 2026-11-12 (2) | **A-09/A-10/A-11/B-01/B-02/B-04/B-06 关账 + 事实订正**：① A-09 纸交易观测台 `9ca2a61`，外部信号流 `97e934d` 接上 core 新补的 `GET /api/signals` 读面（空流 ≠ 读面未接，已分开画）；② A-10 三个缺屏 5 个 commit 已推，**断言 3 由 5 条订正为 4 条**（walkforward 历史读端点退役、batch CSV 501）；③ A-11 自托管 latin 子集 woff2（ODR-001，91.4 KiB）；④ B-01 `416d598` 只补 seq 升序用例并关账；⑤ B-02 审阅台 + B-06 三干预 `efc6cef`；⑥ B-04 三页合一 `08e95f1`；⑦ **G 表过期判据订正**：G1 聚合读面已实现（派生量仍缺）、G2/G3/G4 已落地（agent 实现 + core 反代）、G6 已落地、G7 已以通配收录，因此 B-02/B-06 从「画 disabled」改为**接真端点**；⑧ **B-05 归口由 analytics 改为 core**（ADR-038；analytics 全仓无因子读端点），UI 保留 disabled 并改为 core 后端任务指针 |
 | 2026-11-13 | **设计细化批立单（只立单不施工）**：主任派工把 2026-11-13 UI/UX 改进报告（会话可视化 artifact）细化为可执行任务。新立 **A-12**（校准驾驶舱 = 审阅台第二 tab，G6 消费面）/ **A-13**（导航 IA 15→14 按 §3.2，解除 A-04 断言 2/8 暂缓）/ **A-14**（候选卡三要素：六维微条 + 质疑分级 + EvidenceProbe）/ **A-15**（晨间简报，⛔ 依赖前三单），各 6 断言 + 六字段实施计划。**两处前提订正**：① 报告「15→9」引 A-04 旧提案，该提案无权威清单且早于五个新页 ⇒ 改按 §3.2 收敛 14 项 5 组；② 样图 C 的 PathSparkline 无数据支撑（`AttemptView` 双侧无权益路径字段，G1 明列缺口）⇒ carved out 归 G1。**一处放置裁决**：S2 原稿「独立 /calibration 页 + ⌘K 直达」与 A-04 断言 5（⌘K 只读 NAV_ITEMS）矛盾 ⇒ 改审阅台第二 tab + 深链。主台账同批新立 `UI-DESIGN-DOC-CONVERGENCE`（设计文档 v1 残留收敛，档 5）并登记 A-12~A-15 开放项 ID |
+| 2026-11-13 (2) | **A-12 完成**：审阅台加「候选审阅 / 校准」双 tab，`?tab=calibration` 深链只改 query（未新增路由 / 未动 `NAV_ITEMS`）；新建 `CalibrationPanel.vue` 消费 G6 真端点，五数照抄后端、可靠性图 Chart.js（主样本 + holdout 双线 + 对角参考）、分箱表与 entries 三态；纯函数 `utils/calibration.ts` 负责分箱与 holdout 分流。**教训**：新组件写 `var(--q-hairline, #2a3449)` 这类兜底会被 `palette.test.ts` 棘轮当场抓住（兜底 hex 不在基线里、`--q-hairline` 在 `variables.css` 根本不存在），改用既有 `--q-text3 / --q-border-light / --q-mono`。**取证边界**：真库采纳台账为空，非空态（分箱 / holdout 分离 / 待回填）只能用 route fixture 证明，测试注释已标 mock；`visual-regression.spec.ts` 无 `/review` 基线，故本单无图可重录 |

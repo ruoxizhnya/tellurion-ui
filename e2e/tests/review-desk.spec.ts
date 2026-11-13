@@ -55,4 +55,97 @@ test.describe('B-02 审阅台', () => {
     const badge = page.getByTestId('header-review-badge')
     await expect(badge).toHaveText(/待审阅 (\d+|—)/)
   })
+
+  /**
+   * A-12 校准驾驶舱（审阅台第二 tab）。
+   *
+   * 只断言「能到达 + 读数或显式失败态」：真库的采纳台账条数随套件执行变化，
+   * 把具体百分比钉进 e2e 就是又一条把数据烙进断言的假护栏（同 visual-regression 的教训）。
+   */
+  test('A-12：?tab=calibration 深链直达校准驾驶舱，不新增路由', async ({ page }) => {
+    await page.goto('/review?tab=calibration')
+    await page.waitForSelector('[data-testid="review-desk"]', { timeout: 15000 })
+
+    await expect(page).toHaveURL(/\/review\?tab=calibration$/)
+    await expect(page.getByTestId('calibration-panel')).toBeVisible()
+    // 候选排序面板不与校准同屏堆叠
+    await expect(page.getByTestId('ranked-list')).toHaveCount(0)
+  })
+
+  test('A-12：校准 tab 的读数或失败态必须二选一可见，不拿空白冒充 0%', async ({ page }) => {
+    await page.goto('/review?tab=calibration')
+    await page.waitForSelector('[data-testid="calibration-panel"]', { timeout: 15000 })
+
+    const readable = page.getByTestId('cal-sample-size')
+    const failed = page.getByTestId('cal-error')
+    await expect(readable.or(failed).first()).toBeVisible({ timeout: 15000 })
+    // 明确不允许「评分 / 等级」这类包装词
+    await expect(page.getByTestId('calibration-panel')).not.toContainText('评级')
+  })
+
+  test('A-12：点「校准」tab 后 URL 带 query，可直接分享', async ({ page }) => {
+    await page.goto('/review')
+    await page.waitForSelector('[data-testid="review-desk"]', { timeout: 15000 })
+
+    await page.getByRole('tab', { name: '校准' }).click()
+    await expect(page).toHaveURL(/tab=calibration/)
+    await expect(page.getByTestId('calibration-panel')).toBeVisible()
+  })
+
+  /**
+   * A-12 非空态（**fixture，非真后端**）：今天真库台账是空的，分箱 / holdout 分离 /
+   * 待回填三件事只能用确定回包取证。形状逐字段对齐 `api/pipeline.ts` 的 `Calibration`，
+   * 不造后端没有的字段。
+   */
+  test('A-12（fixture 非空态）：分箱 / holdout 分离 / 待回填不混算', async ({ page }) => {
+    const entry = (over: Record<string, unknown>) => ({
+      proposal_id: 'run-1:1',
+      actor: 'local',
+      intervention: 'fixture',
+      adopted: true,
+      claimed_confidence: 0.8,
+      is_holdout: false,
+      outcome_hit: true,
+      result_ref: 'exp:1',
+      created_at: '2026-05-06T09:00:00Z',
+      resolved_at: '2026-05-06T10:00:00Z',
+      ...over,
+    })
+    const fixture = {
+      sample_size: 8,
+      hit_rate: 0.625,
+      claimed_rate: 0.75,
+      calibration_error: 0.125,
+      brier_score: 0.2513,
+      pending: 2,
+      holdout: { sample_size: 2, hit_rate: 0.5 },
+      entries: [
+        entry({ proposal_id: 'run-1:1', outcome_hit: true }),
+        entry({ proposal_id: 'run-1:2', outcome_hit: false }),
+        entry({ proposal_id: 'run-1:3', outcome_hit: null, resolved_at: null }),
+        entry({ proposal_id: 'run-1:4', outcome_hit: false, is_holdout: true }),
+      ],
+    }
+    await page.route('**/api/pipeline/calibration**', (route) =>
+      route.fulfill({ contentType: 'application/json', body: JSON.stringify(fixture) }),
+    )
+
+    await page.goto('/review?tab=calibration')
+    await page.waitForSelector('[data-testid="calibration-panel"]', { timeout: 15000 })
+
+    await expect(page.getByTestId('cal-sample-size')).toHaveText('8')
+    await expect(page.getByTestId('cal-hit-rate')).toHaveText('62.5%')
+    await expect(page.getByTestId('cal-brier')).toHaveText('0.251')
+    await expect(page.getByTestId('cal-pending')).toContainText('已回填 8 条计入命中率')
+    await expect(page.getByTestId('cal-pending')).toContainText('待回填 2 条不计入')
+    // 样本 < 30 ⇒ 必须显式标注，不能只画一张漂亮图
+    await expect(page.getByTestId('cal-low-sample')).toContainText('样本不足')
+
+    const rows = page.getByTestId('cal-bins').locator('tbody tr')
+    await expect(rows).toHaveCount(2)
+    await expect(rows.nth(0)).toContainText('50.0%')
+    await expect(rows.nth(1)).toContainText('（holdout）')
+    await expect(rows.nth(1)).toContainText('0.0%')
+    await expect(page.getByTestId('cal-result-pending')).toHaveCount(1)
+  })
 })

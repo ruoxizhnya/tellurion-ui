@@ -2,6 +2,9 @@
   <div class="review-desk" data-testid="review-desk">
     <n-page-header title="审阅台" subtitle="按平台宽度与因果强度排序候选，并对每次尝试做采纳裁决（B-02）" />
 
+    <!-- A-12：审阅台第二 tab。?tab=calibration 深链直达校准驾驶舱，不新增路由。 -->
+    <n-tabs v-model:value="activeTab" type="line" class="tabs" data-testid="review-tabs">
+      <n-tab-pane name="review" tab="候选排序">
     <n-alert type="warning" :bordered="true" class="approx-banner" data-testid="approx-banner">
       近似聚合：core 的 G1 摘要读面尚未提供「平台面积 / 因果强度」这类派生量，本页按
       <code>attempts</code> + <code>verdict</code> 在前端现算。排序不是后端权威值，
@@ -87,6 +90,12 @@
         </n-space>
       </n-card>
     </div>
+      </n-tab-pane>
+
+      <n-tab-pane name="calibration" tab="校准">
+        <CalibrationPanel />
+      </n-tab-pane>
+    </n-tabs>
 
     <!-- 采纳裁决：理由 + 概率快照缺一不可（台账要求可回溯"当时声称多少把握"） -->
     <n-modal v-model:show="adoptOpen" :mask-closable="false">
@@ -136,6 +145,7 @@
 
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import {
   NAlert,
   NButton,
@@ -147,6 +157,8 @@ import {
   NModal,
   NPageHeader,
   NSpace,
+  NTabPane,
+  NTabs,
   NTag,
   NText,
   useMessage,
@@ -164,6 +176,7 @@ import {
 import { recordAdoption } from '@/api/pipeline'
 import { ApiError } from '@/api/client'
 import InterventionBar from '@/components/review/InterventionBar.vue'
+import CalibrationPanel from '@/components/review/CalibrationPanel.vue'
 import { rankAttempts } from '@/utils/review'
 
 /**
@@ -176,6 +189,23 @@ import { rankAttempts } from '@/utils/review'
 const LAST_RUN_KEY = 'ql.lastRunId'
 
 const message = useMessage()
+const route = useRoute()
+const router = useRouter()
+
+/**
+ * tab 状态住 URL（`?tab=calibration`）：校准驾驶舱要能被人直接贴给别人，
+ * 不靠「先点进候选排序再点一下」。不新增路由，只改 query。
+ */
+const activeTab = computed<'review' | 'calibration'>({
+  get: () => (route.query.tab === 'calibration' ? 'calibration' : 'review'),
+  set: (value) => {
+    const query = { ...route.query }
+    if (value === 'calibration') query.tab = 'calibration'
+    else delete query.tab
+    void router.replace({ query })
+  },
+})
+
 const runID = ref(localStorage.getItem(LAST_RUN_KEY) ?? '')
 const status = ref<ExploreStatus | null>(null)
 const loading = ref(false)

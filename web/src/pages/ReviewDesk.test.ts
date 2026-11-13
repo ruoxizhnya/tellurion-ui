@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { flushPromises, mount } from '@vue/test-utils'
 import { defineComponent, h } from 'vue'
+import { createMemoryHistory, createRouter, type Router } from 'vue-router'
 import { NMessageProvider } from 'naive-ui'
 import ReviewDesk from './ReviewDesk.vue'
 import * as exploreApi from '@/api/explore'
@@ -48,11 +49,22 @@ const ATTEMPTS = [
   attempt(4, 1.48, { verdict: verdict(0.4) }),
 ]
 
-function mountDesk() {
+async function mountDesk(initial = '/review'): Promise<{ wrapper: ReturnType<typeof mount>; router: Router }> {
+  const router = createRouter({
+    history: createMemoryHistory(),
+    routes: [{ path: '/review', component: { template: '<div />' } }],
+  })
+  await router.push(initial)
+  await router.isReady()
+
   const Host = defineComponent({
     render: () => h(NMessageProvider, null, { default: () => h(ReviewDesk) }),
   })
-  return mount(Host, { global: { stubs: { teleport: true } } }).findComponent(ReviewDesk)
+  const wrapper = mount(Host, {
+    global: { plugins: [router], stubs: { teleport: true } },
+  }).findComponent(ReviewDesk)
+  await flushPromises()
+  return { wrapper, router }
 }
 
 describe('B-02 审阅台', () => {
@@ -61,6 +73,17 @@ describe('B-02 审阅台', () => {
     localStorage.setItem('ql.lastRunId', 'run-9')
     vi.mocked(exploreApi.getExploreStatus).mockReset()
     vi.mocked(pipelineApi.recordAdoption).mockReset()
+    vi.mocked(pipelineApi.getCalibration).mockReset()
+    vi.mocked(pipelineApi.getCalibration).mockResolvedValue({
+      sample_size: 0,
+      hit_rate: 0,
+      claimed_rate: 0,
+      calibration_error: 0,
+      brier_score: 0,
+      pending: 0,
+      holdout: { sample_size: 0, hit_rate: 0 },
+      entries: [],
+    })
     vi.mocked(exploreApi.getExploreStatus).mockResolvedValue({
       run_id: 'run-9',
       running: true,
@@ -70,8 +93,7 @@ describe('B-02 审阅台', () => {
   })
 
   it('按平台面积 × 因果强度排序：孤峰不排第一，且显式标注「近似」', async () => {
-    const w = mountDesk()
-    await flushPromises()
+    const { wrapper: w } = await mountDesk()
 
     const order = w.findAll('[data-testid^="ranked-item-"]').map((n) => n.attributes('data-testid'))
     expect(order[0]).toBe('ranked-item-2')
@@ -80,8 +102,7 @@ describe('B-02 审阅台', () => {
   })
 
   it('采纳理由为空时不可提交（F7：理由与概率快照缺一不可）', async () => {
-    const w = mountDesk()
-    await flushPromises()
+    const { wrapper: w } = await mountDesk()
 
     await w.find('[data-testid="adopt-button-2"]').trigger('click')
     expect(w.find('[data-testid="adopt-prob"]').text()).toBe('0.600')
@@ -100,8 +121,7 @@ describe('B-02 审阅台', () => {
       claimed_confidence: 0.6,
       outcome_hit: null,
     })
-    const w = mountDesk()
-    await flushPromises()
+    const { wrapper: w } = await mountDesk()
 
     await w.find('[data-testid="adopt-button-2"]').trigger('click')
     await w.find('[data-testid="adopt-reason"] textarea').setValue('平台宽、因果链完整')
@@ -120,8 +140,7 @@ describe('B-02 审阅台', () => {
 
   it('重复裁决 409 不让用户以为写成功了', async () => {
     vi.mocked(pipelineApi.recordAdoption).mockRejectedValue(new ApiError(409, 'duplicate'))
-    const w = mountDesk()
-    await flushPromises()
+    const { wrapper: w } = await mountDesk()
 
     await w.find('[data-testid="adopt-button-2"]').trigger('click')
     await w.find('[data-testid="adopt-reason"] textarea').setValue('再写一次')
@@ -133,10 +152,30 @@ describe('B-02 审阅台', () => {
 
   it('加载失败显示错误，不渲染候选（不拿空白冒充"没有候选"）', async () => {
     vi.mocked(exploreApi.getExploreStatus).mockRejectedValue(new ApiError(404, 'run not found'))
-    const w = mountDesk()
-    await flushPromises()
+    const { wrapper: w } = await mountDesk()
 
     expect(w.find('[data-testid="review-error"]').text()).toContain('run not found')
     expect(w.find('[data-testid="ranked-list"]').exists()).toBe(false)
+  })
+
+  it('A-12：?tab=calibration 深链直达校准驾驶舱，且不新增路由', async () => {
+    const { wrapper: w, router } = await mountDesk('/review?tab=calibration')
+
+    expect(router.currentRoute.value.path).toBe('/review')
+    expect(w.find('[data-testid="calibration-panel"]').exists()).toBe(true)
+    // 候选排序面板懒渲染，不该在同屏堆出来
+    expect(w.find('[data-testid="ranked-list"]').exists()).toBe(false)
+  })
+
+  it('A-12：点「校准」tab 把状态写进 query，可被复制分享', async () => {
+    const { wrapper: w, router } = await mountDesk()
+
+    const tab = w.findAll('.n-tabs-tab').find((node) => node.text().includes('校准'))
+    expect(tab).toBeTruthy()
+    await tab!.trigger('click')
+    await flushPromises()
+
+    expect(router.currentRoute.value.query.tab).toBe('calibration')
+    expect(w.find('[data-testid="calibration-panel"]').exists()).toBe(true)
   })
 })
