@@ -1,7 +1,7 @@
 ---
 status: active
-last-verified: 2026-11-12
-verified-by: 2026-11-12 A-10 三页登记（合规 F17 / 系统管理 F18 / 走向与批量）：§3.1 页面清单落地，端点条数与形态按 core handlers 实测；此前：2026-11-12 台账自洽订正（`UI-LEDGER-SELF-CONSISTENCY`）：去掉上一版里「本仓台账没有未做的事」这句过期断言（本仓仍有开放项，见 `docs/TASKS.md` §一）。此前：代码-文档对齐审计（2026-11-11）：AUD-61（e2e 与结构脱节）与 AUD-63（票池读数）均已收口，`test.fixme` 归零。此前：功能边界固化（三份契约：db / api / dataflow，2026-10-20）
+last-verified: 2026-11-13
+verified-by: 2026-11-13 `UI-PAGE-INVENTORY` 收口：§3.1 拆为「3.1.1 页面全集（20 个页面文件 = 17 条路由 + 3 个内嵌视图）+ 3.1.2 增量登记」，新增 `scripts/check-page-inventory.mjs` 在 CI 校验页面文件 / 路由 / 本表三方一致并检查本文件相对链接；实测 20 页面 / 17 路由 / 3 内嵌 / 4 链接全部通过。此前：2026-11-12 A-10 三页登记（合规 F17 / 系统管理 F18 / 走向与批量）：§3.1 页面清单落地，端点条数与形态按 core handlers 实测；此前：2026-11-12 台账自洽订正（`UI-LEDGER-SELF-CONSISTENCY`）：去掉上一版里「本仓台账没有未做的事」这句过期断言（本仓仍有开放项，见 `docs/TASKS.md` §一）。此前：代码-文档对齐审计（2026-11-11）：AUD-61（e2e 与结构脱节）与 AUD-63（票池读数）均已收口，`test.fixme` 归零。此前：功能边界固化（三份契约：db / api / dataflow，2026-10-20）
 ---
 
 # 架构 — tellurion-ui

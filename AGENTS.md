@@ -28,7 +28,7 @@ npm ci
 npx playwright test          # AUD-61 已于 2026-11-10 收口，test.fixme 归零
 ```
 
-**e2e 健康度按实测写、不要抄历史结论**：2026-11-13 真栈全量 220 例 → **218 passed / 0 failed / 2 skipped**（5.9m），31 spec。2 skipped 是 `auth-login-flow.spec.ts` 的鉴权形态与引导流程（栈为 open-access 且未提供 `E2E_AUTH_USER` / `E2E_AUTH_PASSWORD`，用例内写明环境跳过理由）。改用例前先读该用例的注释，历史上 7 条"红"2026-11-13 已逐条分诊为**用例陈旧**（非产品缺陷），细节见 [归档](docs/archive/tasks-archive-2026-11.md#UI-PLAYWRIGHT-TRIAGE-2026-11-13)。
+**e2e 健康度按实测写、不要抄历史结论**：31 spec / 220 例。2026-11-13 **16:16 首跑 218 passed / 0 failed / 2 skipped**（5.9m）；同日 **18:20 复跑 211 passed / 7 failed / 2 skipped**（16.7m），7 条全在 data-sync 四件套，根因是 data-service **单 worker 串行 + 全局队列**被全市场级 `ohlcv_daily` 作业占住（**非 UI 回归**），已立单 `UI-E2E-SYNC-ISOLATION`（只立单未实施，见 `docs/TASKS.md` §一）。**data-sync 红先查队列深度再判定**。2 skipped 是 `auth-login-flow.spec.ts` 的鉴权形态与引导流程（栈为 open-access 且未提供 `E2E_AUTH_USER` / `E2E_AUTH_PASSWORD`，用例内写明环境跳过理由）。改用例前先读该用例的注释，7 条"红"已逐条分诊为**用例陈旧**（非产品缺陷），细节见 [归档](docs/archive/tasks-archive-2026-11.md#UI-PLAYWRIGHT-TRIAGE-2026-11-13)。
 
 ## 3. 边界（硬约束）
 
@@ -54,7 +54,7 @@ npx playwright test          # AUD-61 已于 2026-11-10 收口，test.fixme 归�
 
 ## 5. 活在哪、文档在哪
 
-- **本仓主台账**：`docs/TASKS.md`（装**跨仓 / 运维 / 台账一致性**类单；结案条目在 `docs/archive/`）。主台账 §一 顶部**逐条列出当前开放项 ID**（2026-11-13 口径：`UI-FACTOR-RESEARCH-LABEL` / `UI-CI-COVERAGE` / `UI-PAGE-INVENTORY` 为开放项，`UI-INDUSTRY-ENTRY` / `UI-THEME-TOGGLE` 挂起待主任裁决、不计开放项）。**UX 重构的开放 / 挂起项在子台账** `docs/design/stitch_quantlab_ux_redesign/TASKS.md`，主台账 §一 末尾**只列它们的 ID、不搬正文**；截至 2026-11-12 仍开放：**B-03（可开工，G6 已落地）、B-05（挂起，core 因子读面缺失）、V-2 / V-3（测试债，归 AUD-61）、A-04 断言 2/8（主任 2026-10-14 裁决暂缓）**。判断「本仓还有什么没做」必须同时看主账 §一 与子台账两处，**不要引用任何时点的"0 open"结论**（2026-11-12 起该表述已多次过期）。**没有单号别开工。**
+- **本仓主台账**：`docs/TASKS.md`（装**跨仓 / 运维 / 台账一致性**类单；结案条目在 `docs/archive/`）。主台账 §一 顶部**逐条列出当前开放项 ID**（2026-11-13 收口后口径：**`UI-E2E-SYNC-ISOLATION`** 是唯一开放项，只立单未实施；`UI-INDUSTRY-ENTRY` / `UI-THEME-TOGGLE` 挂起待主任裁决、不计开放项；当日 `UI-PLAYWRIGHT-TRIAGE-2026-11-13` / `UI-CI-COVERAGE` / `UI-FACTOR-RESEARCH-LABEL` / `UI-PAGE-INVENTORY` 已收口归档）。**UX 重构的开放 / 挂起项在子台账** `docs/design/stitch_quantlab_ux_redesign/TASKS.md`，主台账 §一 末尾**只列它们的 ID、不搬正文**；截至 2026-11-12 仍开放：**B-03（可开工，G6 已落地）、B-05（挂起，core 因子读面缺失）、V-2 / V-3（测试债，归 AUD-61）、A-04 断言 2/8（主任 2026-10-14 裁决暂缓）**。判断「本仓还有什么没做」必须同时看主账 §一 与子台账两处，**不要引用任何时点的"0 open"结论**（2026-11-12 起该表述已多次过期）。**没有单号别开工。**
 - 文档导航：`docs/README.md`；边界与依赖：`docs/ARCHITECTURE.md`；决策：`docs/adr/`。
 - **前端设计系统**：`docs/design/index.md`（入口）；`docs/design/stitch_quantlab_ux_redesign/` 是重构子项台账（**装 UX 重构功能项**；跨仓 / 运维 / 台账一致性单在主台账 `docs/TASKS.md` §一，两处互不收录）。
 - 跨仓背景（只读）：`tellurion:docs/TASKS.md`。
