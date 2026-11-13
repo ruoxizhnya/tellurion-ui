@@ -1,4 +1,4 @@
-﻿<template>
+<template>
   <section class="calibration-panel" data-testid="calibration-panel">
     <n-spin :show="loading">
       <n-alert v-if="error" type="error" class="block" data-testid="cal-error">{{ error }}</n-alert>
@@ -18,26 +18,26 @@
             </div>
             <div class="stat">
               <div class="stat-label">实际命中率</div>
-              <div class="stat-value" data-testid="cal-hit-rate">{{ pct(data.hit_rate) }}</div>
+              <div class="stat-value" data-testid="cal-hit-rate">{{ noSamples ? '—' : pct(data.hit_rate) }}</div>
             </div>
             <div class="stat">
               <div class="stat-label">平均声称概率</div>
-              <div class="stat-value" data-testid="cal-claimed-rate">{{ pct(data.claimed_rate) }}</div>
+              <div class="stat-value" data-testid="cal-claimed-rate">{{ noSamples ? '—' : pct(data.claimed_rate) }}</div>
             </div>
             <div class="stat">
               <div class="stat-label">校准误差</div>
-              <div class="stat-value" data-testid="cal-cal-error">{{ points(data.calibration_error) }}</div>
+              <div class="stat-value" data-testid="cal-cal-error">{{ noSamples ? '—' : points(data.calibration_error) }}</div>
             </div>
             <div class="stat">
               <div class="stat-label">Brier 分数</div>
-              <div class="stat-value" data-testid="cal-brier">{{ decimal(data.brier_score) }}</div>
+              <div class="stat-value" data-testid="cal-brier">{{ noSamples ? '—' : decimal(data.brier_score) }}</div>
             </div>
           </div>
 
           <n-text depth="3" class="line" data-testid="cal-pending">
             <template v-if="pending === null">待回填：—</template>
             <template v-else>
-              已回填 {{ data.sample_size }} 条计入命中率 · 待回填 {{ pending }} 条不计入
+              已回填 {{ data.sample_size }} 条（不含 holdout）计入命中率 · 待回填 {{ pending }} 条不计入
             </template>
           </n-text>
           <n-text depth="3" class="line" data-testid="cal-holdout">
@@ -86,7 +86,7 @@
         <n-card size="small" title="采纳记录" class="block">
           <n-empty
             v-if="entries.length === 0"
-            description="还没有采纳记录：在「候选排序」里做一次采纳裁决后，这里会按声称把握与实际命中回填。"
+            description="还没有采纳记录：在「候选审阅」里做一次采纳裁决后，这里会按声称把握与实际命中回填。"
             data-testid="cal-empty"
           />
           <table v-else class="entries" data-testid="cal-entries">
@@ -133,7 +133,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, shallowRef, watch } from 'vue'
 import { NAlert, NCard, NEmpty, NSpin, NTag, NText } from 'naive-ui'
 import { Chart, registerables } from 'chart.js'
 import { getCalibration, type Calibration, type CalibrationEntry } from '@/api/pipeline'
@@ -152,7 +152,7 @@ Chart.register(...registerables)
  * - holdout 单独分箱、单独成列，不与主样本混算；
  * - 样本 < 30 必须显式说「样本不足」，不用百分比包装小样本。
  */
-const data = ref<Calibration | null>(null)
+const data = shallowRef<Calibration | null>(null)
 const loading = ref(false)
 const error = ref('')
 
@@ -165,6 +165,8 @@ const mainBins = computed(() => binCalibration(split.value.main))
 const holdoutBins = computed(() => binCalibration(split.value.holdout))
 const hasBins = computed(() => mainBins.value.length > 0 || holdoutBins.value.length > 0)
 const lowSample = computed(() => (data.value?.sample_size ?? 0) < CALIBRATION_MIN_SAMPLE)
+// 空样本时后端把四个派生量回成 0（没有分母），照渲染就是「0% 命中率」的假测量。
+const noSamples = computed(() => data.value?.sample_size === 0)
 
 function pct(value: number | null | undefined): string {
   if (value === null || value === undefined || !Number.isFinite(value)) return '—'

@@ -174,6 +174,24 @@ describe('A-15 晨间简报', () => {
     expect(w.find('[data-testid="brief-calibration-note"]').text()).toContain('读面未接通')
   })
 
+  it('空台账（sample_size=0 但后端回 0）不画「0.0 个百分点」，写「—」并标样本不足', async () => {
+    vi.mocked(pipelineApi.getCalibration).mockResolvedValue(
+      calibration({
+        sample_size: 0,
+        hit_rate: 0,
+        claimed_rate: 0,
+        calibration_error: 0,
+        brier_score: 0,
+        pending: 0,
+        holdout: { sample_size: 0, hit_rate: 0 },
+      }),
+    )
+    const w = await mountBriefing()
+    expect(w.find('[data-testid="brief-calibration-value"]').text()).toBe('—')
+    expect(w.find('[data-testid="brief-calibration-note"]').text()).toContain('n=0')
+    expect(w.find('[data-testid="brief-calibration-note"]').text()).toContain('样本不足')
+  })
+
   it('最近候选复用 rankAttempts 排序：低 Sharpe 的宽平台排在高 Sharpe 孤峰之前', async () => {
     localStorage.setItem('ql.lastRunId', 'run-1')
     // seq1/4/5 三个近距离 Sharpe（同属一块平台，分数 3×0.4 = 1.2）；

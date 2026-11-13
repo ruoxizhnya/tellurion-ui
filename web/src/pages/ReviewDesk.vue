@@ -4,7 +4,7 @@
 
     <!-- A-12：审阅台第二 tab。?tab=calibration 深链直达校准驾驶舱，不新增路由。 -->
     <n-tabs v-model:value="activeTab" type="line" class="tabs" data-testid="review-tabs">
-      <n-tab-pane name="review" tab="候选排序">
+      <n-tab-pane name="review" tab="候选审阅">
     <n-alert type="warning" :bordered="true" class="approx-banner" data-testid="approx-banner">
       近似聚合：core 的 G1 摘要读面尚未提供「平台面积 / 因果强度」这类派生量，本页按
       <code>attempts</code> + <code>verdict</code> 在前端现算。排序不是后端权威值，
@@ -151,7 +151,7 @@
     </div>
       </n-tab-pane>
 
-      <n-tab-pane name="calibration" tab="校准">
+      <n-tab-pane name="calibration" tab="校准驾驶舱">
         <CalibrationPanel />
       </n-tab-pane>
     </n-tabs>
@@ -256,7 +256,7 @@ const router = useRouter()
 
 /**
  * tab 状态住 URL（`?tab=calibration`）：校准驾驶舱要能被人直接贴给别人，
- * 不靠「先点进候选排序再点一下」。不新增路由，只改 query。
+ * 不靠「先点进候选审阅再点一下」。不新增路由，只改 query。
  */
 const activeTab = computed<'review' | 'calibration'>({
   get: () => (route.query.tab === 'calibration' ? 'calibration' : 'review'),

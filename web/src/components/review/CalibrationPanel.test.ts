@@ -68,7 +68,7 @@ describe('A-12 校准驾驶舱', () => {
   it('已回填与待回填分开说：待回填不进命中率分母', async () => {
     const w = await mountPanel()
     const pending = w.find('[data-testid="cal-pending"]').text()
-    expect(pending).toContain('已回填 12 条计入命中率')
+    expect(pending).toContain('已回填 12 条（不含 holdout）计入命中率')
     expect(pending).toContain('待回填 3 条不计入')
   })
 
@@ -160,6 +160,34 @@ describe('A-12 校准驾驶舱', () => {
     expect(w.find('[data-testid="cal-empty"]').text()).toContain('还没有采纳记录')
     expect(w.find('[data-testid="cal-entries"]').exists()).toBe(false)
     expect(w.find('[data-testid="cal-no-bins"]').exists()).toBe(true)
+    // A-12 断言 2：空样本的四个派生量是「—」，不是后端回包的 0 被渲染成 0%。
+    // 样本量本身照实显示 0（它是事实，不是测量）。
+    expect(w.find('[data-testid="cal-sample-size"]').text()).toBe('0')
+    expect(w.find('[data-testid="cal-hit-rate"]').text()).toBe('—')
+    expect(w.find('[data-testid="cal-claimed-rate"]').text()).toBe('—')
+    expect(w.find('[data-testid="cal-cal-error"]').text()).toBe('—')
+    expect(w.find('[data-testid="cal-brier"]').text()).toBe('—')
+  })
+
+  it('只有待回填条目（sample_size=0 但台账非空）时派生量同样是「—」，不画 0%', async () => {
+    vi.mocked(pipelineApi.getCalibration).mockResolvedValue(
+      calibration({
+        sample_size: 0,
+        hit_rate: 0,
+        claimed_rate: 0,
+        calibration_error: 0,
+        brier_score: 0,
+        pending: 1,
+        holdout: { sample_size: 0, hit_rate: 0 },
+        entries: [entry({ outcome_hit: null, resolved_at: null })],
+      }),
+    )
+    const w = await mountPanel()
+    // 有采纳记录 ⇒ 不是「还没有采纳记录」空态，但也没有可算的命中率
+    expect(w.find('[data-testid="cal-empty"]').exists()).toBe(false)
+    expect(w.find('[data-testid="cal-hit-rate"]').text()).toBe('—')
+    expect(w.find('[data-testid="cal-brier"]').text()).toBe('—')
+    expect(w.find('[data-testid="cal-pending"]').text()).toContain('待回填 1 条不计入')
   })
 
   it('503 时说明校准未接入，不用空表冒充「没有样本」', async () => {

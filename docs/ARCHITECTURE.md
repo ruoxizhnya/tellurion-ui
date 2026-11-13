@@ -57,9 +57,9 @@ analysis-service（:8085）→ data（:8081）/ ai（:8086）/ core 引擎
 | 路由 | 页面文件 | 一句话用途 |
 |---|---|---|
 | `/login` | `pages/Login.vue` | 登录（`AppLayout` 之外，无侧栏/顶栏；open-access 栈直接放行） |
-| `/` | `pages/Dashboard.vue` | 控制台：主线摘要、导航磁贴、回测历史 |
+| `/` | `pages/Dashboard.vue` | 控制台：晨间简报（三节奏首屏）、主线摘要、导航磁贴、回测历史 |
 | `/explore` | `pages/Explore.vue` | 探索观察：三栏观察（正在试什么/结果流/当前最优）+ 叫停 |
-| `/review` | `pages/ReviewDesk.vue` | 审阅台：候选排序（前端近似，页顶标注）+ 采纳裁决 |
+| `/review` | `pages/ReviewDesk.vue` | 审阅台：候选审阅（排序为前端近似，页顶标注）+ 采纳裁决 + 校准驾驶舱（第二 tab） |
 | `/evidence` | `pages/Evidence.vue` | 证据质问：`content_hash` → 原始记录（也内嵌为数字旁侧滑） |
 | `/backtest` | `pages/BacktestEngine.vue` | 回测引擎：表单、结果读数、回测历史 |
 | `/backtest/compare` | `pages/BacktestCompare.vue` | 多策略对比：绩效差异表 + 权益曲线叠加 |

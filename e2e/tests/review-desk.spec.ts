@@ -136,7 +136,7 @@ test.describe('B-02 审阅台', () => {
     await expect(page.getByTestId('cal-sample-size')).toHaveText('8')
     await expect(page.getByTestId('cal-hit-rate')).toHaveText('62.5%')
     await expect(page.getByTestId('cal-brier')).toHaveText('0.251')
-    await expect(page.getByTestId('cal-pending')).toContainText('已回填 8 条计入命中率')
+    await expect(page.getByTestId('cal-pending')).toContainText('已回填 8 条（不含 holdout）计入命中率')
     await expect(page.getByTestId('cal-pending')).toContainText('待回填 2 条不计入')
     // 样本 < 30 ⇒ 必须显式标注，不能只画一张漂亮图
     await expect(page.getByTestId('cal-low-sample')).toContainText('样本不足')

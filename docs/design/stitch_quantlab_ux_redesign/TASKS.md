@@ -693,14 +693,23 @@ core SYNC-01 的验收第 1、2 条要防的形状，本任务不能替它绕过
 **⑥ 边界**：只做 `ReviewDesk.vue` tab 骨架 + `CalibrationPanel.vue` + `utils/calibration.ts` + api 消费层；采纳写面与台账归 B-03；晨间简报的校准链接归 A-15。
 
 **落地（2026-11-13）**
-- **tab 骨架**：`ReviewDesk.vue` 加 `n-tabs`（候选审阅 / 校准），tab 状态住 URL query（`?tab=calibration` 深链，`router.replace` 只改 query，**未新增路由、未动 `navItems.ts`**）；原 ranked-list / adopt modal 的 DOM 与 `data-testid` 一个未改，只整体挪进第一个 pane。
+- **tab 骨架**：`ReviewDesk.vue` 加 `n-tabs`（候选审阅 / 校准驾驶舱），tab 状态住 URL query（`?tab=calibration` 深链，`router.replace` 只改 query，**未新增路由、未动 `navItems.ts`**）；原 ranked-list / adopt modal 的 DOM 与 `data-testid` 一个未改，只整体挪进第一个 pane。
 - **面板**：新建 `components/review/CalibrationPanel.vue`，消费 `getCalibration`：五数摘要（`sample_size / hit_rate / claimed_rate / calibration_error / brier_score`，误差单位写「个百分点」，无「评分/等级」包装）、可靠性散点图（Chart.js，复用 `chartPalette`，主样本 + holdout 两条线 + 对角参考线，tooltip 带 n）、分箱表、entries 表（命中 / 未命中 / 待回填三态）。取不到 2d 上下文（happy-dom）时跳过绘图，读数与表格照常，不吞错。
 - **纯函数**：`utils/calibration.ts`：`binIndex` / `splitHoldout` / `binCalibration`（10 等分箱，1.0 归末箱；`outcome_hit=null` 只计 pending、不进分母；只返回非空箱；`CALIBRATION_MIN_SAMPLE = 30`）。
 - **三态**：`entries=[]` → 「还没有采纳记录」显式空态 + 「还没有已回填条目」图表说明；`pending=null` → 「待回填：—」；`outcome_hit=null` → 「待回填」徽标；`n<30` → 「样本不足（n=… < 30），仅供参考」；`holdout` 为空 → 「—」。
 - **测试**：`utils/calibration.test.ts`（6 例）、`components/review/CalibrationPanel.test.ts`（11 例，含源码措辞守卫四词零命中）、`pages/ReviewDesk.test.ts` 补 router 注入 + 2 例深链/回写 query，原 5 例断言未放宽。e2e `review-desk.spec.ts` 新增 4 例：深链直达、读数或失败态二选一、点 tab 写 query、fixture 非空态（分箱 50% / holdout 0% 分离 / 待回填 1 条 / 样本不足）。**真后端当前台账为空，非空态只能 fixture 取证，测试注释已显式标 mock。**
-- **破坏验证**：把空态分支改成恒渲染空表 ⇒ `CalibrationPanel.test.ts` 1 failed（空态用例），逐字还原 ⇒ 11 passed。措辞守卫注入未做（组件里未出现四词，改源码需另造词，按同一断言可直接观察到红）。
+- **破坏验证**：把空态分支改成恒渲染空表 ⇒ `CalibrationPanel.test.ts` 1 failed（空态用例），逐字还原 ⇒ 11 passed。措辞守卫注入未做（组件里未出现四词，改源码需另造词，按同一断言可直接观察到红）→ **审查时已补做，见下方「审查订正」**。
 - **验证**：`npx vitest run src/utils/calibration.test.ts src/components/review/CalibrationPanel.test.ts src/pages/ReviewDesk.test.ts` → 24 passed；`src/styles/palette.test.ts` 38 passed（新组件首版 `var(--q-hairline, …)` 兜底被棘轮守卫抓住，已改为既有 token `--q-text3 / --q-border-light / --q-mono`）；`npm run typecheck` EXIT=0；`npx eslint`（触及文件）0 error。
 - **偏离说明**：条目 ⑤ 要求「审阅台视觉基线重录」——`visual-regression.spec.ts` **本来就没有 `/review` 基线**，无图可录，故本次未新增/重录任何基线（新增基线属扩范围，不在此单）。
+
+**审查订正（2026-11-13，五角审查 task #9，直接 fix）**
+- **tab 标签对齐工单**：实施时写成「候选排序 / 校准」，与断言 ①「候选审阅 / 校准驾驶舱」不符（收口记录又写成「候选审阅 / 校准」，三处三个样）。已把 `ReviewDesk.vue` 两个 tab 标签改为「候选审阅」「校准驾驶舱」，面板空态文案与 `docs/ARCHITECTURE.md` 页面清单同步；e2e `hasText: '校准'` 与单测 `.includes('校准')` 是子串匹配，改名后仍绿。
+- **空样本不画 0%（断言 2 补牙）**：后端空台账把四个派生量回成数值 0（curl 实测），原实现照渲染成「0.0% 命中率」= 假测量。新增 `noSamples`（`sample_size === 0`）守卫：四个派生量渲染「—」，`sample_size` 本身照实显示 0；补 2 条单测断言 + 1 条「只有待回填条目」边界用例。
+- **其余订正**：`CalibrationPanel.vue` 的 `data` 由 `ref` 改 `shallowRef`（entries 是嵌套数组，AGENTS.md 大对象规则）；「已回填 N 条」补「（不含 holdout）」限定（`sample_size` 口径不含 holdout 已回填行）；剥掉该文件独有的 UTF-8 BOM（全仓其余 .vue 无 BOM）。
+- **破坏验证（审查时真跑，记录退出码）**：① 措辞守卫注入 `VERIFIED` ⇒ 1 failed / EXIT=1，逐字还原（cmp 一致）⇒ 12 passed / EXIT=0；② 去掉四处 `noSamples` 守卫（空样本渲染 0%）⇒ 恰 2 failed（两条空态用例）/ EXIT=1，还原 ⇒ 12 passed / EXIT=0；③ A-13 同批补做：`user-flows.md` §3.2 注入幽灵入口 ⇒ `nav-labels.test.ts` 1 failed / EXIT=1，还原 ⇒ 9 passed / EXIT=0。
+- **台账订正**：A-15 节标题 ⛔ 阻塞 → ✅ 已收口（实施已完成，标题漏改）；`docs/ARCHITECTURE.md` 页面清单 `/review` 用途补「校准驾驶舱（第二 tab）」、`/` 用途补「晨间简报」。
+- **晨间简报空台账不画「0.0 个百分点」**：真栈浏览器复核发现同一类假测量也出现在仪表盘简报的校准行（空台账后端回 `calibration_error: 0`，行上照渲染「0.0 个百分点」）。`MorningBriefing.vue` 的 `calibrationValue` 补 `sample_size === 0` 守卫（与面板同口径，值写「—」，note 仍如实写 `n=0` 并标样本不足）；补 1 条空台账单测。破坏验证：去掉该守卫 ⇒ 新用例恰 1 failed / EXIT=1，逐字还原（cmp 一致）⇒ 10 passed / EXIT=0。真栈复验：行显示「—」+「n=0 · 样本不足，仅供参考」，深链 `/review?tab=calibration` 不变。
+- **`dashboard-metric-card` 视觉基线重录**：A-15 断言 6 要求重录仪表盘基线，但元素截图（`.nav-tile` 首块）不在 A-15 改动的整页基线覆盖里，首跑 55/56 红。核查：该基线录于 A-11（`01b5baa`）之后从未随布局改动重录；浏览器实测首块 `y=792.90625`（分数偏移）⇒ 子像素栅格化差异，diff 图仅顶部描边 + 标题加粗，无实质视觉变更（V-1 纪律：先看 diff 再重录）。只重录这一张 `dashboard-metric-card-chromium-win32.png`，其余基线未动；重录后定向 e2e 56 passed / EXIT=0，视觉回归二轮 10 passed / EXIT=0。
 
 ## A-13 导航 IA 收敛：15 项 4 组 → 14 项 5 组（设计报告 S3，解除 A-04 断言 2/8 暂缓）　✅ 已收口（2026-11-13）
 
@@ -839,7 +848,7 @@ core SYNC-01 的验收第 1、2 条要防的形状，本任务不能替它绕过
 - **验证**：`npx vitest run src/utils/review.test.ts src/components/review/VerdictBars.test.ts src/pages/ReviewDesk.test.ts` → 26 passed；A-14 e2e 真栈实跑 2 passed；`npm run typecheck` EXIT=0；`npx eslint`（触及文件）0 error。
 - **偏离说明**：① ⑤ 表要求「真 run 的 verdict 形状」e2e——core `:8085` 共享限流下真跑探索会 429、套件无真 run 可复用（B-02 抬头同款限制），故用 route fixture 逐字段对齐 `Verdict` 取证，测试名与注释均写明 mock；真数据那条留待 G1/限流解除。② ④ 要求「候选卡视觉基线重录」——`visual-regression.spec.ts` 无 `/review` 基线，无图可录，本单未新增基线。
 
-## A-15 晨间简报：控制台首屏改为三节奏入口（设计报告 S4）　⛔ 阻塞（依赖 A-12 / A-13 / A-14）
+## A-15 晨间简报：控制台首屏改为三节奏入口（设计报告 S4）　✅ 已收口（2026-11-13）
 
 > 来源：2026-11-13 UI/UX 改进报告样图 A · 依赖：**A-12**（校准 tab 深链）/ **A-13**（审阅台入口）/
 > **A-14**（候选卡组件复用）· 三单收口后开工。

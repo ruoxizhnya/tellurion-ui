@@ -131,7 +131,8 @@ const pendingNote = computed(() => {
 })
 
 const calibrationValue = computed(() =>
-  calibrationError.value || !calibration.value
+  // 空台账时后端把派生量回成 0（没有分母），照渲染就是「0.0 个百分点」的假测量。
+  calibrationError.value || !calibration.value || calibration.value.sample_size === 0
     ? '—'
     : `${(calibration.value.calibration_error * 100).toFixed(1)} 个百分点`,
 )
