@@ -30,6 +30,7 @@
 | X-CI-RACE-STATICCHECK（ui 腿） | CI 在前端 job 补生产构建门 `npm run build` | 2026-11-12 | 见本条 | [施工记录](#X-CI-RACE-STATICCHECK-ui) |
 | X-LOW-CLEANUP（ui 腿） | `scripts/check-no-openapi.mjs`：openapi 不复制守卫 + CI 门 | 2026-11-12 | 见本条 | [施工记录](#X-LOW-CLEANUP-ui) |
 | UX-AB-CLOSEOUT | UX 重构 A/B 收尾批（A-09/A-10/A-11/B-01/B-02/B-04/B-06 连同 A-04 断言 5） | 2026-11-12 | `9ca2a61` `97e934d` `efc6cef` `416d598` `319004c` `a540f65` `01b5baa` `08e95f1` + A-10 五连 | [原文](#UX-AB-CLOSEOUT-2026-11-12) |
+| UI-PLAYWRIGHT-TRIAGE-2026-11-13 | 7 条 Playwright 失败逐条分诊（7/7 用例陈旧，产品缺陷 0；W5-1~W5-5 已修；复跑 218 passed / 0 failed / 2 skipped） | 2026-11-13 | `120af41` `ca6f590` `2c84faa` `814e7c1` `5a356f3` | [原文](#UI-PLAYWRIGHT-TRIAGE-2026-11-13) |
 
 ---
 
@@ -910,3 +911,50 @@
 | A-04 断言 5 | ⌘K 命令面板 + 「待审阅 N」接 `GET /api/review/pending`（`null` 显示「—」） | `319004c`、`a540f65` |
 
 > **验收输出**：新增/改动单测（`review` 工具、`InterventionBar`、`ReviewDesk`、`review`/`execution` API、`PaperTrading`）本地全绿；`npx vue-tsc -b` 退出码 0；`eslint` 0 error；e2e 子集 `review-desk` / `command-palette` / `nav-consistency` / `dashboard` **21 passed / 1 failed**（dashboard 历史卡片依赖真库历史，属既有环境依赖，非本批引入）、`paper-trading` 4 passed。视觉基线：A-11 后重生成 10 张非 responsive 基线，连跑两轮 10/10；2 条 responsive 仍红（V-2/V-3 测试债，不在本批）。
+
+---
+
+<a id="UI-PLAYWRIGHT-TRIAGE-2026-11-13"></a>
+## UI-PLAYWRIGHT-TRIAGE-2026-11-13 · 7 条 Playwright 失败逐条分诊 [P1] ✅ 完成（2026-11-13）
+
+> 档 4（测试）· 来源：03-testing P1-2 · 顺序 4-10 · 依赖：无
+
+- **① 目标**：把实测 7 条 Playwright 失败分类为"真缺陷 / 基线过期 / 环境问题"，逐条处置，并修正台账"0 open"的错误表述。
+- **② 上下文**：本仓台账写"8/8 spec 全绿、0 open"，但审查实测 7 条失败且未分类——台账与实测不一致，读者会误判 UI 测试健康度。
+- **③ 要求**：① 跑 `npm run test:e2e`（或仓库实际脚本），逐条记录 spec / 用例 / 错误摘要；② 三类归档：真缺陷→在本条修或在 UI 另立修复单；基线过期→按视觉基线规则逐张判定后重录，禁止一律重录；环境问题→写重开条件；③ 同步修正台账"0 open"。
+- **④ 约束与非目标**：不得为变绿放松断言；不得跳过未分类用例；不改后端。
+- **⑤ 验收**：7 行分诊表（用例 / 分类 / 处置 / 证据）；重跑结果 = 全部通过或显式挂起（含原因）；台账不再出现"0 open"。
+- **⑥ 边界**：UI e2e + 台账；后端缺陷另立单。
+
+### 施工记录（2026-11-13）
+
+**原始证据**：审查引用的失败日志是 `tellurion:reports/test-2026-11-13/w5-playwright-final.log`（2026-11-12 22:24，211 passed / 7 failed / 2 skipped）。本轮先按该日志逐条提取错误摘要，再在原生三服务栈（vite :5173 / data :8081 / analysis :8085 / ai :8086）上跑本仓全量 `npx playwright test --reporter=line`（220 例，1 worker，5.9m）复验。
+
+**7 行分诊表**
+
+| # | 用例（spec:line） | 错误摘要（原日志） | 分类 | 判定与处置 | 修复 commit | 本轮复跑 |
+|---|---|---|---|---|---|---|
+| 1 | `a08-job-console.spec.ts:296` 取消走真后端 | `点取消后没等到 /api/sync/jobs/<id> 的回读` 15s 超时（3 次重试全红） | **用例陈旧**（竞态前提过期） | 从看到取消按钮到点下去之间作业可能已跑完，后端对终态作业取消返回 409，页面不会发单条回读；旧用例把"取消一定被受理"当前提。改为等**确定终态**（单条回读或 8s 轮询列表任一），仍断言界面态 == 后端终态；未放宽断言 | `120af41`（W5-1） | pass |
+| 2 | `api-strategy.spec.ts:28` copilot 无 key 的错误形状 | `expect([200,202,500,503]).toContain(400)` 失败，收到 400 | **用例陈旧**（契约字段过期） | helper 发 `prompt`，agent `pkg/copilot.GenerateParams` 字段是 `description`，绑空描述后在参数校验处 400。helper 改发 `description`；断言保持（200/202 有 `code`/`job_id`，500/503 有 `error`） | `ca6f590`（W5-2） | pass |
+| 3 | `backtest-engine.spec.ts:442` responsive 768 | `locator.click` 30s 超时 | **用例陈旧**（布局事实） | 768px 侧栏折叠为图标轨，`.nav-item` 文字节点不渲染，按文本点侧栏天然点不到——不是导航坏。用例改深链 `goto('/backtest')`，其余布局断言（`.bt-page`、表单卡、1280 回拉）不变 | `2c84faa`（W5-3） | pass |
+| 4 | `copilot.spec.ts:73` 仪表盘导航 | `locator.click` 30s 超时 | **用例陈旧**（B-04 合并后旧磁贴已删） | 仪表盘「策略 Copilot」磁贴已并入 `nav-tile-strategy-lab`，`/copilot` 退成路由别名。改点该磁贴并断言落 `/strategy-lab` + `.strategy-lab-page` | `814e7c1`（W5-4） | pass |
+| 5 | `data-sync-error.spec.ts:16` 未知 job_type | `expect(202)` 收到 400 | **用例陈旧**（受理门新增取数范围） | data 侧 `ValidateJobScope` 新增门槛：无 `symbols`/`start_date`/`end_date` 的空转请求 400；未知类型不在受理门校验，仍由 runner 失败暴露。请求补取数范围，断言仍为 202 + 30s 内 `failed` + `error_message` 非空 | `5a356f3`（W5-5） | pass |
+| 6 | `data-sync-error.spec.ts:126` 重试计数 | 同上（create 400） | **用例陈旧**（同上） | 补取数范围；重试计数断言不变 | `5a356f3`（W5-5） | pass |
+| 7 | `data-sync.spec.ts:146` 重试失败作业 | 同上（create 400） | **用例陈旧**（同上） | 补取数范围；重试断言不变 | `5a356f3`（W5-5） | pass |
+
+**结论**：7 条**全部为用例陈旧**，产品缺陷 **0 条**，视觉基线过期 **0 条**（7 条均非 `visual-regression.spec.ts`，无需讨论重录），纯环境问题 **0 条**（失败均可在当前栈上稳定复现其原因并已被测试侧修正）。不存在"靠改用例掩盖产品缺陷"的情形：复原后的用例断言强度未降（取消仍比对后端终态、copilot 仍要求失败体有 `error`、data-sync 仍要求 202 + 失败终态 + 非空 `error_message`）。
+
+**重跑结果（本轮实测）**：
+
+```
+Running 220 tests using 1 worker
+  2 skipped
+  218 passed (5.9m)
+```
+
+- 31 spec / 220 例；`test.fixme` = 0。
+- 2 skipped 为 `auth-login-flow.spec.ts` 的「开启鉴权形态」「引导→登录→登出」两条：当前栈是 open-access 且未提供 `E2E_AUTH_USER` / `E2E_AUTH_PASSWORD`，用例内 `test.skip` 已写明跳过理由（环境条件跳过，非红）。
+
+**台账订正**：`docs/TASKS.md` §一 顶部由"当前没有未做的单"改为**逐条列出当前开放项 ID** + 实测 e2e 健康度段；frontmatter 中 2026-11-12 的"0 张开放单"明确标注为过期时点；`AGENTS.md` §5 删除"§一 当前无开放单"，改为开放项 ID 清单并禁止引用任何时点的"0 open"结论。
+
+**边界**：只改 `docs/TASKS.md`、`AGENTS.md`、本归档；无源码改动（7 条的测试侧修复已在 `120af41`/`ca6f590`/`2c84faa`/`814e7c1`/`5a356f3` 落地），不改后端。

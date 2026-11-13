@@ -51,7 +51,7 @@ npx playwright test          # AUD-61 已于 2026-11-10 收口，test.fixme 归�
 
 ## 5. 活在哪、文档在哪
 
-- **本仓主台账**：`docs/TASKS.md`（装**跨仓 / 运维 / 台账一致性**类单；**§一 当前无开放单**；结案条目在 `docs/archive/`）。**UX 重构的开放 / 挂起项在子台账** `docs/design/stitch_quantlab_ux_redesign/TASKS.md`，主台账 §一 末尾**只列它们的 ID、不搬正文**；截至 2026-11-12 仍开放：**B-03（可开工，G6 已落地）、B-05（挂起，core 因子读面缺失）、V-2 / V-3（测试债，归 AUD-61）、A-04 断言 2/8（主任 2026-10-14 裁决暂缓）**。判断「本仓还有什么没做」必须同时看主账 §一 与子台账两处。**没有单号别开工。**
+- **本仓主台账**：`docs/TASKS.md`（装**跨仓 / 运维 / 台账一致性**类单；结案条目在 `docs/archive/`）。主台账 §一 顶部**逐条列出当前开放项 ID**（2026-11-13 口径：`UI-FACTOR-RESEARCH-LABEL` / `UI-CI-COVERAGE` / `UI-PAGE-INVENTORY` 为开放项，`UI-INDUSTRY-ENTRY` / `UI-THEME-TOGGLE` 挂起待主任裁决、不计开放项）。**UX 重构的开放 / 挂起项在子台账** `docs/design/stitch_quantlab_ux_redesign/TASKS.md`，主台账 §一 末尾**只列它们的 ID、不搬正文**；截至 2026-11-12 仍开放：**B-03（可开工，G6 已落地）、B-05（挂起，core 因子读面缺失）、V-2 / V-3（测试债，归 AUD-61）、A-04 断言 2/8（主任 2026-10-14 裁决暂缓）**。判断「本仓还有什么没做」必须同时看主账 §一 与子台账两处，**不要引用任何时点的"0 open"结论**（2026-11-12 起该表述已多次过期）。**没有单号别开工。**
 - 文档导航：`docs/README.md`；边界与依赖：`docs/ARCHITECTURE.md`；决策：`docs/adr/`。
 - **前端设计系统**：`docs/design/index.md`（入口）；`docs/design/stitch_quantlab_ux_redesign/` 是重构子项台账（**装 UX 重构功能项**；跨仓 / 运维 / 台账一致性单在主台账 `docs/TASKS.md` §一，两处互不收录）。
 - 跨仓背景（只读）：`tellurion:docs/TASKS.md`。
