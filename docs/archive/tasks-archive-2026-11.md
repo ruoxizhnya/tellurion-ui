@@ -978,7 +978,7 @@ data-sync.spec.ts:232         SSE: Real-time progress updates
 - 同一时刻 `GET /api/sync/jobs` 首页 50 条：**43 pending / 0 running / 7 cancelled**，其中像 `a1548b473bc57595`（`600000.SH`，2024-01-01～2024-03-31，范围很窄）这样的作业也一直 pending。
 - 结论：**同步队列是全局的、worker 串行**；前序用例/前一轮留下的全市场级 `ohlcv_daily` 作业在队，后面所有 30s 超时的用例必然红。属 **e2e 测试隔离缺陷 + 外部依赖**，不是 UI 产品缺陷（本轮 UI 改动只有标签文案、文档、CI 配置与覆盖率阈值，不可能影响同步 worker）。
 
-**处置与边界**：按"不得靠加 sleep / 放宽断言掩盖"的规则，**不改用例、不调 wait**。建议另立一单（本仓 e2e 腿）：data-sync 套件要么在 `beforeAll` 用窄 scope 并显式清理/取消遗留 pending，要么由 data-service 提供测试可用的队列隔离开关；data 侧 worker 并发度与"全市场作业不进入共享队列"属跨仓议题。**重开条件**：data-service 队列排空（或提供隔离手段）后，定点复跑上述 7 条应收敛为绿；若仍红再按真缺陷处理。
+**处置与边界**：按"不得靠加 sleep / 放宽断言掩盖"的规则，**不改用例、不调 wait**。已按主任裁决**立单 `UI-E2E-SYNC-ISOLATION`（只立单未实施，见 `docs/TASKS.md` §一）**：data-sync 套件在 `beforeAll` 用窄 scope 并显式清理/取消遗留 pending，或由 data-service 提供队列隔离开关 / 窄 scope 夹具；data 侧 worker 并发度与"全市场作业不进入共享队列"属跨仓议题。**重开条件**：data 侧提供队列隔离或窄 scope 夹具（或代理恢复后队列可排空）后，定点复跑上述 7 条应收敛为绿；若仍红再按真缺陷处理。
 
 **排空观测（2026-11-13 收口后持续轮询，未动栈）**：队列共 150 条（succeeded 34 / failed 14 / cancelled 49 / pending 52 / running 1）。pending 里 **7 条是全市场级 `ohlcv_daily`**（`symbols=423~500`、`2021-11-13..2026-11-13`），另 12 条 `fundamentals`（历史上单条失败要 287s，且 tushare 代理 `10.255.255.2:8806` 拒连）、12 条 `daily_basic`、6 条 `stocks`、9 条 `invalid_type`、6 条单标的窄作业。已完成的同类全市场作业实测 14m15s（577,548 行）；正在跑的 `16f09ec55755bc91` 自 18:31 起已达 1 小时仍未收尾。按此速率排空约需 **8~10 小时**，本次会话内不可等待。**结论：不是"排空后仍红"，而是"排空本身不可行"**——根因（测试用例每次 fan-out 全市场作业、全局串行队列）已由队列构成直接证实，隔离单的立项不再依赖复跑结果。
 
