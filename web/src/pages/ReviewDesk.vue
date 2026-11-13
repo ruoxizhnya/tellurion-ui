@@ -42,11 +42,40 @@
           <n-space align="center" :size="8">
             <n-tag :type="index === 0 ? 'success' : 'default'" size="small">#{{ index + 1 }}</n-tag>
             <span>第 {{ row.attempt.seq }} 次</span>
-            <n-tag :type="row.attempt.ok ? 'success' : 'error'" size="small" :bordered="false">
-              {{ row.attempt.ok ? `Sharpe ${row.attempt.sharpe.toFixed(2)}` : '失败' }}
+            <!-- 失败尝试没有 Sharpe、没有裁决：只留失败原因（A-14 断言 4） -->
+            <n-tag
+              v-if="row.attempt.ok"
+              type="success"
+              size="small"
+              :bordered="false"
+              data-testid="sharpe-tag"
+            >
+              Sharpe {{ row.attempt.sharpe.toFixed(2) }}
             </n-tag>
-            <n-tag v-if="probability(row.attempt) !== null" size="small" :bordered="false">
+            <n-tag v-else type="error" size="small" :bordered="false">失败</n-tag>
+            <!-- AttemptView 今天没有证据坐标（G1 缺口）：如实标「无法回溯」，不造假 hash -->
+            <EvidenceProbe
+              v-if="row.attempt.ok"
+              label="Sharpe 证据"
+              :hash="null"
+              reason="AttemptView 尚未携带证据坐标（content_hash），属于 G1 数据缺口"
+              :value="`Sharpe ${row.attempt.sharpe.toFixed(2)}`"
+            />
+            <n-tag
+              v-if="row.attempt.ok && probability(row.attempt) !== null"
+              size="small"
+              :bordered="false"
+              data-testid="probability-tag"
+            >
               P {{ probability(row.attempt)?.toFixed(2) }} · 最弱 {{ weakestLabel(row.attempt) }}
+            </n-tag>
+            <n-tag
+              v-else-if="row.attempt.ok && !row.attempt.verdict"
+              size="small"
+              :bordered="false"
+              data-testid="no-verdict"
+            >
+              无裁决
             </n-tag>
           </n-space>
         </template>
@@ -66,21 +95,51 @@
         <n-space :vertical="true" :size="6">
           <n-text depth="2" style="font-size: 12px">{{ row.attempt.hypothesis }}</n-text>
           <n-text depth="3" style="font-size: 11px">{{ fmtParams(row.attempt.params) }}</n-text>
+          <n-text
+            v-if="!row.attempt.ok"
+            type="error"
+            style="font-size: 11px"
+            data-testid="attempt-error"
+          >
+            失败原因：{{ row.attempt.error || '未给出原因' }}
+          </n-text>
           <n-space :size="12">
             <n-text depth="3" style="font-size: 11px">平台面积 {{ row.plateau }}</n-text>
             <n-text depth="3" style="font-size: 11px">因果强度 {{ row.causal.toFixed(2) }}</n-text>
             <n-text depth="3" style="font-size: 11px">综合分 {{ row.score.toFixed(2) }}</n-text>
           </n-space>
-          <n-space v-if="challengesOf(row.attempt).length" :vertical="true" :size="2">
-            <n-text
-              v-for="(c, i) in challengesOf(row.attempt)"
-              :key="`${c.dimension}-${i}`"
-              :type="c.severity === 'blocking' ? 'error' : c.severity === 'warning' ? 'warning' : 'default'"
-              style="font-size: 11px"
+          <VerdictBars :verdict="verdictFor(row.attempt)" />
+          <div v-if="groupedChallenges(row.attempt).length" class="challenge-groups" data-testid="challenge-groups">
+            <div
+              v-for="group in groupedChallenges(row.attempt)"
+              :key="group.severity"
+              class="challenge-group"
+              :data-testid="`challenge-group-${group.severity}`"
             >
-              [{{ severityLabel(c.severity) }}] {{ dimensionLabel(c.dimension) }}：{{ c.message }}
-            </n-text>
-          </n-space>
+              <n-text
+                :type="group.severity === 'blocking' ? 'error' : group.severity === 'warning' ? 'warning' : 'default'"
+                style="font-size: 11px; font-weight: 600"
+              >
+                【{{ severityLabel(group.severity) }}】
+              </n-text>
+              <n-text
+                v-for="(c, i) in group.items"
+                :key="`${c.dimension}-${i}`"
+                :type="group.severity === 'blocking' ? 'error' : group.severity === 'warning' ? 'warning' : 'default'"
+                style="font-size: 11px"
+              >
+                [{{ dimensionLabel(c.dimension) }}] {{ c.message }}
+              </n-text>
+            </div>
+          </div>
+          <n-text
+            v-else-if="row.attempt.ok && row.attempt.verdict"
+            depth="3"
+            style="font-size: 11px"
+            data-testid="challenge-none"
+          >
+            无质疑
+          </n-text>
           <InterventionBar
             :run-id="runID"
             :seq="row.attempt.seq"
@@ -172,12 +231,15 @@ import {
   type AttemptView,
   type Challenge,
   type ExploreStatus,
+  type Verdict,
 } from '@/api/explore'
 import { recordAdoption } from '@/api/pipeline'
 import { ApiError } from '@/api/client'
 import InterventionBar from '@/components/review/InterventionBar.vue'
 import CalibrationPanel from '@/components/review/CalibrationPanel.vue'
-import { rankAttempts } from '@/utils/review'
+import VerdictBars from '@/components/review/VerdictBars.vue'
+import EvidenceProbe from '@/components/evidence/EvidenceProbe.vue'
+import { groupChallenges, rankAttempts, type ChallengeGroup } from '@/utils/review'
 
 /**
  * B-02 审阅台。
@@ -265,6 +327,15 @@ function challengesOf(a: AttemptView): Challenge[] {
   return a.verdict?.challenges ?? []
 }
 
+/** 只有成功的尝试才有裁决可画；失败/缺席一律 null（卡片据此不渲染微条） */
+function verdictFor(a: AttemptView): Verdict | null {
+  return a.ok ? (a.verdict ?? null) : null
+}
+
+function groupedChallenges(a: AttemptView): ChallengeGroup[] {
+  return groupChallenges(challengesOf(a))
+}
+
 function severityLabel(s: Challenge['severity']): string {
   return s === 'blocking' ? '阻断' : s === 'warning' ? '警告' : '提示'
 }
@@ -321,4 +392,6 @@ onMounted(() => {
 .error { margin-bottom: 16px; }
 .empty { margin-top: 32px; }
 .ranked-list { display: flex; flex-direction: column; gap: 12px; }
+.challenge-groups { display: flex; flex-direction: column; gap: 4px; }
+.challenge-group { display: flex; flex-direction: column; gap: 2px; }
 </style>

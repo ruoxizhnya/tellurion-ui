@@ -1,4 +1,4 @@
-import { orderAttemptsBySeq, type AttemptView } from '@/api/explore'
+import { orderAttemptsBySeq, type AttemptView, type Challenge } from '@/api/explore'
 
 /**
  * 审阅排序的**近似**口径（B-02）。
@@ -57,4 +57,24 @@ export function rankAttempts(attempts: AttemptView[]): RankedAttempt[] {
         b.attempt.sharpe - a.attempt.sharpe ||
         a.attempt.seq - b.attempt.seq,
     )
+}
+
+/**
+ * 质疑分级顺序（A-14 断言 2）：阻断在前 —— 它决定了「这条结论现在能不能用」，
+ * 埋在提示后面等于让人读到最后才发现结论不成立。
+ */
+export const SEVERITY_ORDER = ['blocking', 'warning', 'note'] as const
+
+export interface ChallengeGroup {
+  severity: Challenge['severity']
+  /** 组内保持后端给的原始顺序（不按文字/维度再排） */
+  items: Challenge[]
+}
+
+/** 按 severity 分组，丢掉空组；组内原序 */
+export function groupChallenges(challenges: Challenge[]): ChallengeGroup[] {
+  return SEVERITY_ORDER.map((severity) => ({
+    severity,
+    items: challenges.filter((c) => c.severity === severity),
+  })).filter((group) => group.items.length > 0)
 }

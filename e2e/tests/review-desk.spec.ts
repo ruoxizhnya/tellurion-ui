@@ -149,3 +149,91 @@ test.describe('B-02 审阅台', () => {
     await expect(page.getByTestId('cal-result-pending')).toHaveCount(1)
   })
 })
+
+/**
+ * A-14 候选卡三要素。
+ *
+ * 环境限制（同 B-02 抬头）：core `:8085` 共享限流下真跑一次探索会 429，套件里没有可复用的
+ * 真 run。因此 verdict 形状用 **route fixture**（逐字段对齐 `api/explore.ts` 的 `Verdict`）
+ * 取证，并在测试名里写明；「真 run 的六维形状」留待 G1/限流解除后补真数据那条。
+ */
+test.describe('A-14 候选卡三要素', () => {
+  const verdict = (over: Record<string, unknown> = {}) => ({
+    dimensions: {
+      statistical: 0.8,
+      economic: 0.6,
+      robustness: 0.55,
+      bias: 0.7,
+      redundancy: 0.65,
+      causal: 0.9,
+    },
+    probability: 0.55,
+    geometric_mean: 0.69,
+    blocking: 0,
+    challenges: [],
+    ...over,
+  })
+
+  test.beforeEach(async ({ page }) => {
+    await isolateTestEnvironment(page)
+    await page.route('**/api/explore/runs/run-e2e-a14', (route) =>
+      route.fulfill({
+        contentType: 'application/json',
+        body: JSON.stringify({
+          run_id: 'run-e2e-a14',
+          running: false,
+          best_seq: 1,
+          attempts: [
+            {
+              seq: 1,
+              hypothesis: '动量 20 日',
+              params: { lookback: 20 },
+              experiment_id: 101,
+              sharpe: 1.5,
+              ok: true,
+              verdict: verdict({ unassessed: ['redundancy'] }),
+            },
+            {
+              seq: 2,
+              hypothesis: '动量 40 日',
+              params: { lookback: 40 },
+              experiment_id: 102,
+              sharpe: 0,
+              ok: false,
+              error: 'empty_universe',
+            },
+          ],
+        }),
+      }),
+    )
+    await page.addInitScript(() => localStorage.setItem('ql.lastRunId', 'run-e2e-a14'))
+  })
+
+  test('A-14（fixture 真形状）：六维微条 + 未评估显式标注 + 失败尝试无裁决', async ({ page }) => {
+    await page.goto('/review')
+    await page.waitForSelector('[data-testid="ranked-item-1"]', { timeout: 15000 })
+
+    const okCard = page.getByTestId('ranked-item-1')
+    await expect(okCard.getByTestId('verdict-bars')).toBeVisible()
+    await expect(okCard.locator('[data-testid^="verdict-row-"]')).toHaveCount(6)
+    // unassessed 维写「未评估」，不是 0 分长条
+    await expect(okCard.getByTestId('verdict-unassessed-redundancy')).toHaveText('未评估')
+    await expect(okCard.getByTestId('verdict-veto')).toBeVisible()
+    await expect(okCard.getByTestId('probability-tag')).toBeVisible()
+
+    const failedCard = page.getByTestId('ranked-item-2')
+    await expect(failedCard.getByTestId('verdict-bars')).toHaveCount(0)
+    await expect(failedCard.getByTestId('probability-tag')).toHaveCount(0)
+    await expect(failedCard.getByTestId('attempt-error')).toContainText('empty_universe')
+  })
+
+  test('A-14：Sharpe 旁证据探针显示「无法回溯」，点击开侧滑如实说明缺坐标', async ({ page }) => {
+    await page.goto('/review')
+    await page.waitForSelector('[data-testid="ranked-item-1"]', { timeout: 15000 })
+
+    const trigger = page.getByTestId('ranked-item-1').getByTestId('ev-probe-trigger')
+    await expect(trigger).toHaveText('无法回溯')
+    await trigger.click()
+    await expect(page.getByTestId('ev-probe-untraceable')).toContainText('content_hash')
+  })
+})

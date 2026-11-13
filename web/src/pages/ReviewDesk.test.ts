@@ -179,3 +179,99 @@ describe('B-02 审阅台', () => {
     expect(w.find('[data-testid="calibration-panel"]').exists()).toBe(true)
   })
 })
+
+describe('A-14 候选卡三要素', () => {
+  beforeEach(() => {
+    localStorage.clear()
+    localStorage.setItem('ql.lastRunId', 'run-9')
+    vi.mocked(exploreApi.getExploreStatus).mockReset()
+    vi.mocked(pipelineApi.getCalibration).mockResolvedValue({
+      sample_size: 0,
+      hit_rate: 0,
+      claimed_rate: 0,
+      calibration_error: 0,
+      brier_score: 0,
+      pending: 0,
+      holdout: { sample_size: 0, hit_rate: 0 },
+      entries: [],
+    })
+  })
+
+  async function mountWith(attempts: AttemptView[]) {
+    vi.mocked(exploreApi.getExploreStatus).mockResolvedValue({
+      run_id: 'run-9',
+      running: true,
+      attempts,
+      best_seq: attempts[0]?.seq ?? null,
+    })
+    return mountDesk()
+  }
+
+  it('两态：六维微条在成功尝试上渲染，失败尝试只有失败原因、不出现任何裁决数字', async () => {
+    const { wrapper: w } = await mountWith([
+      attempt(1, 1.5, { verdict: verdict(0.9) }),
+      attempt(2, 0, { ok: false, error: 'empty_universe', verdict: verdict(0.8) }),
+    ])
+
+    const okCard = w.find('[data-testid="ranked-item-1"]')
+    expect(okCard.find('[data-testid="verdict-bars"]').exists()).toBe(true)
+    expect(okCard.find('[data-testid="probability-tag"]').exists()).toBe(true)
+
+    const failedCard = w.find('[data-testid="ranked-item-2"]')
+    expect(failedCard.find('[data-testid="verdict-bars"]').exists()).toBe(false)
+    expect(failedCard.find('[data-testid="probability-tag"]').exists()).toBe(false)
+    expect(failedCard.find('[data-testid="attempt-error"]').text()).toContain('empty_universe')
+  })
+
+  it('verdict 缺席的成功尝试显示「无裁决」，不显示 0 分', async () => {
+    const { wrapper: w } = await mountWith([attempt(1, 1.2, { verdict: null })])
+
+    const card = w.find('[data-testid="ranked-item-1"]')
+    expect(card.find('[data-testid="no-verdict"]').text()).toBe('无裁决')
+    expect(card.find('[data-testid="verdict-bars"]').exists()).toBe(false)
+    expect(card.find('[data-testid="probability-tag"]').exists()).toBe(false)
+  })
+
+  it('Sharpe 旁挂 EvidenceProbe：无坐标时点击前就写「无法回溯」，不造假 hash', async () => {
+    const { wrapper: w } = await mountWith([attempt(1, 1.5, { verdict: verdict(0.9) })])
+
+    const card = w.find('[data-testid="ranked-item-1"]')
+    const trigger = card.find('[data-testid="ev-probe-trigger"]')
+    expect(trigger.text()).toBe('无法回溯')
+
+    await trigger.trigger('click')
+    await flushPromises()
+    expect(w.find('[data-testid="ev-probe-untraceable"]').text()).toContain('content_hash')
+  })
+
+  it('质疑按 blocking → warning → note 分组，组内原序', async () => {
+    const shuffled = verdict(0.9)
+    shuffled.challenges = [
+      { dimension: 'robustness', severity: 'note', message: 'note-1' },
+      { dimension: 'statistical', severity: 'blocking', message: 'blocking-1' },
+      { dimension: 'economic', severity: 'warning', message: 'warning-1' },
+      { dimension: 'bias', severity: 'blocking', message: 'blocking-2' },
+    ]
+    const { wrapper: w } = await mountWith([attempt(1, 1.5, { verdict: shuffled })])
+
+    const card = w.find('[data-testid="ranked-item-1"]')
+    const groups = card.findAll('.challenge-group')
+    expect(groups.map((g) => g.attributes('data-testid'))).toEqual([
+      'challenge-group-blocking',
+      'challenge-group-warning',
+      'challenge-group-note',
+    ])
+    expect(groups[0].text()).toContain('blocking-1')
+    expect(groups[0].text()).toContain('blocking-2')
+    // 组内原序：blocking-1 在 blocking-2 之前
+    expect(groups[0].text().indexOf('blocking-1')).toBeLessThan(groups[0].text().indexOf('blocking-2'))
+  })
+
+  it('质疑清单为空显示「无质疑」而不是留白', async () => {
+    const { wrapper: w } = await mountWith([attempt(1, 1.5, { verdict: verdict(0.9) })])
+
+    const card = w.find('[data-testid="ranked-item-1"]')
+    expect(card.find('[data-testid="challenge-none"]').text()).toBe('无质疑')
+    expect(card.find('[data-testid="challenge-groups"]').exists()).toBe(false)
+  })
+})

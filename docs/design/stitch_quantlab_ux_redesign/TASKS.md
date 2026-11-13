@@ -762,7 +762,7 @@ core SYNC-01 的验收第 1、2 条要防的形状，本任务不能替它绕过
 
 **⑥ 边界**：只做 `navItems.ts` + `nav-labels.test.ts` + 三 e2e spec + `user-flows.md` §3.2 + 基线；页面内容不动；A-04 断言 2/8 的台账改判同步落主台账开放项表（本单 commit 内）。
 
-## A-14 候选卡三要素补齐：六维微条 + 质疑分级 + 证据质问（设计报告 S5）　🟢 可开工（2026-11-13 立单）
+## A-14 候选卡三要素补齐：六维微条 + 质疑分级 + 证据质问（设计报告 S5）　✅ 已收口（2026-11-13）
 
 > 来源：2026-11-13 UI/UX 改进报告样图 C · 依赖：无（G2/G3/G4 已落地，verdict 契约已在 `api/explore.ts`）。
 > **前提订正（2026-11-13，起草时实测）**：报告样图 C 含「路径缩略图（PathSparkline）」，
@@ -818,6 +818,16 @@ core SYNC-01 的验收第 1、2 条要防的形状，本任务不能替它绕过
 | 6 破坏验证 | unassessed→0 红 / blocking 排后红，各还原绿（记录退出码） |
 
 **⑥ 边界**：只做 `VerdictBars.vue` + `ReviewDesk.vue` 卡片区 + 对应单测/e2e；路径缩略图归 G1（后端补字段后另立单）；排序与概率口径不动。
+
+**落地（2026-11-13）**
+- **六维微条**：新建 `components/review/VerdictBars.vue`（props `Verdict | null`）：按 `DIMENSION_ORDER` 固定六行；`unassessed` 或非数值维在轨道上写「未评估」并**不渲染填充条**（避免贴底条被读成 0 分），附否决提示「未评估维度行使否决权」；纯展示，概率仍取卡片 `assessedProbability`（P 标签未改口径）。填充色用 `--q-series-1`（`--q-primary` 明令不可作填充）。
+- **质疑分组**：`utils/review.ts` 新增 `SEVERITY_ORDER` + `groupChallenges()`（blocking → warning → note，丢空组，组内原序）；`ReviewDesk.vue` 卡片改为分组标题 + 组内条目，空清单显示「无质疑」。分级措辞沿用卡片既有 `severityLabel`（阻断/警告/提示）——`InterventionBar.vue` 本身没有 severity 文案，无「现有措辞」可对齐，故以本页既有措辞为准。
+- **证据质问**：Sharpe 标签拆为独立 tag，旁挂 `<EvidenceProbe label="Sharpe 证据" :hash="null" reason="AttemptView 尚未携带证据坐标（content_hash），属于 G1 数据缺口" :value="Sharpe …" />`，点击前即显示「无法回溯」，侧滑复用 A-06，不造假 hash。
+- **失败/缺席态**：`ok=false` 不再渲染 Sharpe/P/微条，只显示「失败原因：<error 或 未给出原因>」；`ok=true` 且无 `verdict` 显示「无裁决」。
+- **测试**：`VerdictBars.test.ts` 4 例（六维全 assessed / 含 unassessed / 全 unassessed / verdict 缺席）；`utils/review.test.ts` +3 例分组；`ReviewDesk.test.ts` +5 例（失败态无裁决数字、无裁决、探针无法回溯+侧滑、分组顺序、无质疑），原 B-02/A-12 断言未放宽；e2e `review-desk.spec.ts` +2 例（fixture 真形状六维/未评估/失败态、探针点击开侧滑）。
+- **破坏验证（真跑，记录退出码）**：① `isAssessed` 去掉 unassessed 判断（相当于把未评估画成评估值）⇒ `VerdictBars.test.ts` 1 failed / EXIT=1，还原 ⇒ 4 passed；② `SEVERITY_ORDER` 改成 note→warning→blocking ⇒ `review.test.ts` 1 failed / EXIT=1，还原 ⇒ 10 passed。
+- **验证**：`npx vitest run src/utils/review.test.ts src/components/review/VerdictBars.test.ts src/pages/ReviewDesk.test.ts` → 26 passed；A-14 e2e 真栈实跑 2 passed；`npm run typecheck` EXIT=0；`npx eslint`（触及文件）0 error。
+- **偏离说明**：① ⑤ 表要求「真 run 的 verdict 形状」e2e——core `:8085` 共享限流下真跑探索会 429、套件无真 run 可复用（B-02 抬头同款限制），故用 route fixture 逐字段对齐 `Verdict` 取证，测试名与注释均写明 mock；真数据那条留待 G1/限流解除。② ④ 要求「候选卡视觉基线重录」——`visual-regression.spec.ts` 无 `/review` 基线，无图可录，本单未新增基线。
 
 ## A-15 晨间简报：控制台首屏改为三节奏入口（设计报告 S4）　⛔ 阻塞（依赖 A-12 / A-13 / A-14）
 
@@ -996,4 +1006,4 @@ A-15                 （晨间简报，⛔ 等 A-12/A-13/A-14 收口）
 
 | 2026-11-12 (2) | **A-09/A-10/A-11/B-01/B-02/B-04/B-06 关账 + 事实订正**：① A-09 纸交易观测台 `9ca2a61`，外部信号流 `97e934d` 接上 core 新补的 `GET /api/signals` 读面（空流 ≠ 读面未接，已分开画）；② A-10 三个缺屏 5 个 commit 已推，**断言 3 由 5 条订正为 4 条**（walkforward 历史读端点退役、batch CSV 501）；③ A-11 自托管 latin 子集 woff2（ODR-001，91.4 KiB）；④ B-01 `416d598` 只补 seq 升序用例并关账；⑤ B-02 审阅台 + B-06 三干预 `efc6cef`；⑥ B-04 三页合一 `08e95f1`；⑦ **G 表过期判据订正**：G1 聚合读面已实现（派生量仍缺）、G2/G3/G4 已落地（agent 实现 + core 反代）、G6 已落地、G7 已以通配收录，因此 B-02/B-06 从「画 disabled」改为**接真端点**；⑧ **B-05 归口由 analytics 改为 core**（ADR-038；analytics 全仓无因子读端点），UI 保留 disabled 并改为 core 后端任务指针 |
 | 2026-11-13 | **设计细化批立单（只立单不施工）**：主任派工把 2026-11-13 UI/UX 改进报告（会话可视化 artifact）细化为可执行任务。新立 **A-12**（校准驾驶舱 = 审阅台第二 tab，G6 消费面）/ **A-13**（导航 IA 15→14 按 §3.2，解除 A-04 断言 2/8 暂缓）/ **A-14**（候选卡三要素：六维微条 + 质疑分级 + EvidenceProbe）/ **A-15**（晨间简报，⛔ 依赖前三单），各 6 断言 + 六字段实施计划。**两处前提订正**：① 报告「15→9」引 A-04 旧提案，该提案无权威清单且早于五个新页 ⇒ 改按 §3.2 收敛 14 项 5 组；② 样图 C 的 PathSparkline 无数据支撑（`AttemptView` 双侧无权益路径字段，G1 明列缺口）⇒ carved out 归 G1。**一处放置裁决**：S2 原稿「独立 /calibration 页 + ⌘K 直达」与 A-04 断言 5（⌘K 只读 NAV_ITEMS）矛盾 ⇒ 改审阅台第二 tab + 深链。主台账同批新立 `UI-DESIGN-DOC-CONVERGENCE`（设计文档 v1 残留收敛，档 5）并登记 A-12~A-15 开放项 ID |
-| 2026-11-13 (2) | **A-12 完成**：审阅台加「候选审阅 / 校准」双 tab，`?tab=calibration` 深链只改 query（未新增路由 / 未动 `NAV_ITEMS`）；新建 `CalibrationPanel.vue` 消费 G6 真端点，五数照抄后端、可靠性图 Chart.js（主样本 + holdout 双线 + 对角参考）、分箱表与 entries 三态；纯函数 `utils/calibration.ts` 负责分箱与 holdout 分流。**教训**：新组件写 `var(--q-hairline, #2a3449)` 这类兜底会被 `palette.test.ts` 棘轮当场抓住（兜底 hex 不在基线里、`--q-hairline` 在 `variables.css` 根本不存在），改用既有 `--q-text3 / --q-border-light / --q-mono`。**取证边界**：真库采纳台账为空，非空态（分箱 / holdout 分离 / 待回填）只能用 route fixture 证明，测试注释已标 mock；`visual-regression.spec.ts` 无 `/review` 基线，故本单无图可重录 |
+| 2026-11-13 (3) | **A-14 完成**：`VerdictBars.vue` 六维微条（unassessed 写「未评估」不画 0 分条 + 否决提示）、`groupChallenges` 分级（blocking→warning→note，组内原序，空清单「无质疑」）、Sharpe 旁 EvidenceProbe（`hash=null` 恒「无法回溯」，不造 hash）、失败/缺席态（无裁决数字 / 「无裁决」）。两条破坏腿真跑（unassessed→评估值 1 failed；severity 顺序反转 1 failed，均还原绿）。**教训/边界**：⑤ 表要求「真 run verdict 形状」e2e，但 :8085 限流 + 套件无真 run，只能用 route fixture（已标 mock）；`/review` 无视觉基线，无图可重录 |

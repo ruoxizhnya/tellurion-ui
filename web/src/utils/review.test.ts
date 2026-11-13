@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import type { AttemptView, Verdict } from '@/api/explore'
-import { causalStrength, plateauArea, rankAttempts } from './review'
+import type { AttemptView, Challenge, Verdict } from '@/api/explore'
+import { causalStrength, groupChallenges, plateauArea, rankAttempts } from './review'
 
 function attempt(seq: number, sharpe: number, opts: Partial<AttemptView> = {}): AttemptView {
   return {
@@ -87,5 +87,35 @@ describe('rankAttempts', () => {
     const ranked = rankAttempts(all)
     expect(ranked[0].attempt.seq).toBe(2)
     expect(ranked[1].score).toBe(0)
+  })
+})
+
+describe('groupChallenges（A-14 断言 2）', () => {
+  function challenge(severity: Challenge['severity'], message: string): Challenge {
+    return { dimension: 'robustness', severity, message }
+  }
+
+  it('乱序输入按 blocking → warning → note 分组，组内保持原序', () => {
+    const groups = groupChallenges([
+      challenge('note', 'n1'),
+      challenge('blocking', 'b1'),
+      challenge('warning', 'w1'),
+      challenge('blocking', 'b2'),
+      challenge('note', 'n2'),
+    ])
+
+    expect(groups.map((g) => g.severity)).toEqual(['blocking', 'warning', 'note'])
+    expect(groups[0].items.map((c) => c.message)).toEqual(['b1', 'b2'])
+    expect(groups[1].items.map((c) => c.message)).toEqual(['w1'])
+    expect(groups[2].items.map((c) => c.message)).toEqual(['n1', 'n2'])
+  })
+
+  it('空组被丢掉：只有 note 时 blocking 排在最前这条也不制造空标题', () => {
+    const groups = groupChallenges([challenge('note', 'n1')])
+    expect(groups.map((g) => g.severity)).toEqual(['note'])
+  })
+
+  it('空清单返回空数组（页面据此显示「无质疑」）', () => {
+    expect(groupChallenges([])).toEqual([])
   })
 })
